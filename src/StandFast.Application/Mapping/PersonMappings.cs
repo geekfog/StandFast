@@ -1,0 +1,23 @@
+using StandFast.Application.Dtos;
+using StandFast.Domain.Entities;
+
+namespace StandFast.Application.Mapping;
+
+/// <summary>The only place <see cref="Person"/> and its DTOs are converted, including input normalisation.</summary>
+public static class PersonMappings
+{
+    public static PersonDto ToDto(this Person person) =>
+        new(person.Id, person.FirstName, person.LastName, person.Email, person.IsActive, person.DisplayName, person.Initials);
+
+    public static PersonEditDto ToEditDto(this Person person) =>
+        new() { Id = person.Id, FirstName = person.FirstName, LastName = person.LastName, Email = person.Email, IsActive = person.IsActive };
+
+    /// <summary>Copies editable fields onto the entity. Trimming and email casing are normalised here so stored values are consistent regardless of the caller.</summary>
+    public static void ApplyTo(this PersonEditDto dto, Person person)
+    {
+        person.FirstName = dto.FirstName.Trim();
+        person.LastName = dto.LastName.Trim();
+        person.Email = dto.Email.Trim().ToLowerInvariant();
+        person.IsActive = dto.IsActive;
+    }
+}

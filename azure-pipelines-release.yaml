@@ -1,0 +1,85 @@
+# Release stage template. Included once per environment by azure-pipelines.yaml; never run directly.
+parameters:
+  - name: p_publishEnvironment
+    type: string
+  - name: p_dependsOn
+    type: string
+  - name: p_hasMetCondition
+    type: string
+
+stages:
+  - stage: Release_${{ parameters.p_publishEnvironment }}
+    displayName: Release ${{ parameters.p_publishEnvironment }}
+    dependsOn: ${{ parameters.p_dependsOn }}
+    condition: ${{ parameters.p_hasMetCondition }}
+    variables:
+      - group: standfast-${{ lower(parameters.p_publishEnvironment) }}-vars
+    jobs:
+      - deployment: DeployJob
+        displayName: Deploy to ${{ parameters.p_publishEnvironment }}
+        environment: StandFast ${{ parameters.p_publishEnvironment }}
+        pool:
+          vmImage: $(g_VmImage)
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: bicep
+                  displayName: Download Bicep templates
+
+                # The image reference and tag hashtable are built here because AzureResourceManagerTemplateDeployment@3 resolves
+                # its input fields before the stage variable group is available.
+                - task: PowerShell@2
+                  displayName: Compose deployment parameters
+                  inputs:
+                    targetType: inline
+                    pwsh: true
+                    script: |
+                      $registry = '$(a_ContainerRegistryLoginServer)'
+                      $image = "$registry/$(g_ImageRepository):$(Build.BuildNumber)"
+                      Write-Host "##vso[task.setvariable variable=v_ResourceGroup]$(a_ResourceGroup)"
+
+                      @{
+                        '$schema'      = 'https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#'
+                        contentVersion = '1.0.0.0'
+                        parameters     = @{
+                          p_AppBase           = @{ value = '$(a_AppBase)' }
+                          p_Environment       = @{ value = '${{ parameters.p_publishEnvironment }}' }
+                          p_RegionToken       = @{ value = '$(a_RegionToken)' }
+                          p_ContainerImage    = @{ value = $image }
+                          p_EntraTenantId     = @{ value = '$(a_EntraTenantId)' }
+                          p_EntraClientId     = @{ value = '$(a_EntraClientId)' }
+                          p_EntraClientSecret = @{ value = '$(a_EntraClientSecret)' }
+                          p_DisplayTimeZoneId = @{ value = '$(a_DisplayTimeZoneId)' }
+                          p_Tags              = @{ value = @{
+                            Product     = '$(a_AppBase) Container App'
+                            Environment = '${{ parameters.p_publishEnvironment }}'
+                            CreatedBy   = 'Azure DevOps'
+                          }}
+                        }
+                      } | ConvertTo-Json -Depth 5 | Set-Content '$(Pipeline.Workspace)/bicep/parameters.json'
+
+                - task: AzureResourceManagerTemplateDeployment@3
+                  displayName: Deploy infrastructure and container app
+                  inputs:
+                    deploymentScope: Resource Group
+                    azureResourceManagerConnection: $(a_AzureServiceConnection)
+                    subscriptionId: $(a_SubscriptionId)
+                    action: Create Or Update Resource Group
+                    resourceGroupName: $(v_ResourceGroup)
+                    location: $(a_Location)
+                    templateLocation: Linked artifact
+                    csmFile: $(Pipeline.Workspace)/bicep/main.bicep
+                    csmParametersFile: $(Pipeline.Workspace)/bicep/parameters.json
+                    deploymentMode: Incremental
+                    deploymentOutputs: o_DeploymentOutputs
+
+                - task: PowerShell@2
+                  displayName: Report application URL
+                  inputs:
+                    targetType: inline
+                    pwsh: true
+                    script: |
+                      $outputs = '$(o_DeploymentOutputs)' | ConvertFrom-Json
+                      Write-Host "StandFast ${{ parameters.p_publishEnvironment }} is available at $($outputs.o_ApplicationUrl.value)"

@@ -1,0 +1,55 @@
+@inject IPersonService PersonService
+@inject FluentValidation.IValidator<PersonEditDto> Validator
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(Person.Id is null ? "Add person" : "Edit person")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="form" Model="Person" Validation="@FluentValidationAdapter.ForField(Validator)">
+            <MudTextField @bind-Value="Person.FirstName" For="@(() => Person.FirstName)" Label="First name" Variant="Variant.Outlined" Class="mb-3" />
+            <MudTextField @bind-Value="Person.LastName" For="@(() => Person.LastName)" Label="Last name" Variant="Variant.Outlined" Class="mb-3" />
+            <MudTextField @bind-Value="Person.Email" For="@(() => Person.Email)" Label="Email address" InputType="InputType.Email" Variant="Variant.Outlined" Class="mb-3" />
+            <MudSwitch @bind-Value="Person.IsActive" Color="Color.Primary" Label="Active" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="isSaving" OnClick="SaveAsync">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private MudForm form = default!;
+    private bool isSaving;
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter]
+    [EditorRequired]
+    public PersonEditDto Person { get; set; } = default!;
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task SaveAsync()
+    {
+        await form.ValidateAsync();
+        if (!form.IsValid)
+        {
+            return;
+        }
+
+        isSaving = true;
+
+        try
+        {
+            await PersonService.SaveAsync(Person);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

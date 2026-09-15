@@ -1,0 +1,86 @@
+@inject IStandupService StandupService
+@inject FluentValidation.IValidator<StandupEditDto> Validator
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(Standup.Id is null ? "Add standup" : "Edit standup")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="form" Model="Standup" Validation="@FluentValidationAdapter.ForField(Validator)">
+            <MudTextField @bind-Value="Standup.Name" For="@(() => Standup.Name)" Label="Name" Variant="Variant.Outlined" Class="mb-3" />
+            <MudTextField @bind-Value="Standup.Description" For="@(() => Standup.Description)" Label="Description" Variant="Variant.Outlined" Lines="2" Class="mb-3" />
+
+            <MudText Typo="Typo.subtitle2" Class="mb-1">Runs on</MudText>
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                @foreach (DayOfWeek day in MeetingDaysExtensions.InDisplayOrder)
+                {
+                    <MudCheckBox T="bool"
+                                 Value="@Standup.RecurrenceDays.Includes(day)"
+                                 ValueChanged="@(included => ToggleDay(day, included))"
+                                 Color="Color.Primary"
+                                 Dense="true"
+                                 Label="@day.ToString()[..3]" />
+                }
+            </div>
+
+            <MudTimePicker @bind-Time="startTime" Label="Start time" Variant="Variant.Outlined" Class="mb-3" />
+
+            <MudSelect T="string" @bind-Value="Standup.TimeZoneId" Label="Time zone" Variant="Variant.Outlined" Class="mb-3">
+                @foreach (TimeZoneInfo zone in TimeZones)
+                {
+                    <MudSelectItem T="string" Value="@zone.Id">@zone.DisplayName</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudSwitch @bind-Value="Standup.IsActive" Color="Color.Primary" Label="Active" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="isSaving" OnClick="SaveAsync">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private static readonly IReadOnlyList<TimeZoneInfo> TimeZones = [.. TimeZoneInfo.GetSystemTimeZones()];
+
+    private MudForm form = default!;
+    private bool isSaving;
+    private TimeSpan? startTime;
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter]
+    [EditorRequired]
+    public StandupEditDto Standup { get; set; } = default!;
+
+    protected override void OnParametersSet() => startTime = Standup.StartTimeLocal.ToTimeSpan();
+
+    private void ToggleDay(DayOfWeek day, bool included) => Standup.RecurrenceDays = Standup.RecurrenceDays.With(day, included);
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task SaveAsync()
+    {
+        Standup.StartTimeLocal = TimeOnly.FromTimeSpan(startTime ?? Standup.StartTimeLocal.ToTimeSpan());
+
+        await form.ValidateAsync();
+        if (!form.IsValid)
+        {
+            return;
+        }
+
+        isSaving = true;
+
+        try
+        {
+            await StandupService.SaveAsync(Standup);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

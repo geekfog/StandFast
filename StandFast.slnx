@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/StandFast.Application/StandFast.Application.csproj" />
+    <Project Path="src/StandFast.Domain/StandFast.Domain.csproj" />
+    <Project Path="src/StandFast.Infrastructure/StandFast.Infrastructure.csproj" />
+    <Project Path="src/StandFast.Ui/StandFast.Ui.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/StandFast.Application.Tests/StandFast.Application.Tests.csproj" />
+    <Project Path="tests/StandFast.Infrastructure.Tests/StandFast.Infrastructure.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,29 @@
+@page "/Error"
+@using System.Diagnostics
+
+<PageTitle>@AppInfo.PageTitle("Error")</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+    <MudPaper Class="pa-8" Elevation="1">
+        <h1 class="mud-typography mud-typography-h5 mb-2">Something went wrong</h1>
+        <MudText Typo="Typo.body1" Class="mb-4">The request could not be completed. The failure has been logged.</MudText>
+
+        @if (ShowRequestId)
+        {
+            <MudAlert Severity="Severity.Info" Dense="true" Class="mb-4">Request ID: <code>@RequestId</code></MudAlert>
+        }
+
+        <MudButton Href="@UiRoutes.Board" Variant="Variant.Filled" Color="Color.Primary">Back to the board</MudButton>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private string? RequestId { get; set; }
+
+    private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+
+    protected override void OnInitialized() => RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+}

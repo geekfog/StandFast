@@ -1,0 +1,53 @@
+<MudPaper Outlined="true" Class="d-flex align-center pa-2 gap-1">
+    <MudTooltip Text="Previous week">
+        <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" OnClick="@(() => ShiftWeeksAsync(-1))" aria-label="Previous week" />
+    </MudTooltip>
+
+    <div class="d-flex flex-grow-1 justify-space-around flex-wrap gap-1">
+        @foreach (DateOnly day in MeetingCalendar.Week(SelectedDate))
+        {
+            bool isSelected = day == SelectedDate;
+            bool isScheduled = ScheduledDays.Includes(day.DayOfWeek);
+
+            <MudButton Variant="@(isSelected ? Variant.Filled : Variant.Text)"
+                       Color="@(isSelected ? Color.Primary : isScheduled ? Color.Default : Color.Inherit)"
+                       Disabled="@(!isScheduled && HideUnscheduledDays)"
+                       Class="@(day == Today ? "standfast-today" : null)"
+                       OnClick="@(() => SelectAsync(day))">
+                <div class="d-flex flex-column align-center">
+                    <MudText Typo="Typo.caption">@day.ToString(UiFormats.WeekdayAbbreviation)</MudText>
+                    <MudText Typo="Typo.h6">@day.Day</MudText>
+                </div>
+            </MudButton>
+        }
+    </div>
+
+    <MudTooltip Text="Next week">
+        <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" OnClick="@(() => ShiftWeeksAsync(1))" aria-label="Next week" />
+    </MudTooltip>
+
+    <MudButton Variant="Variant.Outlined" Size="Size.Small" Disabled="@(SelectedDate == Today)" OnClick="@(() => SelectAsync(Today))">Today</MudButton>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public DateOnly SelectedDate { get; set; }
+
+    [Parameter]
+    public EventCallback<DateOnly> SelectedDateChanged { get; set; }
+
+    /// <summary>The user's current date, highlighted separately from the selected date.</summary>
+    [Parameter]
+    public DateOnly Today { get; set; }
+
+    /// <summary>Days the chosen standup actually runs on. Non-meeting days are de-emphasised rather than hidden, so a catch-up on an off day is still reachable.</summary>
+    [Parameter]
+    public MeetingDays ScheduledDays { get; set; } = MeetingDays.EveryDay;
+
+    [Parameter]
+    public bool HideUnscheduledDays { get; set; }
+
+    private Task SelectAsync(DateOnly date) => SelectedDateChanged.InvokeAsync(date);
+
+    private Task ShiftWeeksAsync(int weeks) => SelectAsync(SelectedDate.AddDays(weeks * MeetingCalendar.DaysPerWeek));
+}

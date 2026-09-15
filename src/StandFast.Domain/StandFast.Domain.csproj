@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Domain has no framework or infrastructure dependencies by design (see README: Architecture Summary). -->
+
+</Project>

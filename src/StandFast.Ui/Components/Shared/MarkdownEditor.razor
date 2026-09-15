@@ -1,0 +1,87 @@
+@inject IJSRuntime JS
+
+<MudPaper Outlined="true" Class="standfast-markdown-editor">
+    <MudToolBar Dense="true" Gutters="false" Class="px-2 standfast-markdown-toolbar">
+        <MudText Typo="Typo.subtitle2" Class="mr-2">@Label</MudText>
+        @if (!ReadOnly)
+        {
+            @foreach (MarkdownCommand command in MarkdownCommands.All)
+            {
+                <MudTooltip Text="@command.Tooltip">
+                    <MudIconButton Icon="@command.Icon" Size="Size.Small" Disabled="showPreview" OnClick="@(() => ApplyAsync(command))" aria-label="@command.Tooltip" />
+                </MudTooltip>
+            }
+        }
+        <MudSpacer />
+        @ToolbarActions
+        <MudTooltip Text="@(showPreview ? "Edit" : "Preview")">
+            <MudIconButton Icon="@(showPreview ? Icons.Material.Filled.Edit : Icons.Material.Filled.Visibility)" Size="Size.Small" OnClick="TogglePreview" aria-label="@(showPreview ? "Edit" : "Preview")" />
+        </MudTooltip>
+    </MudToolBar>
+
+    <div id="@editorId" class="pa-3">
+        @if (showPreview || ReadOnly)
+        {
+            <MarkdownView Value="@Value" EmptyText="@EmptyText" />
+        }
+        else
+        {
+            <MudTextField T="string"
+                          Value="@Value"
+                          ValueChanged="OnTextChangedAsync"
+                          Lines="@Lines"
+                          MaxLength="DomainLimits.MarkdownMaxLength"
+                          Immediate="true"
+                          Variant="Variant.Text"
+                          Underline="false"
+                          Placeholder="@Placeholder"
+                          aria-label="@Label" />
+        }
+    </div>
+</MudPaper>
+
+@code {
+    private readonly string editorId = $"markdown-{Guid.NewGuid():N}";
+    private bool showPreview;
+
+    [Parameter]
+    public string Label { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Value { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> ValueChanged { get; set; }
+
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    [Parameter]
+    public int Lines { get; set; } = 6;
+
+    [Parameter]
+    public string Placeholder { get; set; } = "Markdown supported.";
+
+    [Parameter]
+    public string EmptyText { get; set; } = "Nothing recorded.";
+
+    /// <summary>Extra buttons for this field, such as "copy the prior update forward".</summary>
+    [Parameter]
+    public RenderFragment? ToolbarActions { get; set; }
+
+    private Task OnTextChangedAsync(string? value) => ValueChanged.InvokeAsync(value);
+
+    private void TogglePreview() => showPreview = !showPreview;
+
+    private async Task ApplyAsync(MarkdownCommand command)
+    {
+        string? updated = command.IsBlockCommand
+            ? await JS.InvokeAsync<string?>("standFastMarkdown.prefixLines", editorId, command.LinePrefix ?? string.Empty, command.Ordered)
+            : await JS.InvokeAsync<string?>("standFastMarkdown.wrapSelection", editorId, command.Before, command.After, command.Placeholder);
+
+        if (updated is not null)
+        {
+            await ValueChanged.InvokeAsync(updated);
+        }
+    }
+}

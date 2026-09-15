@@ -1,0 +1,16 @@
+<Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+    <Found Context="routeData">
+        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
+            <NotAuthorized>
+                <MudContainer MaxWidth="MaxWidth.Small" Class="mt-16">
+                    <MudPaper Class="pa-8" Elevation="2">
+                        <MudText Typo="Typo.h5" GutterBottom="true">Sign in required</MudText>
+                        <MudText Typo="Typo.body1" Class="mb-4">@AppInfo.Name is restricted to members of your Entra ID tenant.</MudText>
+                        <MudButton Href="@UiRoutes.SignIn" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Login">Sign in</MudButton>
+                    </MudPaper>
+                </MudContainer>
+            </NotAuthorized>
+        </AuthorizeRouteView>
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+</Router>

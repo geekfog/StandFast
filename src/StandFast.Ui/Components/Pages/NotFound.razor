@@ -1,0 +1,12 @@
+@page "/not-found"
+@layout MainLayout
+
+<PageTitle>@AppInfo.PageTitle("Not found")</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+    <MudPaper Class="pa-8" Elevation="1">
+        <h1 class="mud-typography mud-typography-h5 mb-2">Page not found</h1>
+        <MudText Typo="Typo.body1" Class="mb-4">That page does not exist.</MudText>
+        <MudButton Href="@UiRoutes.Board" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ViewKanban">Back to the board</MudButton>
+    </MudPaper>
+</MudContainer>

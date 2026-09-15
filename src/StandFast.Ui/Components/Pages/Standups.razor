@@ -1,0 +1,95 @@
+@page "/standups"
+@attribute [Authorize]
+@inject IStandupService StandupService
+@inject IDialogService DialogService
+
+<PageTitle>@AppInfo.PageTitle("Standups")</PageTitle>
+
+<div class="d-flex align-center mb-4">
+    <h1 class="mud-typography mud-typography-h5 flex-grow-1">Standups</h1>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => EditAsync(null))">Add standup</MudButton>
+</div>
+
+<MudTable Items="standups" Hover="true" Dense="true" Loading="isLoading" Elevation="1">
+    <HeaderContent>
+        <MudTh>Name</MudTh>
+        <MudTh>Runs on</MudTh>
+        <MudTh>Start</MudTh>
+        <MudTh>Status</MudTh>
+        <MudTh Style="width: 10rem;"></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Name">
+            <MudText Typo="Typo.body1">@context.Name</MudText>
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">@context.Description</MudText>
+        </MudTd>
+        <MudTd DataLabel="Runs on">@DescribeDays(context.RecurrenceDays)</MudTd>
+        <MudTd DataLabel="Start">@context.StartTimeLocal.ToString(UiFormats.TimeOfDay) (@context.TimeZoneId)</MudTd>
+        <MudTd DataLabel="Status">
+            <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Default)">@(context.IsActive ? "Active" : "Inactive")</MudChip>
+        </MudTd>
+        <MudTd>
+            <MudIconButton Icon="@Icons.Material.Filled.Groups" Size="Size.Small" OnClick="@(() => ManageMembersAsync(context))" aria-label="@($"Manage roster for {context.Name}")" />
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => EditAsync(context))" aria-label="@($"Edit {context.Name}")" />
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteAsync(context))" aria-label="@($"Delete {context.Name}")" />
+        </MudTd>
+    </RowTemplate>
+    <NoRecordsContent>No standups defined yet.</NoRecordsContent>
+</MudTable>
+
+@code {
+    private IReadOnlyList<StandupDto> standups = [];
+    private bool isLoading = true;
+
+    protected override Task OnInitializedAsync() => ReloadAsync();
+
+    private static string DescribeDays(MeetingDays days) => days switch
+    {
+        MeetingDays.Weekdays => "Weekdays",
+        MeetingDays.EveryDay => "Every day",
+        MeetingDays.None => "Never",
+        _ => string.Join(", ", MeetingDaysExtensions.InDisplayOrder.Where(day => days.Includes(day)).Select(day => day.ToString()[..3])),
+    };
+
+    private async Task ReloadAsync()
+    {
+        isLoading = true;
+        standups = await StandupService.GetAllAsync();
+        isLoading = false;
+    }
+
+    private async Task EditAsync(StandupDto? standup)
+    {
+        // Existing standups are re-fetched as an edit DTO so the entity-to-DTO mapping stays in the Application layer rather than being repeated here.
+        StandupEditDto edit = standup is null ? new StandupEditDto() : await StandupService.GetForEditAsync(standup.Id) ?? new StandupEditDto();
+
+        DialogParameters<StandupDialog> parameters = new() { { dialog => dialog.Standup, edit } };
+        IDialogReference reference = await DialogService.ShowAsync<StandupDialog>(null, parameters);
+
+        if (!(await reference.Result)!.Canceled)
+        {
+            await ReloadAsync();
+        }
+    }
+
+    private async Task ManageMembersAsync(StandupDto standup)
+    {
+        DialogParameters<StandupMembersDialog> parameters = new()
+        {
+            { dialog => dialog.StandupId, standup.Id },
+            { dialog => dialog.StandupName, standup.Name },
+        };
+
+        await DialogService.ShowAsync<StandupMembersDialog>(null, parameters);
+    }
+
+    private async Task DeleteAsync(StandupDto standup)
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync("Remove standup", $"Remove {standup.Name} and its roster? Recorded updates are kept.", yesText: "Remove", cancelText: "Cancel");
+        if (confirmed == true)
+        {
+            await StandupService.DeleteAsync(standup.Id);
+            await ReloadAsync();
+        }
+    }
+}

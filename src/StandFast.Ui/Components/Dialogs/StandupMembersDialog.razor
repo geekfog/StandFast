@@ -1,0 +1,88 @@
+@inject IStandupService StandupService
+@inject IPersonService PersonService
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Roster: @StandupName</MudText>
+    </TitleContent>
+    <DialogContent>
+        <div class="d-flex align-end gap-2 mb-4">
+            <MudSelect T="Guid?" @bind-Value="personToAdd" Label="Add a person" Variant="Variant.Outlined" Dense="true" Class="flex-grow-1">
+                @foreach (PersonDto person in AddablePeople)
+                {
+                    <MudSelectItem T="Guid?" Value="@person.Id">@person.DisplayName</MudSelectItem>
+                }
+            </MudSelect>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(personToAdd is null)" OnClick="AddAsync">Add</MudButton>
+        </div>
+
+        <MudList T="Guid" Dense="true">
+            @foreach (StandupMemberDto member in members)
+            {
+                <MudListItem T="Guid" Value="@member.PersonId">
+                    <div class="d-flex align-center">
+                        <div class="flex-grow-1">
+                            <MudText Typo="Typo.body1">@member.DisplayName</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">@member.Email</MudText>
+                        </div>
+                        <MudIconButton Icon="@Icons.Material.Filled.PersonRemove" Size="Size.Small" Color="Color.Error" OnClick="@(() => RemoveAsync(member.PersonId))" aria-label="@($"Remove {member.DisplayName}")" />
+                    </div>
+                </MudListItem>
+            }
+        </MudList>
+
+        @if (members.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">Nobody on this roster yet.</MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Close">Done</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private IReadOnlyList<StandupMemberDto> members = [];
+    private IReadOnlyList<PersonDto> people = [];
+    private Guid? personToAdd;
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter]
+    [EditorRequired]
+    public Guid StandupId { get; set; }
+
+    [Parameter]
+    public string StandupName { get; set; } = string.Empty;
+
+    private IEnumerable<PersonDto> AddablePeople => people.Where(person => person.IsActive && members.All(member => member.PersonId != person.Id));
+
+    protected override async Task OnInitializedAsync()
+    {
+        people = await PersonService.GetAllAsync();
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync() => members = await StandupService.GetMembersAsync(StandupId);
+
+    private async Task AddAsync()
+    {
+        if (personToAdd is not { } personId)
+        {
+            return;
+        }
+
+        await StandupService.AddMemberAsync(StandupId, personId);
+        personToAdd = null;
+        await ReloadAsync();
+    }
+
+    private async Task RemoveAsync(Guid personId)
+    {
+        await StandupService.RemoveMemberAsync(StandupId, personId);
+        await ReloadAsync();
+    }
+
+    private void Close() => Dialog.Close(DialogResult.Ok(true));
+}

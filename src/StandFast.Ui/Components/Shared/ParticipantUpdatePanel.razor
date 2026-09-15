@@ -1,0 +1,118 @@
+<MudPaper Outlined="true" Class="pa-4">
+    <div class="d-flex align-center mb-3">
+        <MudAvatar Color="@StandFastTheme.ColumnColor(Participant.State)" Class="mr-3">@Participant.Initials</MudAvatar>
+        <div class="flex-grow-1">
+            <MudText Typo="Typo.h6">@Participant.DisplayName</MudText>
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">@Participant.Email</MudText>
+        </div>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" Disabled="@(!IsDirty || isSaving)" OnClick="SaveAsync">
+            @(isSaving ? "Saving..." : "Save update")
+        </MudButton>
+    </div>
+
+    <MudGrid Spacing="3">
+        <MudItem xs="12" md="4">
+            <MarkdownEditor Label="@PriorLabel"
+                            Value="@Participant.PriorUpdate"
+                            ReadOnly="true"
+                            EmptyText="No earlier update recorded for this standup." />
+            @if (!string.IsNullOrWhiteSpace(Participant.PriorBlockers))
+            {
+                <MudExpansionPanels Elevation="0" Class="mt-2">
+                    <MudExpansionPanel Text="Prior blockers" Dense="true">
+                        <MarkdownView Value="@Participant.PriorBlockers" />
+                    </MudExpansionPanel>
+                </MudExpansionPanels>
+            }
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MarkdownEditor Label="Current update" @bind-Value="currentUpdate" Placeholder="What did you do, what is next?">
+                <ToolbarActions>
+                    <MudTooltip Text="Copy the prior update into this box">
+                        <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                       Size="Size.Small"
+                                       Disabled="@(!Participant.HasPrior)"
+                                       OnClick="CopyPriorForward"
+                                       aria-label="Copy prior update forward" />
+                    </MudTooltip>
+                </ToolbarActions>
+            </MarkdownEditor>
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MarkdownEditor Label="Blockers" @bind-Value="blockers" Placeholder="Anything in the way?" EmptyText="No blockers recorded." />
+        </MudItem>
+    </MudGrid>
+
+    <MudText Typo="Typo.caption" Class="mud-text-secondary mt-2">
+        @(Participant.UpdateSavedUtc is null ? "Not saved yet." : $"Last saved {Participant.UpdateSavedUtc.ToLocalDisplay(TimeZone)}.")
+    </MudText>
+</MudPaper>
+
+@code {
+    private string? currentUpdate;
+    private string? blockers;
+    private Guid loadedPersonId;
+    private DateOnly loadedDate;
+    private bool isSaving;
+
+    [Parameter]
+    [EditorRequired]
+    public BoardParticipantDto Participant { get; set; } = default!;
+
+    [Parameter]
+    public Guid StandupId { get; set; }
+
+    [Parameter]
+    public DateOnly MeetingDate { get; set; }
+
+    [Parameter]
+    public TimeZoneInfo TimeZone { get; set; } = TimeZoneInfo.Local;
+
+    [Parameter]
+    public EventCallback<ParticipantUpdateDto> OnSave { get; set; }
+
+    private bool IsDirty => currentUpdate != Participant.Update || blockers != Participant.Blockers;
+
+    private string PriorLabel => Participant.PriorMeetingDate is { } date
+        ? $"Prior update ({date.ToDateTime(TimeOnly.MinValue).ToString(UiFormats.ShortDate)})"
+        : "Prior update";
+
+    // Editing state is local so typing does not round-trip to storage, and is re-seeded whenever the panel switches person or date.
+    protected override void OnParametersSet()
+    {
+        if (loadedPersonId == Participant.PersonId && loadedDate == MeetingDate)
+        {
+            return;
+        }
+
+        loadedPersonId = Participant.PersonId;
+        loadedDate = MeetingDate;
+        currentUpdate = Participant.Update;
+        blockers = Participant.Blockers;
+    }
+
+    private void CopyPriorForward() => currentUpdate = Participant.PriorUpdate;
+
+    private async Task SaveAsync()
+    {
+        isSaving = true;
+
+        try
+        {
+            await OnSave.InvokeAsync(new ParticipantUpdateDto
+            {
+                StandupId = StandupId,
+                PersonId = Participant.PersonId,
+                MeetingDate = MeetingDate,
+                Update = currentUpdate,
+                Blockers = blockers,
+            });
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

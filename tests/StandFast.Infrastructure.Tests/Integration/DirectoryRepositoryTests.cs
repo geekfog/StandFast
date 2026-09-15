@@ -1,0 +1,92 @@
+using StandFast.Domain.Entities;
+using StandFast.Domain.Enums;
+
+namespace StandFast.Infrastructure.Tests.Integration;
+
+/// <summary>Round-trips people, standups and rosters through Azurite, including the roster cleanup that follows deleting a standup.</summary>
+public sealed class DirectoryRepositoryTests : IClassFixture<AzuriteTableFixture>
+{
+    private readonly AzuriteTableFixture fixture;
+
+    public DirectoryRepositoryTests(AzuriteTableFixture fixture) => this.fixture = fixture;
+
+    [AzuriteFact]
+    public async Task People_RoundTripThroughStorage()
+    {
+        Person person = new() { FirstName = "Ada", LastName = "Lovelace", Email = "ada.lovelace@example.com", CreatedUtc = DateTimeOffset.UtcNow };
+
+        await fixture.People.UpsertAsync(person);
+        Person? stored = await fixture.People.GetAsync(person.Id);
+
+        Assert.Equal("Ada Lovelace", stored?.DisplayName);
+        Assert.Equal(person.Email, stored?.Email);
+        Assert.True(stored?.IsActive);
+
+        await fixture.People.DeleteAsync(person.Id);
+        Assert.Null(await fixture.People.GetAsync(person.Id));
+    }
+
+    [AzuriteFact]
+    public async Task Standups_RoundTripScheduleAndStartTime()
+    {
+        Standup standup = new()
+        {
+            Name = "Platform daily",
+            RecurrenceDays = MeetingDays.Weekdays,
+            StartTimeLocal = new TimeOnly(9, 45),
+            TimeZoneId = "UTC",
+            CreatedUtc = DateTimeOffset.UtcNow,
+        };
+
+        await fixture.Standups.UpsertAsync(standup);
+        Standup? stored = await fixture.Standups.GetAsync(standup.Id);
+
+        Assert.Equal(MeetingDays.Weekdays, stored?.RecurrenceDays);
+        Assert.Equal(new TimeOnly(9, 45), stored?.StartTimeLocal);
+        Assert.True(stored?.OccursOn(new DateOnly(2026, 9, 15)));
+        Assert.False(stored?.OccursOn(new DateOnly(2026, 9, 19).AddDays(1)));
+    }
+
+    [AzuriteFact]
+    public async Task DeletingAStandup_AlsoRemovesItsRoster()
+    {
+        Standup standup = new() { Name = "Temporary", CreatedUtc = DateTimeOffset.UtcNow };
+        await fixture.Standups.UpsertAsync(standup);
+
+        foreach (int order in new[] { 10, 20 })
+        {
+            await fixture.Standups.UpsertMemberAsync(new StandupMember { StandupId = standup.Id, PersonId = Guid.CreateVersion7(), DisplayOrder = order });
+        }
+
+        Assert.Equal(2, (await fixture.Standups.GetMembersAsync(standup.Id)).Count);
+
+        await fixture.Standups.DeleteAsync(standup.Id);
+
+        Assert.Null(await fixture.Standups.GetAsync(standup.Id));
+        Assert.Empty(await fixture.Standups.GetMembersAsync(standup.Id));
+    }
+
+    [AzuriteFact]
+    public async Task Rosters_AreScopedToTheirOwnStandup()
+    {
+        Standup first = new() { Name = "First", CreatedUtc = DateTimeOffset.UtcNow };
+        Standup second = new() { Name = "Second", CreatedUtc = DateTimeOffset.UtcNow };
+        Guid sharedPersonId = Guid.CreateVersion7();
+
+        await fixture.Standups.UpsertAsync(first);
+        await fixture.Standups.UpsertAsync(second);
+        await fixture.Standups.UpsertMemberAsync(new StandupMember { StandupId = first.Id, PersonId = sharedPersonId, DisplayOrder = 10 });
+        await fixture.Standups.UpsertMemberAsync(new StandupMember { StandupId = second.Id, PersonId = sharedPersonId, DisplayOrder = 30 });
+
+        StandupMember firstMember = Assert.Single(await fixture.Standups.GetMembersAsync(first.Id));
+        StandupMember secondMember = Assert.Single(await fixture.Standups.GetMembersAsync(second.Id));
+
+        Assert.Equal(10, firstMember.DisplayOrder);
+        Assert.Equal(30, secondMember.DisplayOrder);
+
+        await fixture.Standups.RemoveMemberAsync(first.Id, sharedPersonId);
+
+        Assert.Empty(await fixture.Standups.GetMembersAsync(first.Id));
+        Assert.Single(await fixture.Standups.GetMembersAsync(second.Id));
+    }
+}

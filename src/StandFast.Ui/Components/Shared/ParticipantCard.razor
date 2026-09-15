@@ -1,0 +1,72 @@
+<MudPaper Outlined="true"
+          Class="@($"d-flex align-center pa-2 mb-2 standfast-participant {(IsSelected ? "standfast-participant-selected" : string.Empty)}")"
+          @onclick="OnAdvanceAsync">
+    <MudAvatar Color="@StandFastTheme.ColumnColor(Participant.State)" Size="Size.Medium">@Participant.Initials</MudAvatar>
+
+    <div class="ml-3 flex-grow-1 standfast-participant-text">
+        <MudText Typo="Typo.body1">@Participant.DisplayName</MudText>
+        <MudText Typo="Typo.caption" Class="mud-text-secondary">@StatusCaption</MudText>
+    </div>
+
+    @if (Participant.Blockers is not null)
+    {
+        <MudTooltip Text="Has blockers">
+            <MudIcon Icon="@Icons.Material.Filled.ReportProblem" Color="Color.Warning" Size="Size.Small" />
+        </MudTooltip>
+    }
+
+    @* The card body is the tap target that advances a participant, so the per-button actions stop the click from bubbling back up to it. *@
+    <div class="d-flex align-center" @onclick:stopPropagation="true">
+        <MudTooltip Text="Open update">
+            <MudIconButton Icon="@Icons.Material.Filled.EditNote"
+                           Size="Size.Small"
+                           Color="@(IsSelected ? Color.Primary : Color.Default)"
+                           OnClick="OnSelectAsync"
+                           aria-label="@($"Open update for {Participant.DisplayName}")" />
+        </MudTooltip>
+
+        @if (Participant.State != AttendanceState.Roster)
+        {
+            <MudTooltip Text="Move back">
+                <MudIconButton Icon="@Icons.Material.Filled.Undo"
+                               Size="Size.Small"
+                               OnClick="OnRevertAsync"
+                               aria-label="@($"Move {Participant.DisplayName} back")" />
+            </MudTooltip>
+        }
+    </div>
+</MudPaper>
+
+@code {
+    [Parameter]
+    [EditorRequired]
+    public BoardParticipantDto Participant { get; set; } = default!;
+
+    [Parameter]
+    public TimeZoneInfo TimeZone { get; set; } = TimeZoneInfo.Local;
+
+    [Parameter]
+    public bool IsSelected { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnAdvance { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnRevert { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnSelect { get; set; }
+
+    private string StatusCaption => Participant.State switch
+    {
+        AttendanceState.Presented => $"Presented {Participant.PresentedUtc.ToLocalDisplay(TimeZone)}",
+        AttendanceState.Available => $"Available since {Participant.MarkedAvailableUtc.ToLocalDisplay(TimeZone)}",
+        _ => Participant.UpdateSavedUtc is null ? "Not yet marked present" : $"Update saved {Participant.UpdateSavedUtc.ToLocalDisplay(TimeZone)}",
+    };
+
+    private Task OnAdvanceAsync() => OnAdvance.InvokeAsync(Participant.PersonId);
+
+    private Task OnRevertAsync() => OnRevert.InvokeAsync(Participant.PersonId);
+
+    private Task OnSelectAsync() => OnSelect.InvokeAsync(Participant.PersonId);
+}

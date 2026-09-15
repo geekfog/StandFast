@@ -1,0 +1,70 @@
+@page "/people"
+@attribute [Authorize]
+@inject IPersonService PersonService
+@inject IDialogService DialogService
+
+<PageTitle>@AppInfo.PageTitle("People")</PageTitle>
+
+<div class="d-flex align-center mb-4">
+    <h1 class="mud-typography mud-typography-h5 flex-grow-1">People</h1>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd" OnClick="@(() => EditAsync(null))">Add person</MudButton>
+</div>
+
+<MudTable Items="people" Hover="true" Dense="true" Loading="isLoading" Elevation="1">
+    <HeaderContent>
+        <MudTh>Name</MudTh>
+        <MudTh>Email</MudTh>
+        <MudTh>Status</MudTh>
+        <MudTh Style="width: 7rem;"></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Name">@context.DisplayName</MudTd>
+        <MudTd DataLabel="Email">@context.Email</MudTd>
+        <MudTd DataLabel="Status">
+            <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Default)">@(context.IsActive ? "Active" : "Inactive")</MudChip>
+        </MudTd>
+        <MudTd>
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => EditAsync(context))" aria-label="@($"Edit {context.DisplayName}")" />
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteAsync(context))" aria-label="@($"Delete {context.DisplayName}")" />
+        </MudTd>
+    </RowTemplate>
+    <NoRecordsContent>No people defined yet.</NoRecordsContent>
+</MudTable>
+
+@code {
+    private IReadOnlyList<PersonDto> people = [];
+    private bool isLoading = true;
+
+    protected override Task OnInitializedAsync() => ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        isLoading = true;
+        people = await PersonService.GetAllAsync();
+        isLoading = false;
+    }
+
+    private async Task EditAsync(PersonDto? person)
+    {
+        // Existing people are re-fetched as an edit DTO so the entity-to-DTO mapping stays in the Application layer rather than being repeated here.
+        PersonEditDto edit = person is null ? new PersonEditDto() : await PersonService.GetForEditAsync(person.Id) ?? new PersonEditDto();
+
+        DialogParameters<PersonDialog> parameters = new() { { dialog => dialog.Person, edit } };
+        IDialogReference reference = await DialogService.ShowAsync<PersonDialog>(null, parameters);
+
+        if (!(await reference.Result)!.Canceled)
+        {
+            await ReloadAsync();
+        }
+    }
+
+    private async Task DeleteAsync(PersonDto person)
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync("Remove person", $"Remove {person.DisplayName} from the directory? Their past standup entries are kept.", yesText: "Remove", cancelText: "Cancel");
+        if (confirmed == true)
+        {
+            await PersonService.DeleteAsync(person.Id);
+            await ReloadAsync();
+        }
+    }
+}

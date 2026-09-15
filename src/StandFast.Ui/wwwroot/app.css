@@ -1,0 +1,93 @@
+/* Only the handful of rules MudBlazor does not already cover: board affordances and markdown rendering. */
+
+.standfast-participant {
+    cursor: pointer;
+    transition: background-color 120ms ease-in-out, border-color 120ms ease-in-out;
+}
+
+.standfast-participant:hover {
+    background-color: var(--mud-palette-action-default-hover);
+}
+
+.standfast-participant-selected {
+    border-color: var(--mud-palette-primary);
+    border-width: 2px;
+}
+
+.standfast-participant-text {
+    min-width: 0;
+}
+
+.standfast-column {
+    height: 100%;
+}
+
+.standfast-today {
+    outline: 2px dashed var(--mud-palette-secondary);
+    outline-offset: -2px;
+}
+
+.standfast-markdown-toolbar {
+    background-color: var(--mud-palette-background-gray);
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 0;
+}
+
+.standfast-markdown > :first-child {
+    margin-top: 0;
+}
+
+.standfast-markdown > :last-child {
+    margin-bottom: 0;
+}
+
+.standfast-markdown pre {
+    background-color: var(--mud-palette-background-gray);
+    border-radius: var(--mud-default-borderradius);
+    overflow-x: auto;
+    padding: 0.75rem;
+}
+
+.standfast-markdown code {
+    background-color: var(--mud-palette-background-gray);
+    border-radius: 3px;
+    padding: 0.1rem 0.3rem;
+}
+
+.standfast-markdown blockquote {
+    border-left: 3px solid var(--mud-palette-lines-default);
+    margin-left: 0;
+    padding-left: 0.75rem;
+}
+
+.standfast-markdown table {
+    border-collapse: collapse;
+}
+
+.standfast-markdown th,
+.standfast-markdown td {
+    border: 1px solid var(--mud-palette-lines-default);
+    padding: 0.25rem 0.5rem;
+}
+
+#blazor-error-ui {
+    background: var(--mud-palette-warning);
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    color: var(--mud-palette-warning-text);
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+}

@@ -1,0 +1,83 @@
+# Build once, then release the same image to each environment. Adding an environment is one more template block below.
+name: $(Date:yyyyMMdd)$(Rev:.r)
+
+trigger:
+  branches:
+    include:
+      - main
+      - release/*
+
+pr:
+  branches:
+    include:
+      - main
+
+variables:
+  - group: standfast-vars
+  - name: g_BuildConfiguration
+    value: Release
+  - name: g_VmImage
+    value: ubuntu-latest
+  - name: g_ImageRepository
+    value: standfast-ui
+  - name: g_DockerfilePath
+    value: $(Build.SourcesDirectory)/Dockerfile
+  - name: g_isStrReleaseBranch
+    value: $[startsWith(variables['Build.SourceBranch'], 'refs/heads/release/')]
+
+stages:
+  - stage: Build
+    displayName: Build and test
+    jobs:
+      - job: BuildJob
+        displayName: Build, test and publish artefacts
+        pool:
+          vmImage: $(g_VmImage)
+        steps:
+          - task: UseDotNet@2
+            displayName: Install .NET SDK
+            inputs:
+              packageType: sdk
+              useGlobalJson: true
+
+          - task: DotNetCoreCLI@2
+            displayName: Restore
+            inputs:
+              command: restore
+              projects: StandFast.slnx
+
+          - task: DotNetCoreCLI@2
+            displayName: Build
+            inputs:
+              command: build
+              projects: StandFast.slnx
+              arguments: --configuration $(g_BuildConfiguration) --no-restore
+
+          - task: DotNetCoreCLI@2
+            displayName: Test
+            inputs:
+              command: test
+              projects: tests/**/*.csproj
+              arguments: --configuration $(g_BuildConfiguration) --no-build --collect:"XPlat Code Coverage"
+
+          - task: Docker@2
+            displayName: Build and push container image
+            inputs:
+              containerRegistry: $(a_ContainerRegistryConnection)
+              repository: $(g_ImageRepository)
+              command: buildAndPush
+              Dockerfile: $(g_DockerfilePath)
+              buildContext: $(Build.SourcesDirectory)
+              tags: |
+                $(Build.BuildNumber)
+                latest
+
+          - publish: $(Build.SourcesDirectory)/infra
+            artifact: bicep
+            displayName: Publish Bicep templates
+
+  - template: azure-pipelines-release.yaml
+    parameters:
+      p_publishEnvironment: PRD
+      p_dependsOn: Build
+      p_hasMetCondition: and(succeeded(), eq(variables['g_isStrReleaseBranch'], true))

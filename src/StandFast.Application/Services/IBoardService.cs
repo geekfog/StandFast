@@ -1,0 +1,16 @@
+using StandFast.Application.Dtos;
+
+namespace StandFast.Application.Services;
+
+public interface IBoardService
+{
+    Task<StandupBoardDto> GetBoardAsync(Guid standupId, DateOnly meetingDate, CancellationToken cancellationToken = default);
+
+    /// <summary>Tap forward: roster to available, available to presented.</summary>
+    Task<BoardParticipantDto?> AdvanceAsync(Guid standupId, DateOnly meetingDate, Guid personId, CancellationToken cancellationToken = default);
+
+    /// <summary>Undo a tap by moving the participant one column back.</summary>
+    Task<BoardParticipantDto?> RevertAsync(Guid standupId, DateOnly meetingDate, Guid personId, CancellationToken cancellationToken = default);
+
+    Task<BoardParticipantDto?> SaveUpdateAsync(ParticipantUpdateDto update, CancellationToken cancellationToken = default);
+}

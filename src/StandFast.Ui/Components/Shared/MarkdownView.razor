@@ -1,0 +1,18 @@
+@inject IMarkdownRenderer Markdown
+
+@if (string.IsNullOrWhiteSpace(Value))
+{
+    <MudText Typo="Typo.body2" Class="mud-text-secondary">@EmptyText</MudText>
+}
+else
+{
+    <div class="standfast-markdown">@Markdown.ToHtml(Value)</div>
+}
+
+@code {
+    [Parameter]
+    public string? Value { get; set; }
+
+    [Parameter]
+    public string EmptyText { get; set; } = "Nothing recorded.";
+}

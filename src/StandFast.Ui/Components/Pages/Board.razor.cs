@@ -1,0 +1,129 @@
+using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Options;
+using MudBlazor;
+using StandFast.Application.Dtos;
+using StandFast.Application.Services;
+using StandFast.Domain.Abstractions;
+using StandFast.Domain.Common;
+using StandFast.Domain.Enums;
+using StandFast.Ui.Common;
+using StandFast.Ui.Configuration;
+
+namespace StandFast.Ui.Components.Pages;
+
+public partial class Board
+{
+    /// <summary>Column order across the board, left to right. Driving the markup from this keeps the columns and the tap transitions in step.</summary>
+    private static readonly AttendanceState[] BoardColumns = [AttendanceState.Roster, AttendanceState.Available, AttendanceState.Presented];
+
+    private IReadOnlyList<StandupDto> standups = [];
+    private StandupBoardDto? board;
+    private TimeZoneInfo timeZone = TimeZoneInfo.Local;
+    private DateOnly today;
+    private Guid? selectedPersonId;
+    private Guid loadedStandupId;
+    private DateOnly loadedDate;
+
+    [Inject]
+    private IStandupService StandupService { get; set; } = default!;
+
+    [Inject]
+    private IBoardService BoardService { get; set; } = default!;
+
+    [Inject]
+    private IClock Clock { get; set; } = default!;
+
+    [Inject]
+    private IOptions<StandFastUiOptions> UiOptions { get; set; } = default!;
+
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+
+    [Inject]
+    private ISnackbar Snackbar { get; set; } = default!;
+
+    [SupplyParameterFromQuery(Name = UiRoutes.StandupQueryKey)]
+    private Guid? StandupIdQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = UiRoutes.DateQueryKey)]
+    private string? DateQuery { get; set; }
+
+    private Guid SelectedStandupId => StandupIdQuery ?? standups.FirstOrDefault()?.Id ?? Guid.Empty;
+
+    private DateOnly SelectedDate => MeetingCalendar.ParseRouteValue(DateQuery) ?? today;
+
+    private MeetingDays SelectedStandupDays => standups.FirstOrDefault(standup => standup.Id == SelectedStandupId)?.RecurrenceDays ?? MeetingDays.EveryDay;
+
+    private BoardParticipantDto? SelectedParticipant => board?.Participants.FirstOrDefault(participant => participant.PersonId == selectedPersonId);
+
+    protected override async Task OnInitializedAsync()
+    {
+        timeZone = UiOptions.Value.ResolveTimeZone();
+        today = Clock.Today(timeZone);
+        standups = await StandupService.GetSelectableAsync();
+    }
+
+    // The standup and date live in the query string, so the board is reloaded from the URL rather than from component state. That makes any board view shareable.
+    protected override async Task OnParametersSetAsync()
+    {
+        if (SelectedStandupId == Guid.Empty || (SelectedStandupId == loadedStandupId && SelectedDate == loadedDate && board is not null))
+        {
+            return;
+        }
+
+        loadedStandupId = SelectedStandupId;
+        loadedDate = SelectedDate;
+        board = await BoardService.GetBoardAsync(SelectedStandupId, SelectedDate);
+    }
+
+    private IReadOnlyList<BoardParticipantDto> ParticipantsIn(AttendanceState state) =>
+        board is null ? [] : [.. board.Participants.Where(participant => participant.State == state)];
+
+    private static string EmptyColumnText(AttendanceState state) => state switch
+    {
+        AttendanceState.Available => "Tap a name on the roster as you spot them in the meeting.",
+        AttendanceState.Presented => "Tap a name again once they have given their update.",
+        _ => "Everyone has been marked present.",
+    };
+
+    private Task OnStandupChangedAsync(Guid standupId) => NavigateAsync(standupId, SelectedDate);
+
+    private Task OnDateChangedAsync(DateOnly date) => NavigateAsync(SelectedStandupId, date);
+
+    private Task NavigateAsync(Guid standupId, DateOnly date)
+    {
+        selectedPersonId = null;
+        Navigation.NavigateTo(Navigation.GetUriWithQueryParameters(new Dictionary<string, object?>
+        {
+            [UiRoutes.StandupQueryKey] = standupId,
+            [UiRoutes.DateQueryKey] = MeetingCalendar.ToRouteValue(date),
+        }));
+
+        return Task.CompletedTask;
+    }
+
+    private void SelectParticipant(Guid personId) => selectedPersonId = selectedPersonId == personId ? null : personId;
+
+    private Task AdvanceAsync(Guid personId) => ApplyAsync(() => BoardService.AdvanceAsync(SelectedStandupId, SelectedDate, personId));
+
+    private Task RevertAsync(Guid personId) => ApplyAsync(() => BoardService.RevertAsync(SelectedStandupId, SelectedDate, personId));
+
+    private Task SaveUpdateAsync(ParticipantUpdateDto update) => ApplyAsync(async () =>
+    {
+        BoardParticipantDto? saved = await BoardService.SaveUpdateAsync(update);
+        Snackbar.Add("Update saved.", Severity.Success);
+        return saved;
+    });
+
+    /// <summary>Runs a board mutation and swaps the single changed participant into the loaded board, rather than refetching every roster entry.</summary>
+    private async Task ApplyAsync(Func<Task<BoardParticipantDto?>> mutation)
+    {
+        BoardParticipantDto? updated = await mutation();
+        if (updated is null || board is null)
+        {
+            return;
+        }
+
+        board = board with { Participants = [.. board.Participants.Select(participant => participant.PersonId == updated.PersonId ? updated : participant)] };
+    }
+}
