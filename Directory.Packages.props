@@ -13,8 +13,7 @@
   </ItemGroup>
 
   <ItemGroup Label="Identity">
-    <PackageVersion Include="Microsoft.Identity.Web" Version="4.14.2" />
-    <PackageVersion Include="Microsoft.Identity.Web.UI" Version="4.14.2" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.12" />
   </ItemGroup>
 
   <ItemGroup Label="UI">

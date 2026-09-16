@@ -48,9 +48,9 @@ stages:
                           p_Environment       = @{ value = '${{ parameters.p_publishEnvironment }}' }
                           p_RegionToken       = @{ value = '$(a_RegionToken)' }
                           p_ContainerImage    = @{ value = $image }
-                          p_EntraTenantId     = @{ value = '$(a_EntraTenantId)' }
-                          p_EntraClientId     = @{ value = '$(a_EntraClientId)' }
-                          p_EntraClientSecret = @{ value = '$(a_EntraClientSecret)' }
+                          p_OidcAuthority     = @{ value = '$(a_OidcAuthority)' }
+                          p_OidcClientId      = @{ value = '$(a_OidcClientId)' }
+                          p_OidcClientSecret  = @{ value = '$(a_OidcClientSecret)' }
                           p_DisplayTimeZoneId = @{ value = '$(a_DisplayTimeZoneId)' }
                           p_Tags              = @{ value = @{
                             Product     = '$(a_AppBase) Container App'

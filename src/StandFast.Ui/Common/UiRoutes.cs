@@ -10,8 +10,11 @@ public static class UiRoutes
     public const string StandupQueryKey = "standupId";
     public const string DateQueryKey = "date";
 
-    public const string SignIn = "/MicrosoftIdentity/Account/SignIn";
-    public const string SignOut = "/MicrosoftIdentity/Account/SignOut";
+    public const string SignIn = "/auth/login";
+    public const string SignOut = "/auth/logout";
+
+    /// <summary>Query-string key carrying where to send the user once sign-in completes.</summary>
+    public const string ReturnUrlQueryKey = "returnUrl";
 
     public const string HealthCheck = "/healthz";
 }

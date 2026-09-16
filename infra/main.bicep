@@ -1,6 +1,6 @@
 targetScope = 'resourceGroup'
 
-// StandFast runs as a single container app: Blazor Server in Azure Container Apps, with Azure Table Storage for data and Entra ID for sign-in.
+// StandFast runs as a single container app: Blazor Server in Azure Container Apps, with Azure Table Storage for data and OpenID Connect for sign-in.
 // Every resource is named <AppBase><Env><Region><Suffix> and carries the standard tag set.
 
 @description('Application base name, lower case. Forms the first segment of every resource name.')
@@ -22,15 +22,15 @@ param p_Tags object
 @description('Fully qualified container image, for example standfastprdusnorthcr.azurecr.io/standfast-ui:1.0.0.')
 param p_ContainerImage string
 
-@description('Entra ID tenant (directory) id the app signs users in against.')
-param p_EntraTenantId string = subscription().tenantId
+@description('OpenID Connect issuer base URL, for example https://yourbusiness.kinde.com.')
+param p_OidcAuthority string
 
-@description('Entra ID application (client) id of the StandFast app registration.')
-param p_EntraClientId string
+@description('OpenID Connect client id of the StandFast application registered with the identity provider.')
+param p_OidcClientId string
 
-@description('Client secret for the app registration. Stored in Key Vault and surfaced to the container app as a Key Vault backed secret.')
+@description('OpenID Connect client secret. Stored in Key Vault and surfaced to the container app as a Key Vault backed secret.')
 @secure()
-param p_EntraClientSecret string
+param p_OidcClientSecret string
 
 @description('Windows or IANA time zone the board treats as today, for example Central Standard Time.')
 param p_DisplayTimeZoneId string = 'Central Standard Time'
@@ -45,7 +45,7 @@ var v_ContainerPort = 8080
 var v_HealthPath = '/healthz'
 var v_DataProtectionContainer = 'dataprotection'
 var v_DataProtectionBlob = 'keys.xml'
-var v_ClientSecretName = 'azuread-client-secret'
+var v_ClientSecretName = 'oidc-client-secret'
 
 // Built-in role definition ids. The container app holds one user assigned identity and is granted only the data-plane roles it needs.
 var v_Roles = {
@@ -143,7 +143,7 @@ resource clientSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   parent: vault
   name: v_ClientSecretName
   properties: {
-    value: p_EntraClientSecret
+    value: p_OidcClientSecret
   }
 }
 
@@ -253,9 +253,9 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'ASPNETCORE_ENVIRONMENT', value: 'Production' }
             // DefaultAzureCredential resolves the user assigned identity from this, so storage and Key Vault need no secret of their own.
             { name: 'AZURE_CLIENT_ID', value: identity.properties.clientId }
-            { name: 'AzureAd__TenantId', value: p_EntraTenantId }
-            { name: 'AzureAd__ClientId', value: p_EntraClientId }
-            { name: 'AzureAd__ClientSecret', secretRef: v_ClientSecretName }
+            { name: 'Oidc__Authority', value: p_OidcAuthority }
+            { name: 'Oidc__ClientId', value: p_OidcClientId }
+            { name: 'Oidc__ClientSecret', secretRef: v_ClientSecretName }
             { name: 'AzureTableStorage__ServiceUri', value: storage.properties.primaryEndpoints.table }
             { name: 'AzureTableStorage__TablePrefix', value: '${p_AppBase}${p_Environment}' }
             { name: 'StandFastUi__DisplayTimeZoneId', value: p_DisplayTimeZoneId }
@@ -296,7 +296,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   ]
 }
 
-@description('Public URL of the deployed app. Add https://<this>/signin-oidc as a redirect URI on the Entra ID app registration.')
+@description('Public URL of the deployed app. Register https://<this>/signin-oidc as an allowed callback URL and https://<this>/signout-callback-oidc as an allowed logout redirect URL with the identity provider.')
 output o_ApplicationUrl string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
 
 @description('Login server of the container registry the pipeline pushes to.')

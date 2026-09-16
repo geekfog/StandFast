@@ -2,7 +2,7 @@
 
 StandFast is a daily scrum board. You pick a standup and a date, tap people as you spot them in the Teams call, tap them again as they give their update, and capture what they said as markdown alongside whatever they said last time.
 
-It runs as a single Blazor Server container in Azure Container Apps, signs in through Entra ID, and stores everything in Azure Table Storage.
+It runs as a single Blazor Server container in Azure Container Apps, signs in through OpenID Connect (Kinde), and stores everything in Azure Table Storage.
 
 # Table of Contents
 
@@ -21,7 +21,7 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
     - [Why Table Storage and not SQL](#why-table-storage-and-not-sql)
   - [Markdown editing](#markdown-editing)
   - [Auditing and logging](#auditing-and-logging)
-  - [Entra ID sign-in](#entra-id-sign-in)
+  - [OpenID Connect sign-in](#openid-connect-sign-in)
   - [Azure Container Apps](#azure-container-apps)
     - [What you gain over App Service](#what-you-gain-over-app-service)
     - [What it costs you](#what-it-costs-you)
@@ -67,7 +67,7 @@ Everything is keyed by standup, person, and date, so navigating to last Tuesday 
 | Programming Language | C# 14 |
 | UI | Blazor Server (interactive server render mode) with MudBlazor 9 |
 | Markdown | Markdig for rendering, a custom toolbar plus a small JavaScript selection helper for editing |
-| Identity | Entra ID via Microsoft.Identity.Web (OpenID Connect) |
+| Identity | OpenID Connect (Kinde) via `Microsoft.AspNetCore.Authentication.OpenIdConnect` |
 | Storage | Azure Table Storage (`Azure.Data.Tables`), managed identity authentication |
 | Logging | Serilog: console everywhere, an Azure Table sink for audit records |
 | Hosting | Azure Container Apps, external ingress, sticky sessions |
@@ -99,15 +99,17 @@ StandFast.slnx
 
 Azurite supplies Table Storage, and the development settings already point at it. Install Azurite from npm, start it, then start the app with `dotnet run --project src/StandFast.Ui`.
 
-Sign-in needs a real Entra ID app registration. Register a web app in your tenant, add `https://localhost:5001/signin-oidc` as a redirect URI, enable ID tokens, and put `AzureAd:TenantId`, `AzureAd:ClientId` and `AzureAd:ClientSecret` in user secrets rather than in `appsettings.json`. The project already carries a `UserSecretsId`.
+Sign-in needs an application registered with your OpenID Connect provider. In Kinde, create a **Back-end web** application, add `https://localhost:7111/signin-oidc` to its allowed callback URLs and `https://localhost:7111/signout-callback-oidc` to its allowed logout redirect URLs, then put `Oidc:Authority` (your `https://yourbusiness.kinde.com` domain), `Oidc:ClientId` and `Oidc:ClientSecret` in user secrets rather than in `appsettings.json`. The project already carries a `UserSecretsId`.
 
 Run the tests with `dotnet test`.
 
 ## Configuration
 
 | Section | Key | Notes |
-| ------- | --- | ----- |
-| `AzureAd` | `TenantId`, `ClientId`, `ClientSecret` | Standard Microsoft.Identity.Web settings. The secret comes from Key Vault in Azure and from user secrets locally. |
+| ------- | --- | --- |
+| `Oidc` | `Authority` | Issuer base URL, for example `https://yourbusiness.kinde.com`. Every endpoint is read from its discovery document, so none is configured individually. |
+| `Oidc` | `ClientId`, `ClientSecret` | Confidential client credentials. The secret comes from Key Vault in Azure and from user secrets locally. |
+| `Oidc` | `CallbackPath`, `SignedOutCallbackPath`, `SignedOutRedirectUri` | Default to the standard ASP.NET Core paths and rarely need changing. Both callback paths must be registered with the provider. |
 | `AzureTableStorage` | `ServiceUri` | Table endpoint. When set, the app authenticates with `DefaultAzureCredential` and no key is involved. Takes precedence over `ConnectionString`. |
 | `AzureTableStorage` | `ConnectionString` | Used only when `ServiceUri` is empty. This is how Azurite is reached. |
 | `AzureTableStorage` | `TablePrefix` | Prefixed to every table name so one storage account can hold several environments. |
@@ -126,7 +128,7 @@ Each layer depends only on the one below it. Compile-time dependencies point inw
 ```text
 ┌─────────────────────────────────────────────────────────────┐
 │ StandFast.Ui                                                │
-│ Blazor Server, MudBlazor, Entra ID sign-in, Serilog         │
+│ Blazor Server, MudBlazor, OpenID Connect sign-in, Serilog   │
 └──────────────────────────────┬──────────────────────────────┘
                                │
                                ▼
@@ -211,17 +213,23 @@ Rendering uses a single pre-built Markdig pipeline with advanced extensions on a
 
 Serilog handles both, separated by a property rather than by a second logger. `IAuditLog.Record` opens a logging scope containing `IsAuditEvent` plus the actor, the target, and the event name; a Serilog sub-logger filters on that property and writes those events to the `AuditLog` table with the audit properties promoted to real columns. Ordinary application logs go to the console, which is what Container Apps forwards to Log Analytics.
 
-The actor comes from `ICurrentUser`, an Application-layer abstraction implemented in the UI over the Entra ID principal, so the Application layer attributes an action without referencing ASP.NET Core.
+The actor comes from `ICurrentUser`, an Application-layer abstraction implemented in the UI over the signed-in principal, so the Application layer attributes an action without referencing ASP.NET Core.
 
 Audit event names live in `AuditEvents` so a later report reads the same constants the writers use.
 
-## Entra ID sign-in
+## OpenID Connect sign-in
 
-Microsoft.Identity.Web with a fallback authorisation policy that requires an authenticated user, so a new page is protected unless it opts out. The health endpoint is the one deliberate exception.
+Authorization code flow with PKCE against the provider's discovery document, with the session held in a cookie. A fallback authorisation policy requires an authenticated user, so a new page is protected unless it opts out; the health endpoint and the two auth endpoints are the deliberate exceptions.
+
+Nothing in the code names a provider. `AuthenticationSetup` reads an `Authority`, a client id and a secret, and discovers every endpoint from `{Authority}/.well-known/openid-configuration`, so swapping providers is a configuration change. StandFast is configured against Kinde.
+
+Inbound claim mapping is switched off, so claims stay under their OIDC names: `sub` is the audit actor, with `name` and `email` for display. The legacy SOAP claim URIs never appear.
+
+`/auth/login` and `/auth/logout` replace what an identity-provider-specific UI package would otherwise supply. Sign-out ends both the local cookie session and the provider's own session, so the next sign-in is a real one rather than a silent re-issue. The login endpoint accepts a `returnUrl`, and only site-relative values are honoured, so a crafted link cannot bounce a user to another host once authenticated.
 
 Two deployment details matter:
 
-- Container Apps terminates TLS at its ingress and forwards plain HTTP, so `UseForwardedHeaders` runs first in the pipeline. Without it the app builds `http://` redirect URIs and Entra ID rejects them.
+- Container Apps terminates TLS at its ingress and forwards plain HTTP, so `UseForwardedHeaders` runs first in the pipeline. Without it the app builds `http://` redirect URIs, which the provider rejects as unregistered.
 - The client secret is a Key Vault reference on the container app, resolved with the user-assigned managed identity. Everything else, storage and blobs included, uses that identity directly and has no secret at all.
 
 ## Azure Container Apps
@@ -267,9 +275,9 @@ Two variable groups are expected in Azure DevOps:
 | Group | Scope | Holds |
 | ----- | ----- | ----- |
 | `standfast-vars` | Pipeline | Service connections, subscription id, and anything identical across environments. Service connection references resolve at compile time, so they cannot live in a stage-level group. |
-| `standfast-<env>-vars` | Stage | Resource group, region, Entra ID ids and secret, and the display time zone. |
+| `standfast-<env>-vars` | Stage | Resource group, region, identity provider authority, client id and secret, and the display time zone. |
 
-After the first deployment, take `o_ApplicationUrl` from the outputs and add `<url>/signin-oidc` as a redirect URI and `<url>/signout-callback-oidc` as a front-channel logout URL on the app registration.
+After the first deployment, take `o_ApplicationUrl` from the outputs and register `<url>/signin-oidc` as an allowed callback URL and `<url>/signout-callback-oidc` as an allowed logout redirect URL with the provider.
 
 # 🚧 Change Summary
 
@@ -284,6 +292,7 @@ After the first deployment, take `o_ApplicationUrl` from the outputs and add `<u
 - Added a one-tap copy of the prior update into the current update.
 - Added people and standup management screens, including standup rosters and which days a standup runs on.
 - Added Entra ID sign-in, with every page requiring a signed-in user.
+- Changed sign-in from Entra ID to a standard OpenID Connect provider, configured against Kinde.
 - Added auditing of every change through Serilog, written to its own storage table.
 - Added the Azure deployment: container build, Bicep for all resources, and the Azure DevOps pipelines that deploy it.
 - Added integration tests that run the storage layer against the Azurite emulator, covering the prior-update lookup and roster cleanup, and skipped automatically when the emulator is not running.
