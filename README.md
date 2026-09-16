@@ -14,6 +14,8 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
   - [Solution layout](#solution-layout)
   - [Running it locally](#running-it-locally)
   - [Configuration](#configuration)
+    - [Configuration sources and naming](#configuration-sources-and-naming)
+    - [Settings](#settings)
 - [📐 Architecture Summary](#-architecture-summary)
   - [Layering](#layering)
   - [Data model and Azure Table Storage](#data-model-and-azure-table-storage)
@@ -105,19 +107,60 @@ Run the tests with `dotnet test`.
 
 ## Configuration
 
-| Section | Key | Notes |
-| ------- | --- | --- |
-| `Oidc` | `Authority` | Issuer base URL, for example `https://yourbusiness.kinde.com`. Every endpoint is read from its discovery document, so none is configured individually. |
-| `Oidc` | `ClientId`, `ClientSecret` | Confidential client credentials. The secret comes from Key Vault in Azure and from user secrets locally. |
-| `Oidc` | `CallbackPath`, `SignedOutCallbackPath`, `SignedOutRedirectUri` | Default to the standard ASP.NET Core paths and rarely need changing. Both callback paths must be registered with the provider. |
-| `AzureTableStorage` | `ServiceUri` | Table endpoint. When set, the app authenticates with `DefaultAzureCredential` and no key is involved. Takes precedence over `ConnectionString`. |
-| `AzureTableStorage` | `ConnectionString` | Used only when `ServiceUri` is empty. This is how Azurite is reached. |
-| `AzureTableStorage` | `TablePrefix` | Prefixed to every table name so one storage account can hold several environments. |
-| `AzureTableStorage` | `CreateTablesOnStartup` | Creates missing tables on first use. Turn it off where the identity has no table-create rights. |
-| `StandFastUi` | `DisplayTimeZoneId` | The time zone "today" is resolved in. Defaults to the server time zone. |
-| `StandFastUi` | `DataProtectionBlobUri` | Blob holding the shared Data Protection key ring. Required for more than one replica. |
+Every setting binds to a typed options class through `IOptions<T>` and is validated at startup, so a missing or malformed value fails the app immediately rather than on the first request. Section and key names are the same everywhere; only their spelling changes with where the value comes from.
 
-Options bind through `IOptions<T>` and validate at startup, so a missing storage setting fails the app immediately rather than on the first request.
+### Configuration sources and naming
+
+Later sources override earlier ones: `appsettings.json` is the base, `appsettings.Development.json` merges over it locally, and user secrets and environment variables win over both.
+
+| Location | Used by | Naming | Example |
+| -------- | ------- | ------ | ------- |
+| `appsettings.json` | Every environment. Committed defaults, never secrets. | Nested JSON: section object, then key. | `"Oidc": { "CallbackPath": "/signin-oidc" }` |
+| `appsettings.Development.json` | Local only. Committed. | Same nesting, merged over the base file. Arrays merge by index, so an entry replaces the base array's entry rather than adding to it. | `"AzureTableStorage": { "TablePrefix": "StandFastDev" }` |
+| User secrets | Local only, for anything sensitive. Never committed; stored outside the repo and keyed by the `UserSecretsId` in `StandFast.Ui.csproj`. | Flat, colon separated. | `"Oidc:ClientId": "…"` |
+| Container environment variables | Azure only. Set on the container app by `infra/main.bicep`. | Section and key joined by a double underscore, because a colon is not portable across shells. | `Oidc__ClientId` |
+| Key Vault | Azure only, for secrets. Referenced by the container app and resolved with the user-assigned managed identity. | Lower case, hyphen separated. | `oidc-client-secret` |
+| Bicep parameters | Deployment inputs in `infra/main.bicep`. | `p_` prefix, Pascal case. Locals are `v_`, outputs are `o_`. | `p_OidcClientId` |
+| Azure DevOps variable groups | Pipeline inputs that supply the Bicep parameters. | `a_` prefix, Pascal case. Variables defined in the pipeline YAML itself use `g_`. | `a_OidcClientId` |
+
+Two variable groups are expected in Azure DevOps › Pipelines › Library, where `<env>` is the lower-cased environment code, so `standfast-prd-vars` for production:
+
+| Group | Scope | Holds |
+| ----- | ----- | ----- |
+| `standfast-vars` | Pipeline, loaded before every stage | `a_AzureServiceConnection`, `a_SubscriptionId`, `a_ContainerRegistryConnection`, `a_AppBase`, and anything else identical across environments. Service connection references resolve at compile time, before stage-level groups exist, so they cannot live in a per-environment group. |
+| `standfast-<env>-vars` | Stage, loaded by the release template for the matching environment | Only what genuinely differs per environment: `a_ResourceGroup`, `a_Location`, `a_RegionToken`, `a_ContainerRegistryLoginServer`, `a_OidcAuthority`, `a_OidcClientId`, `a_OidcClientSecret`, `a_DisplayTimeZoneId`. |
+
+### Settings
+
+The app only ever reads the section and key on the left. The two middle columns say where that value is authored. In Azure the release template carries a variable-group value into the matching Bicep parameter, which sets the `Section__Key` environment variable on the container app; that plumbing is the same for every row and is not repeated below.
+
+| Section | Key | Local/Code-based Setting | Azure-based Setting | Notes |
+| ------- | --- | ------------------- | -------------------- | ----- |
+| `Oidc` | `Authority` | User secrets | `a_OidcAuthority` | Issuer base URL, for example `https://yourbusiness.kinde.com`. Every endpoint is read from its discovery document, so none is configured individually. |
+| `Oidc` | `ClientId` | User secrets | `a_OidcClientId` | Confidential client id from the provider. |
+| `Oidc` | `ClientSecret` | User secrets | `a_OidcClientSecret`, held as the Key Vault secret `oidc-client-secret` | The only secret the app holds. Everything else in Azure goes through the managed identity. |
+| `Oidc` | `CallbackPath`, `SignedOutCallbackPath`, `SignedOutRedirectUri` | `appsettings.json` | `appsettings.json` | Default to the standard ASP.NET Core paths and rarely need changing. Both callback paths must be registered with the provider. |
+| `AzureTableStorage` | `ServiceUri` | Not set | Bicep, from the storage account it creates | Table endpoint. When set, the app authenticates with `DefaultAzureCredential` and no key is involved. Takes precedence over `ConnectionString`. |
+| `AzureTableStorage` | `ConnectionString` | `appsettings.Development.json` | Not set | Used only when `ServiceUri` is empty. This is how Azurite is reached. |
+| `AzureTableStorage` | `TablePrefix` | `appsettings.Development.json` | Bicep, derived from the app base name and environment code | Prefixed to every table name so one storage account can hold several environments. |
+| `AzureTableStorage` | `CreateTablesOnStartup` | `appsettings.json` | `appsettings.json` | Creates missing tables on first use. Turn it off where the identity has no table-create rights. |
+| `StandFastUi` | `DisplayTimeZoneId` | `appsettings.json` or user secrets, optional | `a_DisplayTimeZoneId` | The time zone the board resolves "today" in. Accepts a Windows id or an IANA id; .NET resolves both on Windows and on the Linux container. Empty falls back to the server time zone. |
+| `StandFastUi` | `DataProtectionBlobUri` | Not set | Bicep, from the storage account it creates | Blob holding the shared Data Protection key ring. Required for more than one replica. |
+
+`DisplayTimeZoneId` takes either form, so `Central Standard Time` and `America/Chicago` are equivalent. The US zones are:
+
+| Windows id | IANA id | Covers |
+| ---------- | ------- | ------ |
+| `Hawaiian Standard Time` | `Pacific/Honolulu` | Hawaii, no daylight saving |
+| `Alaskan Standard Time` | `America/Anchorage` | Alaska |
+| `Pacific Standard Time` | `America/Los_Angeles` | Pacific |
+| `US Mountain Standard Time` | `America/Phoenix` | Arizona, no daylight saving |
+| `Mountain Standard Time` | `America/Denver` | Mountain |
+| `Central Standard Time` | `America/Chicago` | Central, the Bicep default |
+| `Eastern Standard Time` | `America/New_York` | Eastern |
+| `US Eastern Standard Time` | `America/Indiana/Indianapolis` | Indiana (East) |
+
+For anywhere else, `TimeZoneInfo.GetSystemTimeZones()` lists every id the runtime accepts.
 
 # 📐 Architecture Summary
 
@@ -270,12 +313,7 @@ If those three were not needed, the same Bicep would happily scale this to zero 
 
 `azure-pipelines.yaml` builds, tests, builds and pushes the image, and publishes `infra/` as an artefact. `azure-pipelines-release.yaml` is the release template, included once per environment, and deploys `main.bicep` with a parameters file composed in PowerShell.
 
-Two variable groups are expected in Azure DevOps:
-
-| Group | Scope | Holds |
-| ----- | ----- | ----- |
-| `standfast-vars` | Pipeline | Service connections, subscription id, and anything identical across environments. Service connection references resolve at compile time, so they cannot live in a stage-level group. |
-| `standfast-<env>-vars` | Stage | Resource group, region, identity provider authority, client id and secret, and the display time zone. |
+The Azure DevOps variable groups it reads, and the naming convention for every place a setting can come from, are documented together in [Configuration](#configuration).
 
 After the first deployment, take `o_ApplicationUrl` from the outputs and register `<url>/signin-oidc` as an allowed callback URL and `<url>/signout-callback-oidc` as an allowed logout redirect URL with the provider.
 
@@ -298,3 +336,5 @@ After the first deployment, take `o_ApplicationUrl` from the outputs and registe
 - Added integration tests that run the storage layer against the Azurite emulator, covering the prior-update lookup and roster cleanup, and skipped automatically when the emulator is not running.
 - Fixed startup hanging before the app began listening.
 - Fixed console logging disappearing when running locally.
+- Reworked the configuration documentation so every setting shows where it is set locally and in Azure, added the naming rules for each place a setting can come from, and moved the Azure DevOps variable groups next to it instead of leaving them in the deployment section.
+- Documented which time zone values the board accepts, with the Windows and IANA name for each US zone.
