@@ -1,0 +1,24 @@
+{
+  // Ports and environment come from src/StandFast.Ui/Properties/launchSettings.json via launchSettingsProfile, so they are defined once.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "StandFast.Ui (https)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/src/StandFast.Ui/bin/Debug/net10.0/StandFast.Ui.dll",
+      "cwd": "${workspaceFolder}/src/StandFast.Ui",
+      "launchSettingsProfile": "https",
+      "stopAtEntry": false,
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
+      },
+      // Off because starting a Hot Reload session throws "Service IManagedEditAndContinueEngineRegistration is unavailable" into the Debug
+      // Console on every launch. It is noise from the debugger rather than the app, but it is noise on every F5. Set this to true to get
+      // Hot Reload back once the underlying C# Dev Kit installation is sorted out.
+      "hotReloadEnabled": false
+    }
+  ]
+}

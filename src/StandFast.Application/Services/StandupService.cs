@@ -67,6 +67,22 @@ public sealed class StandupService(IStandupRepository standups, IPersonRepositor
             .InRosterOrder();
     }
 
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<string>>> GetStandupNamesByPersonAsync(CancellationToken cancellationToken = default)
+    {
+        Task<IReadOnlyList<Standup>> standupTask = standups.GetAllAsync(cancellationToken);
+        Task<IReadOnlyList<StandupMember>> memberTask = standups.GetAllMembersAsync(cancellationToken);
+        await Task.WhenAll(standupTask, memberTask);
+
+        Dictionary<Guid, string> namesById = standupTask.Result.ToDictionary(standup => standup.Id, standup => standup.Name);
+
+        return memberTask.Result
+            .Where(member => member.IsActive && namesById.ContainsKey(member.StandupId))
+            .GroupBy(member => member.PersonId)
+            .ToDictionary(
+                group => group.Key,
+                group => (IReadOnlyList<string>)[.. group.Select(member => namesById[member.StandupId]).OrderBy(name => name, StringComparer.OrdinalIgnoreCase)]);
+    }
+
     public async Task AddMemberAsync(Guid standupId, Guid personId, CancellationToken cancellationToken = default)
     {
         IReadOnlyList<StandupMember> existing = await standups.GetMembersAsync(standupId, cancellationToken);

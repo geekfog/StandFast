@@ -9,6 +9,9 @@ public static class UiFormats
     public const string TimeOfDay = "t";
     public const string DateAndTime = "d MMM yyyy HH:mm";
 
+    /// <summary>Used where the exact moment matters, such as the presented time that orders the Presented column.</summary>
+    public const string DateAndTimeWithSeconds = "d MMM yyyy HH:mm:ss";
+
     /// <summary>Shown in place of a turn number for someone who was not at the previous standup, so they sort last in the reader's head.</summary>
     public const string NoPriorTurnSymbol = "∞";
 
@@ -24,6 +27,6 @@ public static class UiFormats
     }
 
     /// <summary>Renders a UTC timestamp in the app's display time zone, for "saved at" style labels.</summary>
-    public static string ToLocalDisplay(this DateTimeOffset? timestamp, TimeZoneInfo timeZone) =>
-        timestamp is null ? string.Empty : TimeZoneInfo.ConvertTime(timestamp.Value, timeZone).ToString(DateAndTime);
+    public static string ToLocalDisplay(this DateTimeOffset? timestamp, TimeZoneInfo timeZone, string format = DateAndTime) =>
+        timestamp is null ? string.Empty : TimeZoneInfo.ConvertTime(timestamp.Value, timeZone).ToString(format);
 }

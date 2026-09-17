@@ -35,7 +35,7 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
 
 ## What it does
 
-- **People** are a flat directory: first name, last name, email, active flag, an optional "display as" override, and markdown notes. When "display as" is set, that is how the person appears everywhere, including the roster and the board; otherwise they appear as first and last name.
+- **People** are a flat directory: first name, last name, email, active flag, an optional "display as" override, and markdown notes. When "display as" is set, that is how the person appears everywhere, including the roster and the board; otherwise they appear as first and last name. The People screen also lists which standups each person is on.
 - **Standups** are recurring meeting definitions: name, the days they run on, start time, time zone, and a roster of people.
 - **The board** is one standup on one date. It opens on today with the current week across the top, and a dropdown picks the standup independently of the date.
 
@@ -83,6 +83,7 @@ Everything is keyed by standup, person, and date, so navigating to last Tuesday 
 
 ```text
 StandFast.slnx
+├── .vscode/                       F5 launch configuration and build/test tasks
 ├── Directory.Build.props          Shared build settings and the single version number
 ├── Directory.Packages.props       Central package version management
 ├── Dockerfile                     Multi-stage build onto the chiseled ASP.NET runtime
@@ -106,6 +107,8 @@ Azurite supplies Table Storage, and the development settings already point at it
 Sign-in needs an application registered with your OpenID Connect provider. In Kinde, create a **Back-end web** application, add `https://localhost:7111/signin-oidc` to its allowed callback URLs and `https://localhost:7111/signout-callback-oidc` to its allowed logout redirect URLs, then put `Oidc:Authority` (your `https://yourbusiness.kinde.com` domain), `Oidc:ClientId` and `Oidc:ClientSecret` in user secrets rather than in `appsettings.json`. The project already carries a `UserSecretsId`.
 
 Run the tests with `dotnet test`.
+
+`.vscode/launch.json` gives an F5 configuration that builds the solution and launches the UI on the `https` profile, taking its ports and environment from `launchSettings.json` rather than repeating them. It sets `hotReloadEnabled` to false, because starting a Hot Reload session writes `Service IManagedEditAndContinueEngineRegistration is unavailable` into the Debug Console on every launch. That exception comes from the debugger, not the app, and nothing stops working, but it appears on every run. Set the flag back to true once the C# Dev Kit installation is sorted out.
 
 ## Configuration
 
@@ -218,7 +221,7 @@ Four tables, all prefixed with `AzureTableStorage:TablePrefix`:
 | ----- | ------------- | ------- | ----- |
 | `People` | `Person` | Person id | The directory. One partition because it is small and always listed whole. |
 | `Standups` | `Standup` | Standup id | Meeting definitions. Same reasoning. |
-| `StandupMembers` | Standup id | Person id | The roster. One partition per standup, which is exactly how the board reads it. |
+| `StandupMembers` | Standup id | Person id | The roster. One partition per standup, which is exactly how the board reads it. The People screen's Standups column is the one query that crosses partitions; see below. |
 | `StandupEntries` | Standup id + person id | Inverted meeting date | Attendance state, the update, and the blockers. |
 | `AuditLog` | Date bucket | Timestamp | Written by Serilog, not by the repositories. |
 
@@ -247,6 +250,8 @@ The entries table is the only interesting piece of key design. The board needs t
 Rendering the board is then one range query per roster member, run in parallel. For a standup of ten to twenty people that is ten to twenty point-ish reads of a few milliseconds each. The alternative, partitioning entries by standup and date so the whole board is a single partition scan, would make the board cheaper but would force a second, denormalised copy of every row to answer "what did this person say last time". One consistent copy beats a dual write here.
 
 `StorageKeys` is the only place a partition or row key is constructed, and its ordering guarantees are covered by tests, because getting this wrong fails silently by showing the wrong prior update rather than by throwing.
+
+"Which standups is this person on" is the one question the key design cannot answer from a partition, because memberships are partitioned by standup. The People screen gets it from a single unfiltered query over `StandupMembers`, which is a table scan. That is deliberate: the table holds one small row per person per standup, so scanning it costs less than maintaining a second index written on every roster change, and the alternative of one partition query per standup trades a scan for N round trips.
 
 ### Why Table Storage and not SQL
 
@@ -355,3 +360,6 @@ What you set up once in Azure DevOps is in [Configuration](#configuration).
 - Added an optional display name and markdown notes to each person, with the display name used everywhere in place of their first and last name when it is set.
 - Fixed the board column ordering: the roster is always alphabetical by the name shown, the "can be called on" column runs oldest arrival first, and Presented runs in the order people actually presented.
 - Added a Cancel button beside Save on the update panel, which discards unsaved edits.
+- Added a Standups column to the People table showing which standups each person is on.
+- Added seconds to the presented time on the board, so the order people presented in is unambiguous.
+- Added an F5 launch configuration and build/test tasks for the editor, with Hot Reload switched off to stop a debugger error appearing in the Debug Console on every run.

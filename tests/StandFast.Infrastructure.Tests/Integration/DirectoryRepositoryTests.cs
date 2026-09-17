@@ -67,6 +67,25 @@ public sealed class DirectoryRepositoryTests : IClassFixture<AzuriteTableFixture
     }
 
     [AzuriteFact]
+    public async Task GetAllMembersAsync_CrossesEveryStandupPartition()
+    {
+        Standup first = new() { Name = "Scan first", CreatedUtc = DateTimeOffset.UtcNow };
+        Standup second = new() { Name = "Scan second", CreatedUtc = DateTimeOffset.UtcNow };
+        Guid firstPersonId = Guid.CreateVersion7();
+        Guid secondPersonId = Guid.CreateVersion7();
+
+        await fixture.Standups.UpsertAsync(first);
+        await fixture.Standups.UpsertAsync(second);
+        await fixture.Standups.UpsertMemberAsync(new StandupMember { StandupId = first.Id, PersonId = firstPersonId, DisplayOrder = 10 });
+        await fixture.Standups.UpsertMemberAsync(new StandupMember { StandupId = second.Id, PersonId = secondPersonId, DisplayOrder = 10 });
+
+        IReadOnlyList<StandupMember> all = await fixture.Standups.GetAllMembersAsync();
+
+        Assert.Contains(all, member => member.StandupId == first.Id && member.PersonId == firstPersonId);
+        Assert.Contains(all, member => member.StandupId == second.Id && member.PersonId == secondPersonId);
+    }
+
+    [AzuriteFact]
     public async Task Rosters_AreScopedToTheirOwnStandup()
     {
         Standup first = new() { Name = "First", CreatedUtc = DateTimeOffset.UtcNow };

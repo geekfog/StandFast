@@ -65,6 +65,23 @@ public sealed class StandupRepository(ITableClientProvider tables) : IStandupRep
         return members;
     }
 
+    /// <summary>
+    /// The only query in the app without a partition key. Answering "which standups is this person on" means crossing every standup's partition,
+    /// and the membership table holds one small row per person per standup, so a scan is cheaper here than a second index written on every change.
+    /// </summary>
+    public async Task<IReadOnlyList<StandupMember>> GetAllMembersAsync(CancellationToken cancellationToken = default)
+    {
+        TableClient client = await tables.GetAsync(StorageNames.StandupMembers, cancellationToken);
+        List<StandupMember> members = [];
+
+        await foreach (StandupMemberTableEntity entity in client.QueryAsync<StandupMemberTableEntity>(cancellationToken: cancellationToken))
+        {
+            members.Add(entity.ToDomain());
+        }
+
+        return members;
+    }
+
     public async Task UpsertMemberAsync(StandupMember member, CancellationToken cancellationToken = default)
     {
         TableClient client = await tables.GetAsync(StorageNames.StandupMembers, cancellationToken);

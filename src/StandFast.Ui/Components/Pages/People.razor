@@ -1,6 +1,7 @@
 @page "/people"
 @attribute [Authorize]
 @inject IPersonService PersonService
+@inject IStandupService StandupService
 @inject IDialogService DialogService
 
 <PageTitle>@AppInfo.PageTitle("People")</PageTitle>
@@ -14,6 +15,7 @@
     <HeaderContent>
         <MudTh>Name</MudTh>
         <MudTh>Email</MudTh>
+        <MudTh>Standups</MudTh>
         <MudTh>Status</MudTh>
         <MudTh Style="width: 7rem;"></MudTh>
     </HeaderContent>
@@ -32,6 +34,16 @@
             }
         </MudTd>
         <MudTd DataLabel="Email">@context.Email</MudTd>
+        <MudTd DataLabel="Standups">
+            @foreach (string standupName in StandupsFor(context.Id))
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Class="ma-1">@standupName</MudChip>
+            }
+            @if (StandupsFor(context.Id).Count == 0)
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">None</MudText>
+            }
+        </MudTd>
         <MudTd DataLabel="Status">
             <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Default)">@(context.IsActive ? "Active" : "Inactive")</MudChip>
         </MudTd>
@@ -44,15 +56,26 @@
 </MudTable>
 
 @code {
+    private static readonly IReadOnlyList<string> NoStandups = [];
+
     private IReadOnlyList<PersonDto> people = [];
+    private IReadOnlyDictionary<Guid, IReadOnlyList<string>> standupsByPerson = new Dictionary<Guid, IReadOnlyList<string>>();
     private bool isLoading = true;
 
     protected override Task OnInitializedAsync() => ReloadAsync();
 
+    private IReadOnlyList<string> StandupsFor(Guid personId) => standupsByPerson.GetValueOrDefault(personId, NoStandups);
+
     private async Task ReloadAsync()
     {
         isLoading = true;
-        people = await PersonService.GetAllAsync();
+
+        Task<IReadOnlyList<PersonDto>> peopleTask = PersonService.GetAllAsync();
+        Task<IReadOnlyDictionary<Guid, IReadOnlyList<string>>> assignmentsTask = StandupService.GetStandupNamesByPersonAsync();
+        await Task.WhenAll(peopleTask, assignmentsTask);
+
+        people = peopleTask.Result;
+        standupsByPerson = assignmentsTask.Result;
         isLoading = false;
     }
 

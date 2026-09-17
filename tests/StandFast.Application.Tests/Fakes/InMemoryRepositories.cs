@@ -54,6 +54,9 @@ public sealed class InMemoryStandupRepository : IStandupRepository
     public Task<IReadOnlyList<StandupMember>> GetMembersAsync(Guid standupId, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<StandupMember>>([.. members.Values.Where(member => member.StandupId == standupId)]);
 
+    public Task<IReadOnlyList<StandupMember>> GetAllMembersAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<StandupMember>>([.. members.Values]);
+
     public Task UpsertMemberAsync(StandupMember member, CancellationToken cancellationToken = default)
     {
         members[(member.StandupId, member.PersonId)] = member;

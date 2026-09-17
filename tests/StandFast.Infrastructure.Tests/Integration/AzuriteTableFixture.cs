@@ -1,3 +1,4 @@
+using Azure;
 using Azure.Data.Tables;
 using Microsoft.Extensions.Options;
 using StandFast.Infrastructure.Configuration;
@@ -32,11 +33,27 @@ public sealed class AzuriteTableFixture : IDisposable
 
     public StandupEntryRepository Entries { get; }
 
+    /// <summary>
+    /// xUnit builds and disposes a class fixture even when every test in the class is skipped, so cleanup has to cope with the emulator being
+    /// absent. Without this guard a machine with no Azurite reports class cleanup failures alongside the skips.
+    /// </summary>
     public void Dispose()
     {
+        if (!AzuriteEndpoint.IsAvailable)
+        {
+            return;
+        }
+
         foreach (string logicalName in new[] { StorageNames.People, StorageNames.Standups, StorageNames.StandupMembers, StorageNames.StandupEntries })
         {
-            serviceClient.DeleteTable(Tables.ResolveTableName(logicalName));
+            try
+            {
+                serviceClient.DeleteTable(Tables.ResolveTableName(logicalName));
+            }
+            catch (RequestFailedException)
+            {
+                // A table this class never touched was never created. Nothing to clean up.
+            }
         }
     }
 }

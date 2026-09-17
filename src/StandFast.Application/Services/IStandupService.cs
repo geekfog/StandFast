@@ -17,6 +17,9 @@ public interface IStandupService
 
     Task<IReadOnlyList<StandupMemberDto>> GetMembersAsync(Guid standupId, CancellationToken cancellationToken = default);
 
+    /// <summary>Names of the standups each person is on, keyed by person id, sorted alphabetically. Kept alongside the people rather than on them, since it belongs to the standups.</summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<string>>> GetStandupNamesByPersonAsync(CancellationToken cancellationToken = default);
+
     Task AddMemberAsync(Guid standupId, Guid personId, CancellationToken cancellationToken = default);
 
     Task RemoveMemberAsync(Guid standupId, Guid personId, CancellationToken cancellationToken = default);
