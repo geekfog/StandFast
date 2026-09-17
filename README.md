@@ -14,10 +14,8 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
   - [Solution layout](#solution-layout)
   - [Running it locally](#running-it-locally)
   - [Configuration](#configuration)
-    - [Configuration sources and naming](#configuration-sources-and-naming)
-    - [Application settings](#application-settings)
-    - [Pipeline variables](#pipeline-variables)
-    - [Before the first pipeline run](#before-the-first-pipeline-run)
+    - [Everything you set](#everything-you-set)
+    - [Naming by location](#naming-by-location)
 - [📐 Architecture Summary](#-architecture-summary)
   - [Layering](#layering)
   - [Data model and Azure Table Storage](#data-model-and-azure-table-storage)
@@ -86,8 +84,8 @@ StandFast.slnx
 ├── Directory.Build.props          Shared build settings and the single version number
 ├── Directory.Packages.props       Central package version management
 ├── Dockerfile                     Multi-stage build onto the chiseled ASP.NET runtime
-├── azure-pipelines.yaml           Build stage plus one template block per environment
-├── azure-pipelines-release.yaml   Release stage template
+├── azure-pipelines.yaml           Test stage plus one release template block per environment
+├── azure-pipelines-release.yaml   Release stage template: provisions, builds the image, deploys
 ├── infra/main.bicep               All Azure resources
 ├── src/
 │   ├── StandFast.Domain           Entities, enums, calendar rules, repository interfaces
@@ -109,11 +107,43 @@ Run the tests with `dotnet test`.
 
 ## Configuration
 
-Every setting binds to a typed options class through `IOptions<T>` and is validated at startup, so a missing or malformed value fails the app immediately rather than on the first request. Section and key names are the same everywhere; only their spelling changes with where the value comes from.
+Every setting binds to a typed options class through `IOptions<T>` and is validated at startup, so a missing or malformed value fails the app immediately rather than on the first request.
 
-### Configuration sources and naming
+Nothing is provisioned by hand. The release stage creates the resource group, then deploys the platform resources, then builds the image straight into the registry it just created, then deploys the app. The only one-time setup in Azure DevOps is:
 
-Later sources override earlier ones: `appsettings.json` is the base, `appsettings.Development.json` merges over it locally, and user secrets and environment variables win over both.
+1. An Azure Resource Manager service connection named `StandFast-Azure-PRD`. The name lives in `azure-pipelines.yaml` rather than a variable group, because Azure DevOps resolves service connection references while compiling the pipeline, before any variable group has been read.
+2. The two variable groups below, with both authorised for the pipeline. A group that exists but is not authorised fails the run identically to one that does not exist.
+
+### Everything you set
+
+One table, in the order you would fill it in. Anything not listed is derived or deployed, and the last group of rows says which.
+
+| Where you set it | Name | Notes |
+| ---------------- | ---- | ----- |
+| User secrets, local | `Oidc:Authority` | Your provider's issuer URL, for example `https://yourbusiness.kinde.com`. Every endpoint is read from its discovery document, so none is configured individually. |
+| User secrets, local | `Oidc:ClientId` | Confidential client id from the provider. |
+| User secrets, local | `Oidc:ClientSecret` | Client secret from the provider. The only secret the app holds. |
+| User secrets, local, optional | `StandFastUi:DisplayTimeZoneId` | The [time zone id](#time-zones) the board resolves "today" in. Empty falls back to the server time zone. |
+| `appsettings.Development.json` | `AzureTableStorage:ConnectionString` | Already points at Azurite. Change only to aim local development at a real storage account. |
+| `standfast-vars` group | `a_AppBase` | `standfast`. First segment of every resource name and the `Product` tag. Identical across environments, which is why it is in the pipeline-level group. |
+| `standfast-<env>-vars` group | `a_RegionToken` | `usnorth`. Region segment of every resource name. |
+| `standfast-<env>-vars` group | `a_Location` | `northcentralus`. Azure region everything is created in. |
+| `standfast-<env>-vars` group | `a_OidcAuthority` | Same value as `Oidc:Authority`, for the deployed environment. |
+| `standfast-<env>-vars` group | `a_OidcClientId` | Same value as `Oidc:ClientId`, for the deployed environment. |
+| `standfast-<env>-vars` group | `a_OidcClientSecret` | Same value as `Oidc:ClientSecret`. Mark this variable as secret; it is stored in Key Vault as `oidc-client-secret` and surfaced to the container app as a Key Vault reference. |
+| `standfast-<env>-vars` group | `a_DisplayTimeZoneId` | Same value as `StandFastUi:DisplayTimeZoneId`, for the deployed environment. |
+| `appsettings.json`, rarely | `Oidc:CallbackPath`, `Oidc:SignedOutCallbackPath`, `Oidc:SignedOutRedirectUri` | Standard ASP.NET Core paths. Both callback paths must be registered with the provider; the release stage prints the exact URLs to register. |
+| `appsettings.json`, rarely | `AzureTableStorage:CreateTablesOnStartup` | Creates missing tables on first use. Turn it off where the identity has no table-create rights. |
+| Nothing to set | `AzureTableStorage:ServiceUri` | Set by Bicep from the storage account it creates. The app then authenticates with `DefaultAzureCredential` and no key is involved. |
+| Nothing to set | `AzureTableStorage:TablePrefix` | Set by Bicep from the app base name and environment code, so one storage account can hold several environments. |
+| Nothing to set | `StandFastUi:DataProtectionBlobUri` | Set by Bicep from the storage account it creates. Holds the shared Data Protection key ring, which more than one replica requires. |
+| Nothing to set | Resource group, registry login server, image tag | Derived by the release stage from `a_AppBase`, `a_RegionToken` and the build number. |
+
+`<env>` is the lower-cased environment code, so `standfast-prd-vars`. The `g_` variables in `azure-pipelines.yaml` and the `v_` values the release stage computes are part of the pipeline, not settings, and need nothing from you.
+
+### Naming by location
+
+The same setting is spelled differently depending on where it lives.
 
 | Location | Used by | Naming | Example |
 | -------- | ------- | ------ | ------- |
@@ -123,30 +153,13 @@ Later sources override earlier ones: `appsettings.json` is the base, `appsetting
 | Container environment variables | Azure only. Set on the container app by `infra/main.bicep`. | Section and key joined by a double underscore, because a colon is not portable across shells. | `Oidc__ClientId` |
 | Key Vault | Azure only, for secrets. Referenced by the container app and resolved with the user-assigned managed identity. | Lower case, hyphen separated. | `oidc-client-secret` |
 | Bicep parameters | Deployment inputs in `infra/main.bicep`. | `p_` prefix, Pascal case. Locals are `v_`, outputs are `o_`. | `p_OidcClientId` |
-| Azure DevOps variable groups | Pipeline inputs that supply the Bicep parameters. | `a_` prefix, Pascal case. Variables defined in the pipeline YAML itself use `g_`. | `a_OidcClientId` |
+| Azure DevOps variable groups | Pipeline inputs that supply the Bicep parameters. | `a_` prefix, Pascal case. Variables declared in the pipeline YAML itself use `g_`. | `a_OidcClientId` |
 
-Two variable groups are expected in Azure DevOps › Pipelines › Library. `standfast-vars` is loaded at the pipeline level before every stage and holds what is identical across environments; `standfast-<env>-vars` is loaded by the release template for the matching environment and holds only what differs, where `<env>` is the lower-cased environment code, so `standfast-prd-vars`. Every variable in both groups is listed under [Pipeline variables](#pipeline-variables).
-
-### Application settings
-
-The app only ever reads the section and key on the left. The two middle columns say where that value is authored. In Azure the release template carries a variable-group value into the matching Bicep parameter, which sets the `Section__Key` environment variable on the container app; that plumbing is the same for every row and is not repeated below.
-
-| Section | Key | Local/Code-based Setting | Azure-based Setting | Notes |
-| ------- | --- | ------------------- | -------------------- | ----- |
-| `Oidc` | `Authority` | User secrets | `a_OidcAuthority` | Issuer base URL, for example `https://yourbusiness.kinde.com`. Every endpoint is read from its discovery document, so none is configured individually. |
-| `Oidc` | `ClientId` | User secrets | `a_OidcClientId` | Confidential client id from the provider. |
-| `Oidc` | `ClientSecret` | User secrets | `a_OidcClientSecret`, held as the Key Vault secret `oidc-client-secret` | The only secret the app holds. Everything else in Azure goes through the managed identity. |
-| `Oidc` | `CallbackPath`, `SignedOutCallbackPath`, `SignedOutRedirectUri` | `appsettings.json` | `appsettings.json` | Default to the standard ASP.NET Core paths and rarely need changing. Both callback paths must be registered with the provider. |
-| `AzureTableStorage` | `ServiceUri` | Not set | Bicep, from the storage account it creates | Table endpoint. When set, the app authenticates with `DefaultAzureCredential` and no key is involved. Takes precedence over `ConnectionString`. |
-| `AzureTableStorage` | `ConnectionString` | `appsettings.Development.json` | Not set | Used only when `ServiceUri` is empty. This is how Azurite is reached. |
-| `AzureTableStorage` | `TablePrefix` | `appsettings.Development.json` | Bicep, derived from the app base name and environment code | Prefixed to every table name so one storage account can hold several environments. |
-| `AzureTableStorage` | `CreateTablesOnStartup` | `appsettings.json` | `appsettings.json` | Creates missing tables on first use. Turn it off where the identity has no table-create rights. |
-| `StandFastUi` | `DisplayTimeZoneId` | `appsettings.json` or user secrets, optional | `a_DisplayTimeZoneId` | The [time zone id](#time-zones) the board resolves "today" in. Accepts a Windows id or an IANA id; .NET resolves both on Windows and on the Linux container. Empty falls back to the server time zone. |
-| `StandFastUi` | `DataProtectionBlobUri` | Not set | Bicep, from the storage account it creates | Blob holding the shared Data Protection key ring. Required for more than one replica. |
+Later sources override earlier ones: `appsettings.json` is the base, `appsettings.Development.json` merges over it locally, and user secrets and environment variables win over both.
 
 #### Time Zones
 
-`DisplayTimeZoneId` takes either form, so `Central Standard Time` and `America/Chicago` are equivalent. The US zones are:
+`DisplayTimeZoneId` accepts a Windows id or an IANA id, and .NET resolves both on Windows and on the Linux container, so `Central Standard Time` and `America/Chicago` are equivalent. The US zones are:
 
 | Windows id | IANA id | Covers |
 | ---------- | ------- | ------ |
@@ -160,38 +173,6 @@ The app only ever reads the section and key on the left. The two middle columns 
 | `US Eastern Standard Time` | `America/Indiana/Indianapolis` | Indiana (East) |
 
 For anywhere else, `TimeZoneInfo.GetSystemTimeZones()` lists every id the .NET C# runtime accepts.
-
-### Pipeline variables
-
-Everything the pipelines read that is not an application setting. Each one must exist in the listed variable group before a run, or the run fails validation. Variables prefixed `g_` are declared in `azure-pipelines.yaml` itself, and `v_` and `o_` values are produced during the run, so neither needs creating.
-
-| Variable | Group | Example | Used for |
-| -------- | ----- | ------- | -------- |
-| `a_AzureServiceConnection` | `standfast-vars` | `StandFast-Azure` | Name of the ARM service connection the Bicep deployment authenticates through. |
-| `a_SubscriptionId` | `standfast-vars` | `00000000-0000-0000-0000-000000000000` | Subscription the resource group is deployed into. |
-| `a_ContainerRegistryConnection` | `standfast-vars` | `StandFast-ACR` | Name of the Docker Registry service connection the build pushes the image through. |
-| `a_AppBase` | `standfast-vars` | `standfast` | First segment of every resource name, and the `Product` tag value. |
-| `a_ResourceGroup` | `standfast-<env>-vars` | `standfastprdusnorthrg` | Resource group the deployment targets. Created if it does not exist. |
-| `a_Location` | `standfast-<env>-vars` | `northcentralus` | Azure region for the resource group and everything in it. |
-| `a_RegionToken` | `standfast-<env>-vars` | `usnorth` | Region segment of every resource name. |
-| `a_ContainerRegistryLoginServer` | `standfast-<env>-vars` | `standfastprdusnorthcr.azurecr.io` | Registry host the deployed image reference is built from. |
-| `a_OidcAuthority` | `standfast-<env>-vars` | `https://yourbusiness.kinde.com` | Supplies `Oidc:Authority`; see [Application settings](#application-settings). |
-| `a_OidcClientId` | `standfast-<env>-vars` | `a1b2c3…` | Supplies `Oidc:ClientId`. |
-| `a_OidcClientSecret` | `standfast-<env>-vars` | — | Supplies `Oidc:ClientSecret`. Mark this variable as secret in the group. |
-| `a_DisplayTimeZoneId` | `standfast-<env>-vars` | `Central Standard Time` | Supplies `StandFastUi:DisplayTimeZoneId`. |
-
-### Before the first pipeline run
-
-Azure DevOps validates service connection and variable group references before any step executes, so all of this has to exist up front. A missing or unauthorised item fails the run with "could not be found. The service connection does not exist, has been disabled or has not been authorized for use", or the variable group equivalent.
-
-1. **Provision the container registry.** The build pushes to it, and a registry service connection cannot be created against a registry that does not exist. Deploy `infra/main.bicep` once by hand, or create the registry separately, before wiring up the pipeline.
-2. **Create the service connections** in Project settings › Service connections: one Azure Resource Manager connection and one Docker Registry connection pointing at that registry. Their names are what `a_AzureServiceConnection` and `a_ContainerRegistryConnection` hold.
-3. **Create both variable groups** in Pipelines › Library with the variables in [Pipeline variables](#pipeline-variables), marking `a_OidcClientSecret` as secret.
-4. **Authorise them for the pipeline.** Each variable group has its own Pipeline permissions, and each service connection its own Security page. Creating them is not enough; an unauthorised group produces the same "could not be found" error as a missing one.
-5. **Create the environment** named `StandFast PRD` in Pipelines › Environments, and add approvals there if the release should be gated.
-
-If the build still reports the service connection as the literal `$(a_ContainerRegistryConnection)` after the group exists and is authorised, the reference is being evaluated before the group is read. Put the connection name directly in `azure-pipelines.yaml` instead, which is resolved at compile time.
-
 # 📐 Architecture Summary
 
 ## Layering
@@ -341,11 +322,11 @@ If those three were not needed, the same Bicep would happily scale this to zero 
 
 ## Deploying
 
-`azure-pipelines.yaml` builds, tests, builds and pushes the image, and publishes `infra/` as an artefact. `azure-pipelines-release.yaml` is the release template, included once per environment, and deploys `main.bicep` with a parameters file composed in PowerShell.
+`azure-pipelines.yaml` restores, builds and tests, then includes `azure-pipelines-release.yaml` once per environment. Each release stage is self-contained: it creates the resource group, deploys `infra/main.bicep` with `p_DeployApp=false` to bring up the registry and the rest of the platform, runs `az acr build` to build the image inside that registry, then deploys the same Bicep again with `p_DeployApp=true` and the resulting image. Both deployments read one parameters file composed in PowerShell, so their inputs cannot drift apart.
 
-The Azure DevOps variable groups it reads, and the naming convention for every place a setting can come from, are documented together in [Configuration](#configuration).
+Building in the registry rather than on the agent means there is no Docker registry service connection and no Docker daemon in the pipeline. The cost is that each environment builds its own image rather than promoting one artefact; with a registry per environment that would need an import step either way.
 
-After the first deployment, take `o_ApplicationUrl` from the outputs and register `<url>/signin-oidc` as an allowed callback URL and `<url>/signout-callback-oidc` as an allowed logout redirect URL with the provider.
+What you set up once in Azure DevOps is in [Configuration](#configuration).
 
 # 🚧 Change Summary
 
@@ -366,6 +347,5 @@ After the first deployment, take `o_ApplicationUrl` from the outputs and registe
 - Added integration tests that run the storage layer against the Azurite emulator, covering the prior-update lookup and roster cleanup, and skipped automatically when the emulator is not running.
 - Fixed startup hanging before the app began listening.
 - Fixed console logging disappearing when running locally.
-- Reworked the configuration documentation so every setting shows where it is set locally and in Azure, added the naming rules for each place a setting can come from, and moved the Azure DevOps variable groups next to it instead of leaving them in the deployment section.
-- Documented which time zone values the board accepts, with the Windows and IANA name for each US zone.
-- Documented every pipeline variable and the one-time Azure DevOps setup needed before the first run, so nothing the build or release reads is left undocumented.
+- Made deployment self-provisioning: the release stage creates the resource group, brings up the registry and supporting resources, builds the image inside that registry, then deploys the app, so nothing has to be created by hand first and no container registry connection is needed.
+- Documented configuration as a single table of everything you set, with the naming used in each place a setting can live and the accepted time zone values.

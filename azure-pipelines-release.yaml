@@ -1,6 +1,11 @@
 # Release stage template. Included once per environment by azure-pipelines.yaml; never run directly.
+#
+# Each environment is self-provisioning. The platform pass creates the registry and everything around it, the image is then built
+# straight into that registry, and the app pass deploys it. That ordering is why no resource has to exist before the first run.
 parameters:
   - name: p_publishEnvironment
+    type: string
+  - name: p_azureServiceConnection
     type: string
   - name: p_dependsOn
     type: string
@@ -24,62 +29,100 @@ stages:
           runOnce:
             deploy:
               steps:
-                - download: current
-                  artifact: bicep
-                  displayName: Download Bicep templates
+                # A deployment job does not check out by default, and the image is built from this source tree.
+                - checkout: self
 
-                # The image reference and tag hashtable are built here because AzureResourceManagerTemplateDeployment@3 resolves
-                # its input fields before the stage variable group is available.
-                - task: PowerShell@2
+                - task: AzureCLI@2
                   displayName: Compose deployment parameters
                   inputs:
-                    targetType: inline
-                    pwsh: true
-                    script: |
-                      $registry = '$(a_ContainerRegistryLoginServer)'
-                      $image = "$registry/$(g_ImageRepository):$(Build.BuildNumber)"
-                      Write-Host "##vso[task.setvariable variable=v_ResourceGroup]$(a_ResourceGroup)"
+                    azureSubscription: ${{ parameters.p_azureServiceConnection }}
+                    scriptType: pscore
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      $ErrorActionPreference = 'Stop'
+                      $environmentCode = '${{ parameters.p_publishEnvironment }}'
 
-                      @{
-                        '$schema'      = 'https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#'
+                      # Resource group follows the same <AppBase><Env><Region>rg convention the Bicep uses for every other resource.
+                      $resourceGroup = "$(a_AppBase)$environmentCode$(a_RegionToken)rg".ToLowerInvariant()
+
+                      # Written once and reused by both deployment passes, so their inputs cannot drift apart.
+                      $deploymentParameters = @{
                         contentVersion = '1.0.0.0'
                         parameters     = @{
                           p_AppBase           = @{ value = '$(a_AppBase)' }
-                          p_Environment       = @{ value = '${{ parameters.p_publishEnvironment }}' }
+                          p_Environment       = @{ value = $environmentCode }
                           p_RegionToken       = @{ value = '$(a_RegionToken)' }
-                          p_ContainerImage    = @{ value = $image }
+                          p_Location          = @{ value = '$(a_Location)' }
                           p_OidcAuthority     = @{ value = '$(a_OidcAuthority)' }
                           p_OidcClientId      = @{ value = '$(a_OidcClientId)' }
                           p_OidcClientSecret  = @{ value = '$(a_OidcClientSecret)' }
                           p_DisplayTimeZoneId = @{ value = '$(a_DisplayTimeZoneId)' }
                           p_Tags              = @{ value = @{
                             Product     = '$(a_AppBase) Container App'
-                            Environment = '${{ parameters.p_publishEnvironment }}'
+                            Environment = $environmentCode
                             CreatedBy   = 'Azure DevOps'
                           }}
                         }
-                      } | ConvertTo-Json -Depth 5 | Set-Content '$(Pipeline.Workspace)/bicep/parameters.json'
+                      }
+                      $deploymentParameters.Add('$schema', 'https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#')
+                      $deploymentParameters | ConvertTo-Json -Depth 6 | Set-Content '$(Pipeline.Workspace)/parameters.json'
 
-                - task: AzureResourceManagerTemplateDeployment@3
-                  displayName: Deploy infrastructure and container app
-                  inputs:
-                    deploymentScope: Resource Group
-                    azureResourceManagerConnection: $(a_AzureServiceConnection)
-                    subscriptionId: $(a_SubscriptionId)
-                    action: Create Or Update Resource Group
-                    resourceGroupName: $(v_ResourceGroup)
-                    location: $(a_Location)
-                    templateLocation: Linked artifact
-                    csmFile: $(Pipeline.Workspace)/bicep/main.bicep
-                    csmParametersFile: $(Pipeline.Workspace)/bicep/parameters.json
-                    deploymentMode: Incremental
-                    deploymentOutputs: o_DeploymentOutputs
+                      az group create --name $resourceGroup --location '$(a_Location)' --output none
+                      Write-Host "##vso[task.setvariable variable=v_ResourceGroup]$resourceGroup"
 
-                - task: PowerShell@2
-                  displayName: Report application URL
+                - task: AzureCLI@2
+                  displayName: Deploy platform resources
                   inputs:
-                    targetType: inline
-                    pwsh: true
-                    script: |
-                      $outputs = '$(o_DeploymentOutputs)' | ConvertFrom-Json
-                      Write-Host "StandFast ${{ parameters.p_publishEnvironment }} is available at $($outputs.o_ApplicationUrl.value)"
+                    azureSubscription: ${{ parameters.p_azureServiceConnection }}
+                    scriptType: pscore
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      $ErrorActionPreference = 'Stop'
+
+                      # p_DeployApp=false stops at the platform, which is what brings the registry into existence before there is an image to push.
+                      $outputs = az deployment group create `
+                        --resource-group '$(v_ResourceGroup)' `
+                        --template-file '$(Build.SourcesDirectory)/infra/main.bicep' `
+                        --parameters '@$(Pipeline.Workspace)/parameters.json' p_DeployApp=false `
+                        --query properties.outputs --output json | ConvertFrom-Json
+
+                      Write-Host "##vso[task.setvariable variable=v_RegistryLoginServer]$($outputs.o_RegistryLoginServer.value)"
+
+                - task: AzureCLI@2
+                  displayName: Build and push image
+                  inputs:
+                    azureSubscription: ${{ parameters.p_azureServiceConnection }}
+                    scriptType: pscore
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      $ErrorActionPreference = 'Stop'
+
+                      # az acr build builds inside the registry itself, so there is no Docker registry service connection and no local Docker daemon.
+                      $registryName = '$(v_RegistryLoginServer)'.Split('.')[0]
+                      az acr build `
+                        --registry $registryName `
+                        --image '$(g_ImageRepository):$(Build.BuildNumber)' `
+                        --image '$(g_ImageRepository):latest' `
+                        --file '$(Build.SourcesDirectory)/Dockerfile' `
+                        '$(Build.SourcesDirectory)' --output none
+
+                - task: AzureCLI@2
+                  displayName: Deploy container app
+                  inputs:
+                    azureSubscription: ${{ parameters.p_azureServiceConnection }}
+                    scriptType: pscore
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      $ErrorActionPreference = 'Stop'
+                      $image = "$(v_RegistryLoginServer)/$(g_ImageRepository):$(Build.BuildNumber)"
+
+                      $outputs = az deployment group create `
+                        --resource-group '$(v_ResourceGroup)' `
+                        --template-file '$(Build.SourcesDirectory)/infra/main.bicep' `
+                        --parameters '@$(Pipeline.Workspace)/parameters.json' p_DeployApp=true p_ContainerImage=$image `
+                        --query properties.outputs --output json | ConvertFrom-Json
+
+                      $applicationUrl = $outputs.o_ApplicationUrl.value
+                      Write-Host "StandFast ${{ parameters.p_publishEnvironment }} is available at $applicationUrl"
+                      Write-Host "Allowed callback URL:        $applicationUrl/signin-oidc"
+                      Write-Host "Allowed logout redirect URL: $applicationUrl/signout-callback-oidc"

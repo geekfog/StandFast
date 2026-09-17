@@ -19,8 +19,11 @@ param p_Location string = resourceGroup().location
 @description('Resource tags applied to all resources in this deployment.')
 param p_Tags object
 
-@description('Fully qualified container image, for example standfastprdusnorthcr.azurecr.io/standfast-ui:1.0.0.')
-param p_ContainerImage string
+@description('Fully qualified container image, for example standfastprdusnorthcr.azurecr.io/standfast-ui:1.0.0. Empty on the platform-only pass, before any image exists.')
+param p_ContainerImage string = ''
+
+@description('False provisions only the platform resources, which is how the registry comes into existence before the pipeline has an image to push. The release stage deploys again with true.')
+param p_DeployApp bool = true
 
 @description('OpenID Connect issuer base URL, for example https://yourbusiness.kinde.com.')
 param p_OidcAuthority string
@@ -202,7 +205,7 @@ resource environment 'Microsoft.App/managedEnvironments@2024-03-01' = {
   }
 }
 
-resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
+resource containerApp 'Microsoft.App/containerApps@2024-03-01' = if (p_DeployApp) {
   name: v_ContainerAppName
   location: p_Location
   tags: p_Tags
@@ -297,7 +300,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
 }
 
 @description('Public URL of the deployed app. Register https://<this>/signin-oidc as an allowed callback URL and https://<this>/signout-callback-oidc as an allowed logout redirect URL with the identity provider.')
-output o_ApplicationUrl string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
+output o_ApplicationUrl string = p_DeployApp ? 'https://${containerApp!.properties.configuration.ingress.fqdn}' : ''
 
 @description('Login server of the container registry the pipeline pushes to.')
 output o_RegistryLoginServer string = registry.properties.loginServer

@@ -1,4 +1,5 @@
-# Build once, then release the same image to each environment. Adding an environment is one more template block below.
+# Build and test once, then let each environment's release stage provision its own infrastructure, build the image into that
+# environment's registry, and deploy. Adding an environment is one more template block.
 name: $(Date:yyyyMMdd)$(Rev:.r)
 
 trigger:
@@ -20,17 +21,15 @@ variables:
     value: ubuntu-latest
   - name: g_ImageRepository
     value: standfast-ui
-  - name: g_DockerfilePath
-    value: $(Build.SourcesDirectory)/Dockerfile
   - name: g_isStrReleaseBranch
     value: $[startsWith(variables['Build.SourceBranch'], 'refs/heads/release/')]
 
 stages:
-  - stage: Build
+  - stage: Test
     displayName: Build and test
     jobs:
-      - job: BuildJob
-        displayName: Build, test and publish artefacts
+      - job: TestJob
+        displayName: Restore, build and test
         pool:
           vmImage: $(g_VmImage)
         steps:
@@ -60,24 +59,11 @@ stages:
               projects: tests/**/*.csproj
               arguments: --configuration $(g_BuildConfiguration) --no-build --collect:"XPlat Code Coverage"
 
-          - task: Docker@2
-            displayName: Build and push container image
-            inputs:
-              containerRegistry: $(a_ContainerRegistryConnection)
-              repository: $(g_ImageRepository)
-              command: buildAndPush
-              Dockerfile: $(g_DockerfilePath)
-              buildContext: $(Build.SourcesDirectory)
-              tags: |
-                $(Build.BuildNumber)
-                latest
-
-          - publish: $(Build.SourcesDirectory)/infra
-            artifact: bicep
-            displayName: Publish Bicep templates
-
+  # The service connection name is a template parameter, not a variable group value: Azure DevOps resolves service connection
+  # references while compiling the pipeline, before any variable group has been read.
   - template: azure-pipelines-release.yaml
     parameters:
       p_publishEnvironment: PRD
-      p_dependsOn: Build
+      p_azureServiceConnection: StandFast-Azure-PRD
+      p_dependsOn: Test
       p_hasMetCondition: and(succeeded(), eq(variables['g_isStrReleaseBranch'], true))
