@@ -144,8 +144,10 @@ The app only ever reads the section and key on the left. The two middle columns 
 | `AzureTableStorage` | `ConnectionString` | `appsettings.Development.json` | Not set | Used only when `ServiceUri` is empty. This is how Azurite is reached. |
 | `AzureTableStorage` | `TablePrefix` | `appsettings.Development.json` | Bicep, derived from the app base name and environment code | Prefixed to every table name so one storage account can hold several environments. |
 | `AzureTableStorage` | `CreateTablesOnStartup` | `appsettings.json` | `appsettings.json` | Creates missing tables on first use. Turn it off where the identity has no table-create rights. |
-| `StandFastUi` | `DisplayTimeZoneId` | `appsettings.json` or user secrets, optional | `a_DisplayTimeZoneId` | The time zone the board resolves "today" in. Accepts a Windows id or an IANA id; .NET resolves both on Windows and on the Linux container. Empty falls back to the server time zone. |
+| `StandFastUi` | `DisplayTimeZoneId` | `appsettings.json` or user secrets, optional | `a_DisplayTimeZoneId` | The [time zone id](#time-zones) the board resolves "today" in. Accepts a Windows id or an IANA id; .NET resolves both on Windows and on the Linux container. Empty falls back to the server time zone. |
 | `StandFastUi` | `DataProtectionBlobUri` | Not set | Bicep, from the storage account it creates | Blob holding the shared Data Protection key ring. Required for more than one replica. |
+
+#### Time Zones
 
 `DisplayTimeZoneId` takes either form, so `Central Standard Time` and `America/Chicago` are equivalent. The US zones are:
 
@@ -160,7 +162,7 @@ The app only ever reads the section and key on the left. The two middle columns 
 | `Eastern Standard Time` | `America/New_York` | Eastern |
 | `US Eastern Standard Time` | `America/Indiana/Indianapolis` | Indiana (East) |
 
-For anywhere else, `TimeZoneInfo.GetSystemTimeZones()` lists every id the runtime accepts.
+For anywhere else, `TimeZoneInfo.GetSystemTimeZones()` lists every id the .NET C# runtime accepts.
 
 # 📐 Architecture Summary
 
