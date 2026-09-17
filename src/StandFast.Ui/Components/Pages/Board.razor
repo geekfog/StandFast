@@ -52,6 +52,8 @@ else
                     {
                         <ParticipantCard Participant="@participant"
                                          TimeZone="@timeZone"
+                                         PriorTurn="@board.PriorTurnFor(participant.PersonId)"
+                                         ShowPriorTurn="@(state == AttendanceState.Available)"
                                          IsSelected="@(participant.PersonId == selectedPersonId)"
                                          OnAdvance="AdvanceAsync"
                                          OnRevert="RevertAsync"

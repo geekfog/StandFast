@@ -98,6 +98,34 @@ public sealed class BoardServiceTests
     }
 
     [Fact]
+    public async Task GetBoardAsync_NumbersParticipantsByTheirTurnAtThePreviousStandup()
+    {
+        BoardTestContext context = new();
+        Person early = await context.AddMemberAsync("Ada", "Lovelace");
+        Person late = await context.AddMemberAsync("Grace", "Hopper");
+        Person absent = await context.AddMemberAsync("Alan", "Turing");
+
+        await PresentedYesterdayAsync(context, early, BoardTestContext.Now.AddDays(-1));
+        await PresentedYesterdayAsync(context, late, BoardTestContext.Now.AddDays(-1).AddMinutes(4));
+
+        StandupBoardDto board = await context.Service.GetBoardAsync(context.Standup.Id, BoardTestContext.Today);
+
+        Assert.Equal(1, board.PriorTurnFor(early.Id));
+        Assert.Equal(2, board.PriorTurnFor(late.Id));
+        Assert.Null(board.PriorTurnFor(absent.Id));
+    }
+
+    private static Task PresentedYesterdayAsync(BoardTestContext context, Person person, DateTimeOffset presentedUtc) =>
+        context.Entries.UpsertAsync(new StandupEntry
+        {
+            StandupId = context.Standup.Id,
+            PersonId = person.Id,
+            MeetingDate = BoardTestContext.Yesterday,
+            State = AttendanceState.Presented,
+            PresentedUtc = presentedUtc,
+        });
+
+    [Fact]
     public async Task SaveUpdateAsync_IgnoresSomeoneWhoIsNotOnTheRoster()
     {
         BoardTestContext context = new();

@@ -44,7 +44,7 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
 The board has three columns and one tap moves a person rightwards through them.
 
 1. **Roster** holds everyone on the standup. Tap a name as you see them join.
-2. **Present, can be called on** holds the people who are actually there. Tap a name when you call on them and they finish.
+2. **Present, can be called on** holds the people who are actually there. Tap a name when you call on them and they finish. Each card here carries the turn that person took at the previous standup, so someone who went late last time can be called early today. Anyone who was not at that standup shows ∞ instead of a number.
 3. **Presented** holds everyone who has given their update.
 
 An undo arrow on each card moves someone back a column if you mis-tap.
@@ -349,3 +349,4 @@ What you set up once in Azure DevOps is in [Configuration](#configuration).
 - Fixed console logging disappearing when running locally.
 - Made deployment self-provisioning: the release stage creates the resource group, brings up the registry and supporting resources, builds the image inside that registry, then deploys the app, so nothing has to be created by hand first and no container registry connection is needed.
 - Documented configuration as a single table of everything you set, with the naming used in each place a setting can live and the accepted time zone values.
+- Added the previous standup's turn number to each card in the "can be called on" column, with ∞ for anyone who was not there, so whoever went last time can be called first today.

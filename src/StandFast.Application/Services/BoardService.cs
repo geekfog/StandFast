@@ -29,11 +29,21 @@ public sealed class BoardService(
 
         (IReadOnlyList<StandupMember> members, Dictionary<Guid, Person> peopleById) = await LoadRosterAsync(standupId, cancellationToken);
 
-        BoardParticipantDto[] participants = await Task.WhenAll(members
+        (StandupMember Member, Person Person, StandupEntryPair Pair)[] loaded = await Task.WhenAll(members
             .Where(member => peopleById.ContainsKey(member.PersonId))
-            .Select(member => LoadParticipantAsync(member, peopleById[member.PersonId], meetingDate, cancellationToken)));
+            .Select(async member => (
+                Member: member,
+                Person: peopleById[member.PersonId],
+                Pair: await entries.GetCurrentAndPriorAsync(standupId, member.PersonId, meetingDate, cancellationToken))));
 
-        return new StandupBoardDto(standup.Id, standup.Name, meetingDate, standup.OccursOn(meetingDate), participants.InRosterOrder());
+        // Ranked across the whole roster, so it has to happen here rather than while mapping any single participant.
+        IReadOnlyDictionary<Guid, int> priorTurns = PriorPresentationOrder.Rank(loaded.Select(item => item.Pair.Prior));
+
+        IReadOnlyList<BoardParticipantDto> participants = loaded
+            .Select(item => item.Pair.ToParticipantDto(item.Member, item.Person))
+            .InRosterOrder();
+
+        return new StandupBoardDto(standup.Id, standup.Name, meetingDate, standup.OccursOn(meetingDate), participants, priorTurns);
     }
 
     public Task<BoardParticipantDto?> AdvanceAsync(Guid standupId, DateOnly meetingDate, Guid personId, CancellationToken cancellationToken = default) =>
@@ -113,12 +123,6 @@ public sealed class BoardService(
 
         Person? person = await people.GetAsync(personId, cancellationToken);
         return person is null ? null : (member, person);
-    }
-
-    private async Task<BoardParticipantDto> LoadParticipantAsync(StandupMember member, Person person, DateOnly meetingDate, CancellationToken cancellationToken)
-    {
-        StandupEntryPair pair = await entries.GetCurrentAndPriorAsync(member.StandupId, member.PersonId, meetingDate, cancellationToken);
-        return pair.ToParticipantDto(member, person);
     }
 
     private static string? Normalise(string? markdown) => string.IsNullOrWhiteSpace(markdown) ? null : markdown.Trim();

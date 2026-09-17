@@ -1,6 +1,13 @@
 <MudPaper Outlined="true"
           Class="@($"d-flex align-center pa-2 mb-2 standfast-participant {(IsSelected ? "standfast-participant-selected" : string.Empty)}")"
           @onclick="OnAdvanceAsync">
+    @if (ShowPriorTurn)
+    {
+        <MudTooltip Text="@PriorTurnDescription">
+            <div class="standfast-prior-turn mr-2" aria-label="@PriorTurnDescription">@PriorTurnLabel</div>
+        </MudTooltip>
+    }
+
     <MudAvatar Color="@StandFastTheme.ColumnColor(Participant.State)" Size="Size.Medium">@Participant.Initials</MudAvatar>
 
     <div class="ml-3 flex-grow-1 standfast-participant-text">
@@ -48,6 +55,14 @@
     [Parameter]
     public bool IsSelected { get; set; }
 
+    /// <summary>The turn this person took at the previous standup, or null when they were not there.</summary>
+    [Parameter]
+    public int? PriorTurn { get; set; }
+
+    /// <summary>Shown only where the turn is actionable, which is the column you are choosing the next speaker from.</summary>
+    [Parameter]
+    public bool ShowPriorTurn { get; set; }
+
     [Parameter]
     public EventCallback<Guid> OnAdvance { get; set; }
 
@@ -56,6 +71,12 @@
 
     [Parameter]
     public EventCallback<Guid> OnSelect { get; set; }
+
+    private string PriorTurnLabel => PriorTurn?.ToString() ?? UiFormats.NoPriorTurnSymbol;
+
+    private string PriorTurnDescription => PriorTurn is { } turn
+        ? $"Went {turn.ToOrdinal()} at the previous standup"
+        : "Did not present at the previous standup";
 
     private string StatusCaption => Participant.State switch
     {
