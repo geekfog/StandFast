@@ -4,6 +4,9 @@ namespace StandFast.Domain.Common;
 public static class DomainLimits
 {
     public const int PersonNameMaxLength = 100;
+
+    /// <summary>Display override can be longer than a single name part, since it may hold a full preferred name.</summary>
+    public const int DisplayAsMaxLength = 120;
     public const int EmailMaxLength = 256;
     public const int StandupNameMaxLength = 120;
     public const int DescriptionMaxLength = 1000;

@@ -35,7 +35,7 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
 
 ## What it does
 
-- **People** are a flat directory: first name, last name, email, active flag.
+- **People** are a flat directory: first name, last name, email, active flag, an optional "display as" override, and markdown notes. When "display as" is set, that is how the person appears everywhere, including the roster and the board; otherwise they appear as first and last name.
 - **Standups** are recurring meeting definitions: name, the days they run on, start time, time zone, and a roster of people.
 - **The board** is one standup on one date. It opens on today with the current week across the top, and a dropdown picks the standup independently of the date.
 
@@ -43,9 +43,9 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
 
 The board has three columns and one tap moves a person rightwards through them.
 
-1. **Roster** holds everyone on the standup. Tap a name as you see them join.
-2. **Present, can be called on** holds the people who are actually there. Tap a name when you call on them and they finish. Each card here carries the turn that person took at the previous standup, so someone who went late last time can be called early today. Anyone who was not at that standup shows ∞ instead of a number.
-3. **Presented** holds everyone who has given their update.
+1. **Roster** holds everyone on the standup, always alphabetical by the name shown. Tap a name as you see them join.
+2. **Present, can be called on** holds the people who are actually there, oldest arrival first so whoever has waited longest sits at the top. Tap a name when you call on them and they finish. Each card here carries the turn that person took at the previous standup, so someone who went late last time can be called early today. Anyone who was not at that standup shows ∞ instead of a number.
+3. **Presented** holds everyone who has given their update, in the order they gave it.
 
 An undo arrow on each card moves someone back a column if you mis-tap.
 
@@ -56,6 +56,8 @@ The notes icon on a card opens that person's update panel, which has three boxes
 | Prior update | Read only, labelled with the date it came from. A copy button pushes its text into the current update so a "same as yesterday, plus…" update takes one tap. |
 | Current update | Markdown editor with a formatting toolbar and a preview toggle. |
 | Blockers | Same editor. A card showing blockers gets a warning icon on the board. |
+
+Save writes both boxes; Cancel throws away the unsaved edits and puts back what was last stored, leaving the panel open.
 
 Everything is keyed by standup, person, and date, so navigating to last Tuesday shows exactly what was recorded on last Tuesday.
 
@@ -350,3 +352,6 @@ What you set up once in Azure DevOps is in [Configuration](#configuration).
 - Made deployment self-provisioning: the release stage creates the resource group, brings up the registry and supporting resources, builds the image inside that registry, then deploys the app, so nothing has to be created by hand first and no container registry connection is needed.
 - Documented configuration as a single table of everything you set, with the naming used in each place a setting can live and the accepted time zone values.
 - Added the previous standup's turn number to each card in the "can be called on" column, with ∞ for anyone who was not there, so whoever went last time can be called first today.
+- Added an optional display name and markdown notes to each person, with the display name used everywhere in place of their first and last name when it is set.
+- Fixed the board column ordering: the roster is always alphabetical by the name shown, the "can be called on" column runs oldest arrival first, and Presented runs in the order people actually presented.
+- Added a Cancel button beside Save on the update panel, which discards unsaved edits.

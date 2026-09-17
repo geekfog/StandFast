@@ -10,7 +10,17 @@
             <MudTextField @bind-Value="Person.FirstName" For="@(() => Person.FirstName)" Label="First name" Variant="Variant.Outlined" Class="mb-3" />
             <MudTextField @bind-Value="Person.LastName" For="@(() => Person.LastName)" Label="Last name" Variant="Variant.Outlined" Class="mb-3" />
             <MudTextField @bind-Value="Person.Email" For="@(() => Person.Email)" Label="Email address" InputType="InputType.Email" Variant="Variant.Outlined" Class="mb-3" />
-            <MudSwitch @bind-Value="Person.IsActive" Color="Color.Primary" Label="Active" />
+
+            <MudTextField @bind-Value="Person.DisplayAs"
+                          For="@(() => Person.DisplayAs)"
+                          Label="Display as"
+                          HelperText="Optional. Shown everywhere in place of the first and last name above."
+                          Variant="Variant.Outlined"
+                          Class="mb-3" />
+
+            <MarkdownEditor Label="Notes" @bind-Value="Person.Notes" Lines="4" Placeholder="Anything worth knowing when running the standup." EmptyText="No notes." />
+
+            <MudSwitch @bind-Value="Person.IsActive" Color="Color.Primary" Label="Active" Class="mt-3" />
         </MudForm>
     </DialogContent>
     <DialogActions>

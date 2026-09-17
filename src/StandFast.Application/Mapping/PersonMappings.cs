@@ -7,10 +7,18 @@ namespace StandFast.Application.Mapping;
 public static class PersonMappings
 {
     public static PersonDto ToDto(this Person person) =>
-        new(person.Id, person.FirstName, person.LastName, person.Email, person.IsActive, person.DisplayName, person.Initials);
+        new(person.Id, person.FirstName, person.LastName, person.Email, person.IsActive, person.DisplayName, person.FullName, person.Initials, person.Notes);
 
-    public static PersonEditDto ToEditDto(this Person person) =>
-        new() { Id = person.Id, FirstName = person.FirstName, LastName = person.LastName, Email = person.Email, IsActive = person.IsActive };
+    public static PersonEditDto ToEditDto(this Person person) => new()
+    {
+        Id = person.Id,
+        FirstName = person.FirstName,
+        LastName = person.LastName,
+        Email = person.Email,
+        DisplayAs = person.DisplayAs,
+        Notes = person.Notes,
+        IsActive = person.IsActive,
+    };
 
     /// <summary>Copies editable fields onto the entity. Trimming and email casing are normalised here so stored values are consistent regardless of the caller.</summary>
     public static void ApplyTo(this PersonEditDto dto, Person person)
@@ -18,6 +26,12 @@ public static class PersonMappings
         person.FirstName = dto.FirstName.Trim();
         person.LastName = dto.LastName.Trim();
         person.Email = dto.Email.Trim().ToLowerInvariant();
+
+        // Blank and absent mean the same thing for both: fall back to the recorded name, and hold no notes.
+        person.DisplayAs = Normalise(dto.DisplayAs);
+        person.Notes = Normalise(dto.Notes);
         person.IsActive = dto.IsActive;
     }
+
+    private static string? Normalise(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

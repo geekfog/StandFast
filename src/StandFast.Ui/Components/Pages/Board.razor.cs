@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Options;
 using MudBlazor;
 using StandFast.Application.Dtos;
+using StandFast.Application.Mapping;
 using StandFast.Application.Services;
 using StandFast.Domain.Abstractions;
 using StandFast.Domain.Common;
@@ -77,7 +78,7 @@ public partial class Board
     }
 
     private IReadOnlyList<BoardParticipantDto> ParticipantsIn(AttendanceState state) =>
-        board is null ? [] : [.. board.Participants.Where(participant => participant.State == state)];
+        board is null ? [] : board.Participants.Where(participant => participant.State == state).InColumnOrder(state);
 
     private static string EmptyColumnText(AttendanceState state) => state switch
     {

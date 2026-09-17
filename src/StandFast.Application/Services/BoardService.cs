@@ -41,7 +41,7 @@ public sealed class BoardService(
 
         IReadOnlyList<BoardParticipantDto> participants = loaded
             .Select(item => item.Pair.ToParticipantDto(item.Member, item.Person))
-            .InRosterOrder();
+            .InColumnOrder(AttendanceState.Roster);
 
         return new StandupBoardDto(standup.Id, standup.Name, meetingDate, standup.OccursOn(meetingDate), participants, priorTurns);
     }

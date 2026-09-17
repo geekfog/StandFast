@@ -18,7 +18,19 @@
         <MudTh Style="width: 7rem;"></MudTh>
     </HeaderContent>
     <RowTemplate>
-        <MudTd DataLabel="Name">@context.DisplayName</MudTd>
+        <MudTd DataLabel="Name">
+            @context.DisplayName
+            @if (context.HasDisplayOverride)
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary ml-1">(@context.FullName)</MudText>
+            }
+            @if (context.HasNotes)
+            {
+                <MudTooltip Text="Has notes">
+                    <MudIcon Icon="@Icons.Material.Filled.StickyNote2" Size="Size.Small" Class="ml-1" />
+                </MudTooltip>
+            }
+        </MudTd>
         <MudTd DataLabel="Email">@context.Email</MudTd>
         <MudTd DataLabel="Status">
             <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Default)">@(context.IsActive ? "Active" : "Inactive")</MudChip>
@@ -50,7 +62,10 @@
         PersonEditDto edit = person is null ? new PersonEditDto() : await PersonService.GetForEditAsync(person.Id) ?? new PersonEditDto();
 
         DialogParameters<PersonDialog> parameters = new() { { dialog => dialog.Person, edit } };
-        IDialogReference reference = await DialogService.ShowAsync<PersonDialog>(null, parameters);
+
+        // Wider than the default, because the dialog carries a markdown editor with its own toolbar.
+        DialogOptions options = new() { MaxWidth = MaxWidth.Medium, FullWidth = true };
+        IDialogReference reference = await DialogService.ShowAsync<PersonDialog>(null, parameters, options);
 
         if (!(await reference.Result)!.Canceled)
         {

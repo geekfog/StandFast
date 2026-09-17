@@ -20,6 +20,10 @@ public sealed class PersonTableEntity : ITableEntity
 
     public string Email { get; set; } = string.Empty;
 
+    public string? DisplayAs { get; set; }
+
+    public string? Notes { get; set; }
+
     public bool IsActive { get; set; } = true;
 
     public DateTimeOffset CreatedUtc { get; set; }

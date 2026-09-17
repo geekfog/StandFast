@@ -11,5 +11,7 @@ public sealed class PersonEditDtoValidator : AbstractValidator<PersonEditDto>
         RuleFor(person => person.FirstName).NotEmpty().MaximumLength(DomainLimits.PersonNameMaxLength);
         RuleFor(person => person.LastName).NotEmpty().MaximumLength(DomainLimits.PersonNameMaxLength);
         RuleFor(person => person.Email).NotEmpty().MaximumLength(DomainLimits.EmailMaxLength).EmailAddress();
+        RuleFor(person => person.DisplayAs).MaximumLength(DomainLimits.DisplayAsMaxLength);
+        RuleFor(person => person.Notes).MaximumLength(DomainLimits.MarkdownMaxLength);
     }
 }

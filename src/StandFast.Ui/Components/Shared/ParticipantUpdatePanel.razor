@@ -5,6 +5,9 @@
             <MudText Typo="Typo.h6">@Participant.DisplayName</MudText>
             <MudText Typo="Typo.caption" Class="mud-text-secondary">@Participant.Email</MudText>
         </div>
+        <MudButton Variant="Variant.Text" Color="Color.Default" StartIcon="@Icons.Material.Filled.Undo" Disabled="@(!IsDirty || isSaving)" OnClick="Cancel" Class="mr-2">
+            Cancel
+        </MudButton>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" Disabled="@(!IsDirty || isSaving)" OnClick="SaveAsync">
             @(isSaving ? "Saving..." : "Save update")
         </MudButton>
@@ -94,6 +97,13 @@
     }
 
     private void CopyPriorForward() => currentUpdate = Participant.PriorUpdate;
+
+    /// <summary>Throws away unsaved edits by re-seeding both boxes from what is stored. The panel stays open so the person can start again.</summary>
+    private void Cancel()
+    {
+        currentUpdate = Participant.Update;
+        blockers = Participant.Blockers;
+    }
 
     private async Task SaveAsync()
     {

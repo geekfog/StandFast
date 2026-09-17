@@ -41,6 +41,19 @@ public sealed class TableEntityMappingsTests
     }
 
     [Fact]
+    public void Person_RoundTripsTheDisplayOverrideAndNotes()
+    {
+        Person person = new() { FirstName = "Augusta", LastName = "King", Email = "ada@example.com", DisplayAs = "Ada Lovelace", Notes = "- Works Tuesdays" };
+
+        Person restored = person.ToTableEntity().ToDomain();
+
+        Assert.Equal("Ada Lovelace", restored.DisplayAs);
+        Assert.Equal("Ada Lovelace", restored.DisplayName);
+        Assert.Equal("Augusta King", restored.FullName);
+        Assert.Equal("- Works Tuesdays", restored.Notes);
+    }
+
+    [Fact]
     public void StandupEntry_RoundTripsAttendanceAndMarkdown()
     {
         StandupEntry entry = new()
