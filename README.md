@@ -15,7 +15,9 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
   - [Running it locally](#running-it-locally)
   - [Configuration](#configuration)
     - [Configuration sources and naming](#configuration-sources-and-naming)
-    - [Settings](#settings)
+    - [Application settings](#application-settings)
+    - [Pipeline variables](#pipeline-variables)
+    - [Before the first pipeline run](#before-the-first-pipeline-run)
 - [📐 Architecture Summary](#-architecture-summary)
   - [Layering](#layering)
   - [Data model and Azure Table Storage](#data-model-and-azure-table-storage)
@@ -123,14 +125,9 @@ Later sources override earlier ones: `appsettings.json` is the base, `appsetting
 | Bicep parameters | Deployment inputs in `infra/main.bicep`. | `p_` prefix, Pascal case. Locals are `v_`, outputs are `o_`. | `p_OidcClientId` |
 | Azure DevOps variable groups | Pipeline inputs that supply the Bicep parameters. | `a_` prefix, Pascal case. Variables defined in the pipeline YAML itself use `g_`. | `a_OidcClientId` |
 
-Two variable groups are expected in Azure DevOps › Pipelines › Library, where `<env>` is the lower-cased environment code, so `standfast-prd-vars` for production:
+Two variable groups are expected in Azure DevOps › Pipelines › Library. `standfast-vars` is loaded at the pipeline level before every stage and holds what is identical across environments; `standfast-<env>-vars` is loaded by the release template for the matching environment and holds only what differs, where `<env>` is the lower-cased environment code, so `standfast-prd-vars`. Every variable in both groups is listed under [Pipeline variables](#pipeline-variables).
 
-| Group | Scope | Holds |
-| ----- | ----- | ----- |
-| `standfast-vars` | Pipeline, loaded before every stage | `a_AzureServiceConnection`, `a_SubscriptionId`, `a_ContainerRegistryConnection`, `a_AppBase`, and anything else identical across environments. Service connection references resolve at compile time, before stage-level groups exist, so they cannot live in a per-environment group. |
-| `standfast-<env>-vars` | Stage, loaded by the release template for the matching environment | Only what genuinely differs per environment: `a_ResourceGroup`, `a_Location`, `a_RegionToken`, `a_ContainerRegistryLoginServer`, `a_OidcAuthority`, `a_OidcClientId`, `a_OidcClientSecret`, `a_DisplayTimeZoneId`. |
-
-### Settings
+### Application settings
 
 The app only ever reads the section and key on the left. The two middle columns say where that value is authored. In Azure the release template carries a variable-group value into the matching Bicep parameter, which sets the `Section__Key` environment variable on the container app; that plumbing is the same for every row and is not repeated below.
 
@@ -163,6 +160,37 @@ The app only ever reads the section and key on the left. The two middle columns 
 | `US Eastern Standard Time` | `America/Indiana/Indianapolis` | Indiana (East) |
 
 For anywhere else, `TimeZoneInfo.GetSystemTimeZones()` lists every id the .NET C# runtime accepts.
+
+### Pipeline variables
+
+Everything the pipelines read that is not an application setting. Each one must exist in the listed variable group before a run, or the run fails validation. Variables prefixed `g_` are declared in `azure-pipelines.yaml` itself, and `v_` and `o_` values are produced during the run, so neither needs creating.
+
+| Variable | Group | Example | Used for |
+| -------- | ----- | ------- | -------- |
+| `a_AzureServiceConnection` | `standfast-vars` | `StandFast-Azure` | Name of the ARM service connection the Bicep deployment authenticates through. |
+| `a_SubscriptionId` | `standfast-vars` | `00000000-0000-0000-0000-000000000000` | Subscription the resource group is deployed into. |
+| `a_ContainerRegistryConnection` | `standfast-vars` | `StandFast-ACR` | Name of the Docker Registry service connection the build pushes the image through. |
+| `a_AppBase` | `standfast-vars` | `standfast` | First segment of every resource name, and the `Product` tag value. |
+| `a_ResourceGroup` | `standfast-<env>-vars` | `standfastprdusnorthrg` | Resource group the deployment targets. Created if it does not exist. |
+| `a_Location` | `standfast-<env>-vars` | `northcentralus` | Azure region for the resource group and everything in it. |
+| `a_RegionToken` | `standfast-<env>-vars` | `usnorth` | Region segment of every resource name. |
+| `a_ContainerRegistryLoginServer` | `standfast-<env>-vars` | `standfastprdusnorthcr.azurecr.io` | Registry host the deployed image reference is built from. |
+| `a_OidcAuthority` | `standfast-<env>-vars` | `https://yourbusiness.kinde.com` | Supplies `Oidc:Authority`; see [Application settings](#application-settings). |
+| `a_OidcClientId` | `standfast-<env>-vars` | `a1b2c3…` | Supplies `Oidc:ClientId`. |
+| `a_OidcClientSecret` | `standfast-<env>-vars` | — | Supplies `Oidc:ClientSecret`. Mark this variable as secret in the group. |
+| `a_DisplayTimeZoneId` | `standfast-<env>-vars` | `Central Standard Time` | Supplies `StandFastUi:DisplayTimeZoneId`. |
+
+### Before the first pipeline run
+
+Azure DevOps validates service connection and variable group references before any step executes, so all of this has to exist up front. A missing or unauthorised item fails the run with "could not be found. The service connection does not exist, has been disabled or has not been authorized for use", or the variable group equivalent.
+
+1. **Provision the container registry.** The build pushes to it, and a registry service connection cannot be created against a registry that does not exist. Deploy `infra/main.bicep` once by hand, or create the registry separately, before wiring up the pipeline.
+2. **Create the service connections** in Project settings › Service connections: one Azure Resource Manager connection and one Docker Registry connection pointing at that registry. Their names are what `a_AzureServiceConnection` and `a_ContainerRegistryConnection` hold.
+3. **Create both variable groups** in Pipelines › Library with the variables in [Pipeline variables](#pipeline-variables), marking `a_OidcClientSecret` as secret.
+4. **Authorise them for the pipeline.** Each variable group has its own Pipeline permissions, and each service connection its own Security page. Creating them is not enough; an unauthorised group produces the same "could not be found" error as a missing one.
+5. **Create the environment** named `StandFast PRD` in Pipelines › Environments, and add approvals there if the release should be gated.
+
+If the build still reports the service connection as the literal `$(a_ContainerRegistryConnection)` after the group exists and is authorised, the reference is being evaluated before the group is read. Put the connection name directly in `azure-pipelines.yaml` instead, which is resolved at compile time.
 
 # 📐 Architecture Summary
 
@@ -340,3 +368,4 @@ After the first deployment, take `o_ApplicationUrl` from the outputs and registe
 - Fixed console logging disappearing when running locally.
 - Reworked the configuration documentation so every setting shows where it is set locally and in Azure, added the naming rules for each place a setting can come from, and moved the Azure DevOps variable groups next to it instead of leaving them in the deployment section.
 - Documented which time zone values the board accepts, with the Windows and IANA name for each US zone.
+- Documented every pipeline variable and the one-time Azure DevOps setup needed before the first run, so nothing the build or release reads is left undocumented.
