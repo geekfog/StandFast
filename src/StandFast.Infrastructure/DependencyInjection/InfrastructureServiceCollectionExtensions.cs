@@ -1,7 +1,9 @@
 using Azure.Data.Tables;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using StandFast.Application.Abstractions;
 using StandFast.Domain.Abstractions;
+using StandFast.Infrastructure.Backup;
 using StandFast.Infrastructure.Configuration;
 using StandFast.Infrastructure.Repositories;
 using StandFast.Infrastructure.Storage;
@@ -29,6 +31,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IPersonRepository, PersonRepository>();
         services.AddScoped<IStandupRepository, StandupRepository>();
         services.AddScoped<IStandupEntryRepository, StandupEntryRepository>();
+        services.AddScoped<IBackupStore, TableBackupStore>();
 
         return services;
     }

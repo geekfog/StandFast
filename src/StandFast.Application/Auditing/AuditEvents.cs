@@ -14,6 +14,8 @@ public static class AuditEvents
     public const string AttendanceChanged = "Board.AttendanceChanged";
     public const string UpdateSaved = "Board.UpdateSaved";
     public const string PriorUpdateCopied = "Board.PriorUpdateCopied";
+    public const string BackupCreated = "Backup.Created";
+    public const string BackupRestored = "Backup.Restored";
 }
 
 /// <summary>Structured-log property names attached to every audit record. The Serilog audit sub-logger filters and columnises on these.</summary>

@@ -6,6 +6,10 @@ public static class UiRoutes
     public const string Board = "/board";
     public const string People = "/people";
     public const string Standups = "/standups";
+    public const string Backup = "/backup";
+
+    /// <summary>Endpoint that streams the backup file. Separate from the page because a download is a plain HTTP response with its own headers, not a Blazor navigation.</summary>
+    public const string BackupDownload = "/backup/download";
 
     public const string StandupQueryKey = "standupId";
     public const string DateQueryKey = "date";

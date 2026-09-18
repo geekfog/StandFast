@@ -1,6 +1,7 @@
 using Azure;
 using Azure.Data.Tables;
 using Microsoft.Extensions.Options;
+using StandFast.Infrastructure.Backup;
 using StandFast.Infrastructure.Configuration;
 using StandFast.Infrastructure.Repositories;
 using StandFast.Infrastructure.Storage;
@@ -23,6 +24,7 @@ public sealed class AzuriteTableFixture : IDisposable
         People = new PersonRepository(Tables);
         Standups = new StandupRepository(Tables);
         Entries = new StandupEntryRepository(Tables);
+        Backups = new TableBackupStore(Tables);
     }
 
     public ITableClientProvider Tables { get; }
@@ -32,6 +34,8 @@ public sealed class AzuriteTableFixture : IDisposable
     public StandupRepository Standups { get; }
 
     public StandupEntryRepository Entries { get; }
+
+    public TableBackupStore Backups { get; }
 
     /// <summary>
     /// xUnit builds and disposes a class fixture even when every test in the class is skipped, so cleanup has to cope with the emulator being
@@ -44,7 +48,7 @@ public sealed class AzuriteTableFixture : IDisposable
             return;
         }
 
-        foreach (string logicalName in new[] { StorageNames.People, StorageNames.Standups, StorageNames.StandupMembers, StorageNames.StandupEntries })
+        foreach (string logicalName in StorageNames.DataTables.Append(StorageNames.AuditLog))
         {
             try
             {

@@ -23,6 +23,7 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
     - [Why Table Storage and not SQL](#why-table-storage-and-not-sql)
   - [Markdown editing](#markdown-editing)
   - [Auditing and logging](#auditing-and-logging)
+  - [Backup and restore](#backup-and-restore)
   - [OpenID Connect sign-in](#openid-connect-sign-in)
   - [Azure Container Apps](#azure-container-apps)
     - [What you gain over App Service](#what-you-gain-over-app-service)
@@ -38,6 +39,7 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
 - **People** are a flat directory: first name, last name, email, active flag, an optional "display as" override, and markdown notes. When "display as" is set, that is how the person appears everywhere, including the roster and the board; otherwise they appear as first and last name. The People screen also lists which standups each person is on.
 - **Standups** are recurring meeting definitions: name, the days they run on, start time, time zone, and a roster of people.
 - **The board** is one standup on one date. It opens on today with the current week across the top, and a dropdown picks the standup independently of the date.
+- **Backup** downloads everything the app holds as one file and restores it again, replacing whatever is there at the time. The audit log is excluded from both directions.
 
 ## The daily flow
 
@@ -123,22 +125,36 @@ Nothing is provisioned by hand. The release stage creates the resource group, th
 
 One table, in the order you would fill it in. Anything not listed is derived or deployed, and the last group of rows says which.
 
+| LOC Setting    | LOC Key | LOC Value | DEV Setting | DEV Key | DEV Value | PRD Setting | PRD Key | PRD Value | Notes |
+| -------------- | ------- | --------- | ----------- | ------- | --------- | ----------- | ------- | --------- | ----- |
+| `secrets.json` |         |           |             |         |           |             |         |           |       |
+| `secrets.json` |         |           |             |         |           |             |         |           |       |
+| `secrets.json` |         |           |             |         |           |             |         |           |       |
+| `secrets.json` |         |           |             |         |           |             |         |           |       |
+| `secrets.json` |         |           |             |         |           |             |         |           |       |
+
+
+
+
+
 | Where you set it | Name | Notes |
 | ---------------- | ---- | ----- |
 | User secrets, local | `Oidc:Authority` | Your provider's issuer URL, for example `https://yourbusiness.kinde.com`. Every endpoint is read from its discovery document, so none is configured individually. |
 | User secrets, local | `Oidc:ClientId` | Confidential client id from the provider. |
 | User secrets, local | `Oidc:ClientSecret` | Client secret from the provider. The only secret the app holds. |
+| User secrets, local | `AzureTableStorage:ConnectionString` | Use value `UseDevelopmentStorage=true` for Azurite. |
+| User secrets, local | `AzureTableStorage:TablePrefix` | `StandFast` for PRD, `StandFastDev` for DEV, and `StandFastLoc` for Azurite. |
 | User secrets, local, optional | `StandFastUi:DisplayTimeZoneId` | The [time zone id](#time-zones) the board resolves "today" in. Empty falls back to the server time zone. |
-| `appsettings.Development.json` | `AzureTableStorage:ConnectionString` | Already points at Azurite. Change only to aim local development at a real storage account. |
+| `appsettings.Development.json` | `AzureTableStorage:ConnectionString` | Points at Azurite. Change only to aim local development at a real storage account. |
 | `standfast-vars` group | `a_AppBase` | `standfast`. First segment of every resource name and the `Product` tag. Identical across environments, which is why it is in the pipeline-level group. |
-| `standfast-<env>-vars` group | `a_RegionToken` | `usnorth`. Region segment of every resource name. |
-| `standfast-<env>-vars` group | `a_Location` | `northcentralus`. Azure region everything is created in. |
+| `standfast-<env>-vars` group | `a_RegionToken` | Region segment of every resource name (e.g., `usnorth`). |
+| `standfast-<env>-vars` group | `a_Location` | Azure region everything is created in (e.g., `northcentralus`). |
 | `standfast-<env>-vars` group | `a_OidcAuthority` | Same value as `Oidc:Authority`, for the deployed environment. |
 | `standfast-<env>-vars` group | `a_OidcClientId` | Same value as `Oidc:ClientId`, for the deployed environment. |
 | `standfast-<env>-vars` group | `a_OidcClientSecret` | Same value as `Oidc:ClientSecret`. Mark this variable as secret; it is stored in Key Vault as `oidc-client-secret` and surfaced to the container app as a Key Vault reference. |
 | `standfast-<env>-vars` group | `a_DisplayTimeZoneId` | Same value as `StandFastUi:DisplayTimeZoneId`, for the deployed environment. |
-| `appsettings.json`, rarely | `Oidc:CallbackPath`, `Oidc:SignedOutCallbackPath`, `Oidc:SignedOutRedirectUri` | Standard ASP.NET Core paths. Both callback paths must be registered with the provider; the release stage prints the exact URLs to register. |
-| `appsettings.json`, rarely | `AzureTableStorage:CreateTablesOnStartup` | Creates missing tables on first use. Turn it off where the identity has no table-create rights. |
+| `appsettings.json` | `Oidc:CallbackPath`, `Oidc:SignedOutCallbackPath`, `Oidc:SignedOutRedirectUri` | Standard ASP.NET Core paths. Both callback paths must be registered with the provider; the release stage prints the exact URLs to register. |
+| `appsettings.json` | `AzureTableStorage:CreateTablesOnStartup` | Creates missing tables on first use. Turn it off where the identity has no table-create rights. |
 | Nothing to set | `AzureTableStorage:ServiceUri` | Set by Bicep from the storage account it creates. The app then authenticates with `DefaultAzureCredential` and no key is involved. |
 | Nothing to set | `AzureTableStorage:TablePrefix` | Set by Bicep from the app base name and environment code, so one storage account can hold several environments. |
 | Nothing to set | `StandFastUi:DataProtectionBlobUri` | Set by Bicep from the storage account it creates. Holds the shared Data Protection key ring, which more than one replica requires. |
@@ -154,7 +170,7 @@ The same setting is spelled differently depending on where it lives.
 | -------- | ------- | ------ | ------- |
 | `appsettings.json` | Every environment. Committed defaults, never secrets. | Nested JSON: section object, then key. | `"Oidc": { "CallbackPath": "/signin-oidc" }` |
 | `appsettings.Development.json` | Local only. Committed. | Same nesting, merged over the base file. Arrays merge by index, so an entry replaces the base array's entry rather than adding to it. | `"AzureTableStorage": { "TablePrefix": "StandFastDev" }` |
-| User secrets | Local only, for anything sensitive. Never committed; stored outside the repo and keyed by the `UserSecretsId` in `StandFast.Ui.csproj`. | Flat, colon separated. | `"Oidc:ClientId": "…"` |
+| User secrets | Local only, for anything sensitive. Never committed; stored outside the repo and keyed by the `UserSecretsId` in `StandFast.Ui.csproj`. | Flat, colon separated (can also be nested JSON like `appsettings.json`) | `"Oidc:ClientId": "…"` |
 | Container environment variables | Azure only. Set on the container app by `infra/main.bicep`. | Section and key joined by a double underscore, because a colon is not portable across shells. | `Oidc__ClientId` |
 | Key Vault | Azure only, for secrets. Referenced by the container app and resolved with the user-assigned managed identity. | Lower case, hyphen separated. | `oidc-client-secret` |
 | Bicep parameters | Deployment inputs in `infra/main.bicep`. | `p_` prefix, Pascal case. Locals are `v_`, outputs are `o_`. | `p_OidcClientId` |
@@ -223,7 +239,7 @@ Four tables, all prefixed with `AzureTableStorage:TablePrefix`:
 | `Standups` | `Standup` | Standup id | Meeting definitions. Same reasoning. |
 | `StandupMembers` | Standup id | Person id | The roster. One partition per standup, which is exactly how the board reads it. The People screen's Standups column is the one query that crosses partitions; see below. |
 | `StandupEntries` | Standup id + person id | Inverted meeting date | Attendance state, the update, and the blockers. |
-| `AuditLog` | Date bucket | Timestamp | Written by Serilog, not by the repositories. |
+| `AuditLog` | Date bucket | Timestamp | Written by Serilog, not by the repositories. Outside backup and restore; see [Backup and restore](#backup-and-restore). |
 
 ### Tables and keys
 
@@ -277,6 +293,34 @@ Serilog handles both, separated by a property rather than by a second logger. `I
 The actor comes from `ICurrentUser`, an Application-layer abstraction implemented in the UI over the signed-in principal, so the Application layer attributes an action without referencing ASP.NET Core.
 
 Audit event names live in `AuditEvents` so a later report reads the same constants the writers use.
+
+## Backup and restore
+
+The Backup screen downloads every application table as one JSON file and restores one back, replacing all current data. The audit log is not in either direction: Serilog owns that table, it is the record of who changed what, and restoring an older copy over it would erase the trail explaining the restore itself. `StorageNames.DataTables` is the single list of what a backup covers, and the Azurite fixture cleans up from the same list.
+
+The file carries rows as columns rather than as typed entities, with each value tagged by its storage type:
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ Backup file                                                 │
+│                                                             │
+│  formatVersion, createdUtc, application                     │
+│                                                             │
+│  tables[]                                                   │
+│   ├─ name    logical table name, no environment prefix      │
+│   └─ rows[]  column name → { kind, value }                  │
+│                                                             │
+│  kind is one of String, Boolean, Int32, Int64, Double,      │
+│  DateTimeOffset, Guid, Binary: the types Azure Tables       │
+│  stores, so a value goes back as the type it came out as.   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+Two consequences follow from that shape. A column added to a table entity is backed up without touching the backup code, and a file taken before that column still restores. And because the table name stored is the logical one, a backup taken from one environment restores into another whatever its table prefix is.
+
+A restore is validated in full before a single row is touched: an unrecognised format version, a table the application does not own, a table listed twice, or a row that cannot be converted all stop the restore with the data untouched. Past that point each table is emptied and refilled, in batches of 100 within a partition, because Azure Tables has no transaction spanning tables or partitions. A failure mid-way therefore leaves the remaining tables as they were rather than half-merged; the file is still on disk, so the fix is to run the restore again.
+
+The download is a plain HTTP endpoint rather than something the Blazor circuit produces, so the file streams with its own content type and file name and never sits in circuit memory. It carries no authorisation metadata, which means the fallback policy protects it exactly like a page. Both directions are audited.
 
 ## OpenID Connect sign-in
 
@@ -362,4 +406,6 @@ What you set up once in Azure DevOps is in [Configuration](#configuration).
 - Added a Cancel button beside Save on the update panel, which discards unsaved edits.
 - Added a Standups column to the People table showing which standups each person is on.
 - Added seconds to the presented time on the board, so the order people presented in is unambiguous.
+- Added a Backup screen that downloads everything the app holds as a single file, and restores one back by replacing all current data. The audit log is left out of both, so restoring an old backup never wipes the record of who changed what.
+- Fixed the repository's ignore rules, which were quietly leaving the new backup source folders out of version control.
 - Added an F5 launch configuration and build/test tasks for the editor, with Hot Reload switched off to stop a debugger error appearing in the Debug Console on every run.

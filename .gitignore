@@ -269,6 +269,12 @@ UpgradeLog*.htm
 ServiceFabricBackup/
 *.rptproj.bak
 
+# The Backup*/ rule above is aimed at Visual Studio upgrade leftovers, but it also swallows the source folders holding the
+# backup and restore feature. Re-include those; the directory itself has to be negated, because git does not descend into
+# an excluded directory to look at the files inside it.
+!src/**/Backup/
+!tests/**/Backup/
+
 # SQL Server files
 *.mdf
 *.ldf

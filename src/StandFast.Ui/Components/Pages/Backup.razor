@@ -1,0 +1,130 @@
+@page "/backup"
+@attribute [Authorize]
+@using Microsoft.Extensions.Options
+@using StandFast.Application.Backup
+@inject IBackupService BackupService
+@inject IDialogService DialogService
+@inject IOptions<StandFastUiOptions> UiOptions
+
+<PageTitle>@AppInfo.PageTitle("Backup")</PageTitle>
+
+<h1 class="mud-typography mud-typography-h5 mb-4">Backup</h1>
+
+<MudGrid>
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudText Typo="Typo.h6" GutterBottom="true">Download a backup</MudText>
+            <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">
+                Writes every person, standup, roster and recorded update to one file. The audit log is not included: it is the record of who changed what, and it stays where it is.
+            </MudText>
+
+            @* An anchor with a target is left alone by the Blazor router, so the browser performs an ordinary request and receives the file as an attachment. *@
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Download" Href="@UiRoutes.BackupDownload" Target="_top">Download backup</MudButton>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudText Typo="Typo.h6" GutterBottom="true">Restore a backup</MudText>
+            <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">
+                Replaces all current data with the contents of the file. Anything recorded since that backup was taken is removed.
+            </MudText>
+
+            <div class="d-flex align-center gap-2 mb-2">
+                <MudFileUpload T="IBrowserFile" Accept="@BackupFormat.FileExtension" MaxFileSize="@BackupFormat.MaxFileBytes" FilesChanged="OnFileSelected" Disabled="isBusy">
+                    <CustomContent Context="upload">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.FolderOpen" Disabled="isBusy" OnClick="@upload.OpenFilePickerAsync">Choose file</MudButton>
+                    </CustomContent>
+                </MudFileUpload>
+
+                <MudButton Variant="Variant.Filled" Color="Color.Error" StartIcon="@Icons.Material.Filled.Restore" Disabled="@(selectedFile is null || isBusy)" OnClick="RestoreAsync">Replace all data</MudButton>
+            </div>
+
+            @if (selectedFile is not null)
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">@selectedFile.Name</MudText>
+            }
+
+            @if (isBusy)
+            {
+                <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mt-4" />
+            }
+
+            @if (errorMessage is not null)
+            {
+                <MudAlert Severity="Severity.Error" Class="mt-4">@errorMessage</MudAlert>
+            }
+
+            @if (summary is not null)
+            {
+                <MudAlert Severity="Severity.Success" Class="mt-4">
+                    Restored @summary.RowCount rows from the backup taken on @UiFormats.ToLocalDisplay(summary.BackupCreatedUtc, UiOptions.Value.ResolveTimeZone()).
+                </MudAlert>
+
+                <MudSimpleTable Dense="true" Elevation="0" Class="mt-2">
+                    <tbody>
+                        @foreach (RestoredTableDto table in summary.Tables)
+                        {
+                            <tr>
+                                <td>@table.TableName</td>
+                                <td>@table.RowCount</td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            }
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private IBrowserFile? selectedFile;
+    private RestoreSummaryDto? summary;
+    private string? errorMessage;
+    private bool isBusy;
+
+    private void OnFileSelected(IBrowserFile? file)
+    {
+        selectedFile = file;
+        summary = null;
+        errorMessage = null;
+    }
+
+    private async Task RestoreAsync()
+    {
+        if (selectedFile is null)
+        {
+            return;
+        }
+
+        bool? confirmed = await DialogService.ShowMessageBoxAsync(
+            "Replace all data",
+            $"Restoring {selectedFile.Name} removes every person, standup, roster and recorded update, then writes back what the file holds. This cannot be undone.",
+            yesText: "Replace",
+            cancelText: "Cancel");
+
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        isBusy = true;
+        summary = null;
+        errorMessage = null;
+
+        try
+        {
+            await using Stream content = selectedFile.OpenReadStream(BackupFormat.MaxFileBytes);
+            summary = await BackupService.RestoreAsync(content);
+            selectedFile = null;
+        }
+        catch (BackupFormatException exception)
+        {
+            errorMessage = exception.Message;
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+}

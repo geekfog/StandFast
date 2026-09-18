@@ -72,6 +72,7 @@ try
 
     app.MapStaticAssets();
     app.MapStandFastAuthentication();
+    app.MapStandFastBackup();
     app.MapHealthChecks(UiRoutes.HealthCheck).AllowAnonymous();
     app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 
