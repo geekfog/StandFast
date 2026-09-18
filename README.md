@@ -110,7 +110,7 @@ Azurite supplies Table Storage. Install it from npm, start it, then start the ap
 
 Everything sensitive goes into user secrets rather than into `appsettings.json`; the project already carries a `UserSecretsId`. At a minimum that is `AzureTableStorage:ConnectionString` set to `UseDevelopmentStorage=true` for Azurite, and the three OIDC values. Sign-in needs an application registered with your OpenID Connect provider: in Kinde, create a **Back-end web** application, add `https://localhost:7111/signin-oidc` to its allowed callback URLs and `https://localhost:7111/signout-callback-oidc` to its allowed logout redirect URLs, then set `Oidc:Authority` (your `https://yourbusiness.kinde.com` domain), `Oidc:ClientId` and `Oidc:ClientSecret`. [Everything you set](#everything-you-set) lists the rest.
 
-Run the tests with `dotnet test`.
+Run the tests with `dotnet test`. The Azurite integration tests skip themselves when nothing is listening on the emulator's table port, so the suite is green with or without it, on this machine and on the build agent.
 
 `.vscode/launch.json` gives an F5 configuration that builds the solution and launches the UI on the `https` profile, taking its ports and environment from `launchSettings.json` rather than repeating them. It sets `hotReloadEnabled` to false, because starting a Hot Reload session writes `Service IManagedEditAndContinueEngineRegistration is unavailable` into the Debug Console on every launch. That exception comes from the debugger, not the app, and nothing stops working, but it appears on every run. Set the flag back to true once the C# Dev Kit installation is sorted out.
 
@@ -407,3 +407,4 @@ What you set up once in Azure DevOps is in [Configuration](#configuration).
 - Coloured the notes icon on a board card once that person has an update recorded for the date, so it is obvious who still owes one, with the outline on the card left to mark whose panel is open.
 - Changed Cancel on the update panel to always be available and to close the panel, asking first whether unsaved edits should be lost.
 - Corrected the configuration table against what the code and the deployment actually do, and split out a short list of the values that are filled in for you.
+- Fixed the build pipeline failing every storage integration test: the check for whether the emulator is running threw instead of answering on an agent that has no emulator, so the tests reported as failures rather than skipping as intended.

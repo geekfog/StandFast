@@ -25,18 +25,26 @@ public static class AzuriteEndpoint
 
     private const int ProbeTimeoutMilliseconds = 1500;
 
-    private static readonly Lazy<bool> Probe = new(() =>
+    private static readonly Lazy<bool> Probe = new(() => CanConnect(Host, TablePort));
+
+    public static bool IsAvailable => Probe.Value;
+
+    /// <summary>
+    /// True when something is listening on the port. This must never throw, for two reasons: it runs inside an attribute constructor, where an
+    /// exception becomes an xUnit discovery failure for the whole class rather than a skip, and <see cref="Lazy{T}"/> caches a thrown exception and
+    /// rethrows it on every later call. A closed port refuses the connection outright rather than timing out, and <c>Wait</c> reports that as an
+    /// <see cref="AggregateException"/> wrapping the socket error, so catching only <see cref="SocketException"/> lets it through.
+    /// </summary>
+    internal static bool CanConnect(string host, int port)
     {
         try
         {
             using TcpClient client = new();
-            return client.ConnectAsync(Host, TablePort).Wait(ProbeTimeoutMilliseconds) && client.Connected;
+            return client.ConnectAsync(host, port).Wait(ProbeTimeoutMilliseconds) && client.Connected;
         }
-        catch (SocketException)
+        catch (Exception)
         {
             return false;
         }
-    });
-
-    public static bool IsAvailable => Probe.Value;
+    }
 }
