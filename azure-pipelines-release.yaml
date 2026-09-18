@@ -48,8 +48,10 @@ stages:
                       $ErrorActionPreference = 'Stop'
                       $environmentCode = '${{ parameters.p_publishEnvironment }}'
 
-                      # Resource group follows the same <AppBase><Env><Region>rg convention the Bicep uses for every other resource.
-                      $resourceGroup = "$(a_AppBase)$environmentCode$(a_RegionToken)rg".ToLowerInvariant()
+                      # Resource group follows the same <AppBase><Env><Region>rg convention the Bicep uses for every other resource. The braces
+                      # around environmentCode are load bearing: the agent expands the macros first, leaving the PowerShell variable butted up
+                      # against the region token, and PowerShell would otherwise read the whole run-on as one undefined variable name.
+                      $resourceGroup = "$(a_AppBase)${environmentCode}$(a_RegionToken)rg".ToLowerInvariant()
 
                       # Written once and reused by both deployment passes, so their inputs cannot drift apart.
                       $deploymentParameters = @{
