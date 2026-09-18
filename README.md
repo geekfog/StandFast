@@ -30,6 +30,7 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
     - [What it costs you](#what-it-costs-you)
     - [What bites Blazor Server specifically](#what-bites-blazor-server-specifically)
   - [Deploying](#deploying)
+    - [Branch filtering](#branch-filtering)
 - [🚧 Change Summary](#-change-summary)
 
 # 📃 Overview
@@ -132,6 +133,7 @@ Local development on the left, a deployed environment on the right. `<env>` is t
 | `secrets.json`                     | `Oidc:ClientId`                                              | (Client ID)                              | `standfast-<env>-vars` group                       | `a_OidcClientId`                                             | (Client ID)                 | Confidential client id from the provider.                    |
 | `secrets.json`                     | `Oidc:ClientSecret`                                          | (Client Secret)                          | `standfast-<env>-vars` group                       | `a_OidcClientSecret`                                         | (Client Secret)             | Client secret from the provider. Mark the group variable as secret. Bicep always stores it in Key Vault as `oidc-client-secret` and gives the container app a Key Vault reference, so the value never becomes a plain environment variable. |
 | `secrets.json`, optional           | `StandFastUi:DisplayTimeZoneId`                              | (e.g., `Central Standard Time`)          | `standfast-<env>-vars` group                       | `a_DisplayTimeZoneId`                                        | (e.g., `Central Standard Time`) | The [time zone id](#time-zones) the board resolves "today" in. The group variable must exist, because the pipeline passes it on every run; leave its value empty and the app falls back to the server time zone, which in the container is UTC. Locally, omitting it falls back to your machine's zone. |
+| (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-<env>-vars` group                       | `a_AllowedBranches`                                          | (e.g., `release/`)          | Which branches may release to this environment; see [Branch filtering](#branch-filtering). Leave it unset and every branch that triggers the pipeline releases here, which for a production environment is rarely what you want. |
 | (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-<env>-vars` group                       | `a_RegionToken`                                              | (e.g., `usnorth`)           | Region segment of every resource name                        |
 | (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-<env>-vars` group                       | `a_Location`                                                 | (e.g., `northcentralus`)    | Azure region everything is created in                        |
 | (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-vars` group                             | `a_AppBase`                                                  | `standfast`                 | First segment of every resource name and the `Product` tag. Identical across environments |
@@ -368,11 +370,40 @@ If those three were not needed, the same Bicep would happily scale this to zero 
 
 ## Deploying
 
-`azure-pipelines.yaml` restores, builds and tests, then includes `azure-pipelines-release.yaml` once per environment. Each release stage is self-contained: it creates the resource group, deploys `infra/main.bicep` with `p_DeployApp=false` to bring up the registry and the rest of the platform, runs `az acr build` to build the image inside that registry, then deploys the same Bicep again with `p_DeployApp=true` and the resulting image. Both deployments read one parameters file composed in PowerShell, so their inputs cannot drift apart.
+`azure-pipelines.yaml` restores, builds and tests, then includes `azure-pipelines-release.yaml` once per environment. Each inclusion contributes a gate stage and a release stage. The release stage is self-contained: it creates the resource group, deploys `infra/main.bicep` with `p_DeployApp=false` to bring up the registry and the rest of the platform, runs `az acr build` to build the image inside that registry, then deploys the same Bicep again with `p_DeployApp=true` and the resulting image. Both deployments read one parameters file composed in PowerShell, so their inputs cannot drift apart.
 
 Building in the registry rather than on the agent means there is no Docker registry service connection and no Docker daemon in the pipeline. The cost is that each environment builds its own image rather than promoting one artefact; with a registry per environment that would need an import step either way.
 
 What you set up once in Azure DevOps is in [Configuration](#configuration).
+
+### Branch filtering
+
+Which branches may release to an environment is `a_AllowedBranches` in that environment's variable group, so tightening or loosening it is an edit in Azure DevOps rather than a pipeline change, and a new environment brings its own answer with it.
+
+| You write | It matches |
+| --------- | ---------- |
+| `release/` | Every branch beneath `release/`. A trailing slash is shorthand for everything under a path. |
+| `release/*` | The same thing, written out. |
+| `main` | That branch exactly. `maintenance` does not match. |
+| `main, release/` | Either. Separate entries with a comma, a semicolon, or one per line. |
+| `refs/heads/release/` | The same as `release/`. Patterns may be written as full refs or as short names. |
+| (unset or empty) | Every branch that triggers the pipeline. |
+
+Matching ignores case, because Azure DevOps branch names are not reliably cased.
+
+Reading the variable takes a stage of its own, which is why each environment shows a **Gate** stage in front of its **Release** stage:
+
+```text
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│ Build and test  ├────▶│ Gate PRD        ├────▶│ Release PRD     │
+│                 │     │ a_AllowedBranch │     │ provision,      │
+│                 │     │ es vs. branch   │     │ build, deploy   │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+```
+
+A stage's `condition` is evaluated before that stage's own variables are expanded, so a variable group linked to a stage cannot decide whether that stage runs. The gate stage reads the group, publishes a single output variable, and the release stage's condition reads that. Doing it from in front rather than inside also means the release stage is skipped outright instead of starting and then abandoning itself, so the Environment's approvals are never raised for a branch that was never going to deploy.
+
+Pull request builds are filtered separately and unconditionally: a pull request validates a merge rather than a branch, so it never releases whatever the variable says. That one test is a predefined pipeline variable, which is why it can live in a stage condition when the branch list cannot.
 
 # 🚧 Change Summary
 
@@ -408,3 +439,4 @@ What you set up once in Azure DevOps is in [Configuration](#configuration).
 - Changed Cancel on the update panel to always be available and to close the panel, asking first whether unsaved edits should be lost.
 - Corrected the configuration table against what the code and the deployment actually do, and split out a short list of the values that are filled in for you.
 - Fixed the build pipeline failing every storage integration test: the check for whether the emulator is running threw instead of answering on an agent that has no emulator, so the tests reported as failures rather than skipping as intended.
+- Moved the decision about which branches may deploy to an environment out of the pipeline and into that environment's variable group, where it can list one or more branch names or paths. Leaving it unset lets any branch that triggers the pipeline deploy there, and pull request builds never deploy regardless.

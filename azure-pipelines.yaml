@@ -21,8 +21,6 @@ variables:
     value: ubuntu-latest
   - name: g_ImageRepository
     value: standfast-ui
-  - name: g_isStrReleaseBranch
-    value: $[startsWith(variables['Build.SourceBranch'], 'refs/heads/release/')]
 
 stages:
   - stage: Test
@@ -61,9 +59,11 @@ stages:
 
   # The service connection name is a template parameter, not a variable group value: Azure DevOps resolves service connection
   # references while compiling the pipeline, before any variable group has been read.
+  #
+  # Which branches reach this environment is the a_AllowedBranches variable in standfast-prd-vars, not a condition here, so adding an
+  # environment or changing what may release to one is a variable group edit rather than a pipeline change.
   - template: azure-pipelines-release.yaml
     parameters:
       p_publishEnvironment: PRD
       p_azureServiceConnection: StandFast-Azure
       p_dependsOn: Test
-      p_hasMetCondition: and(succeeded(), eq(variables['g_isStrReleaseBranch'], true))
