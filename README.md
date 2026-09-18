@@ -355,7 +355,9 @@ The download is a plain HTTP endpoint rather than something the Blazor circuit p
 
 ## OpenID Connect sign-in
 
-Authorization code flow with PKCE against the provider's discovery document, with the session held in a cookie. A fallback authorisation policy requires an authenticated user, so a new page is protected unless it opts out; the health endpoint and the two auth endpoints are the deliberate exceptions.
+Authorization code flow with PKCE against the provider's discovery document, with the session held in a cookie. A fallback authorisation policy requires an authenticated user, so a new page is protected unless it opts out; the health endpoint, the two auth endpoints and the static assets are the deliberate exceptions.
+
+The static assets matter more than they look. `MapStaticAssets` registers every stylesheet, script and Blazor framework file as an endpoint, and the fallback policy applies to endpoints, so without an explicit opt-out the browser is sent to the identity provider to fetch a CSS file. Nothing there is secret, and an asset request cannot complete an interactive redirect.
 
 Nothing in the code names a provider. `AuthenticationSetup` reads an `Authority`, a client id and a secret, and discovers every endpoint from `{Authority}/.well-known/openid-configuration`, so swapping providers is a configuration change. StandFast is configured against Kinde.
 
@@ -463,3 +465,4 @@ One thing to confirm on the first run: the variable group is linked to the relea
 - Moved the decision about which branches may deploy to an environment out of the pipeline and into that environment's variable group, as a pipe-delimited list of branch names. Leaving it unset lets any branch that triggers the pipeline deploy there.
 - Fixed the deployment creating its resource group under the wrong name, so it is now named for the application, environment and region rather than the application alone.
 - Documented the one permission the deployment principal needs beyond Contributor, without which the first deployment fails partway through with an authorization error.
+- Stopped requiring a signed-in user for stylesheets, scripts and the Blazor framework files, which were being sent through the identity provider like any page.
