@@ -120,14 +120,41 @@ Run the tests with `dotnet test`. The Azurite integration tests skip themselves 
 The release stage creates the resource group, then deploys the platform resources, then builds the image straight into the registry it just created, then deploys the app. The only one-time setup in Azure DevOps is:
 
 1. An **Azure Resource Manager** service connection named `StandFast-Azure`. The name lives in `azure-pipelines.yaml` rather than a variable group, because Azure DevOps resolves service connection references while compiling the pipeline, before any variable group has been read.
-2. **Role Based Access Control Administrator** on that service connection's principal, at subscription scope. The Bicep gives the app's managed identity its four data-plane roles (otherwise yields `Authorization failed for template resource … Microsoft.Authorization/roleAssignments` in the pipeline). Run the following in an Azure Cloud Shell (PowerShell) with **Owner** or **User Access Administrator** on the Azure Subscription.
+
+2. **Role Based Access Control Administrator** on that service connection's principal, at subscription scope. The Bicep gives the app's managed identity its four data-plane roles (otherwise yields `Authorization failed for template resource … Microsoft.Authorization/roleAssignments` in the pipeline). 
+
+   
+
+   **OPTION 1: Command Line**
+
+   Run the following in an Azure Cloud Shell (PowerShell) with **Owner** or **User Access Administrator** on the Azure Subscription:
+
+   ```powershell
+   az devops service-endpoint list --organization https://dev.azure.com/sbp-cloud --project Dev --query "[?name=='StandFast-Azure'].authorization.parameters.serviceprincipalid" -o tsv
+   ```
+
+   This returns the <Application (client) ID>. Use this to run the following command:
+
+   ```
+   az ad sp show --id <Application (client) ID> --query id -o tsv
+   ```
+
+   This returns the <service principal object id> to use in the following below:
 
    ```powershell
    az role assignment create --assignee-object-id <service principal object id> --assignee-principal-type ServicePrincipal --role "Role Based Access Control Administrator" --scope /subscriptions/<subscription id>
    ```
 
-   The <service principal object id> is on the service connection's page (under the name of the Service Connection, there is an **ID** followed by a GUID that is the service principal object ID), and whoever runs the command needs Owner or User Access Administrator themselves. 
+   
+
+   **OPTION 2: Azure Portal**
+
+   Open the Azure DevOps Project-based Service Connection. Note the service connection ID (GUID) under the name. Click **Manage service connection roles**. This opens **Access control (IAM)** for the subscription On the top bar, click **+ Add** → **Add role assignment**. In the Role tab, click **Privileged administrator roles** tab. Click on **Role Based Access Control Administrator**. Click **Next** button, In the Members tab, verify **User, group, or service principal** is selected within **Assign access to**. click **+ Select members**. Search for the service connection ID (GUID) previously noted. By default, it is prefixed with the Azure DevOps Organization Name with a hyphen and the Azure DevOps Project name, followed by a hyphen and the service connection ID (GUID). select the member, click **Select** button, and click **Next** button. In the Conditions tab, choose **Allow user to assign all roles (highly privileged)**. Click the **Review + Assign** button.
+
+   
+
 3. The two variable groups below, with both authorized for the pipeline. A group that exists but is not authorized fails the run identically to one that does not exist.
+
 4. Azure DevOps Pipelines Environment (e.g., `StandFast PRD`).
 
 ### Everything you set
