@@ -120,13 +120,13 @@ Run the tests with `dotnet test`. The Azurite integration tests skip themselves 
 The release stage creates the resource group, then deploys the platform resources, then builds the image straight into the registry it just created, then deploys the app. The only one-time setup in Azure DevOps is:
 
 1. An **Azure Resource Manager** service connection named `StandFast-Azure`. The name lives in `azure-pipelines.yaml` rather than a variable group, because Azure DevOps resolves service connection references while compiling the pipeline, before any variable group has been read.
-2. **Role Based Access Control Administrator** on that service connection's principal, at subscription scope. The Bicep gives the app's managed identity its four data-plane roles, and Contributor cannot write role assignments, so without this the platform deployment fails partway with `Authorization failed for template resource … Microsoft.Authorization/roleAssignments`. This is one of the few things the pipeline cannot do for itself: it has no way to grant itself a permission it does not already hold.
+2. **Role Based Access Control Administrator** on that service connection's principal, at subscription scope. The Bicep gives the app's managed identity its four data-plane roles (otherwise yields `Authorization failed for template resource … Microsoft.Authorization/roleAssignments` in the pipeline). Run the following in an Azure Cloud Shell (PowerShell) with **Owner** or **User Access Administrator** on the Azure Subscription.
 
    ```powershell
    az role assignment create --assignee-object-id <service principal object id> --assignee-principal-type ServicePrincipal --role "Role Based Access Control Administrator" --scope /subscriptions/<subscription id>
    ```
 
-   The object id is on the service connection's **Manage Service Principal** page, and whoever runs the command needs Owner or User Access Administrator themselves. Subscription scope rather than the resource group, because the pipeline creates the resource group itself and there is nothing narrower to scope to on the first run.
+   The <service principal object id> is on the service connection's page (under the name of the Service Connection, there is an **ID** followed by a GUID that is the service principal object ID), and whoever runs the command needs Owner or User Access Administrator themselves. 
 3. The two variable groups below, with both authorized for the pipeline. A group that exists but is not authorized fails the run identically to one that does not exist.
 4. Azure DevOps Pipelines Environment (e.g., `StandFast PRD`).
 
