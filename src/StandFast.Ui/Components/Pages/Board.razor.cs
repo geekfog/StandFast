@@ -105,6 +105,8 @@ public partial class Board
 
     private void SelectParticipant(Guid personId) => selectedPersonId = selectedPersonId == personId ? null : personId;
 
+    private void CloseUpdate() => selectedPersonId = null;
+
     private Task AdvanceAsync(Guid personId) => ApplyAsync(() => BoardService.AdvanceAsync(SelectedStandupId, SelectedDate, personId));
 
     private Task RevertAsync(Guid personId) => ApplyAsync(() => BoardService.RevertAsync(SelectedStandupId, SelectedDate, personId));

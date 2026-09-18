@@ -21,4 +21,7 @@ public sealed record BoardParticipantDto(
     DateTimeOffset? PriorSavedUtc) : IRosterOrdered
 {
     public bool HasPrior => PriorMeetingDate is not null && (!string.IsNullOrWhiteSpace(PriorUpdate) || !string.IsNullOrWhiteSpace(PriorBlockers));
+
+    /// <summary>True once something has been recorded for this meeting date. The board colours the open-update action from this, so a glance shows who has already written theirs.</summary>
+    public bool HasUpdate => !string.IsNullOrWhiteSpace(Update) || !string.IsNullOrWhiteSpace(Blockers);
 }

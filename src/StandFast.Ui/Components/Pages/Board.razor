@@ -76,7 +76,8 @@ else
                                     StandupId="@SelectedStandupId"
                                     MeetingDate="@SelectedDate"
                                     TimeZone="@timeZone"
-                                    OnSave="SaveUpdateAsync" />
+                                    OnSave="SaveUpdateAsync"
+                                    OnClose="CloseUpdate" />
         </div>
     }
     else if (board.Participants.Count > 0)

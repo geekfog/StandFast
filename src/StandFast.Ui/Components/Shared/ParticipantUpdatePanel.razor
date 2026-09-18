@@ -5,7 +5,7 @@
             <MudText Typo="Typo.h6">@Participant.DisplayName</MudText>
             <MudText Typo="Typo.caption" Class="mud-text-secondary">@Participant.Email</MudText>
         </div>
-        <MudButton Variant="Variant.Text" Color="Color.Default" StartIcon="@Icons.Material.Filled.Undo" Disabled="@(!IsDirty || isSaving)" OnClick="Cancel" Class="mr-2">
+        <MudButton Variant="Variant.Text" Color="Color.Default" StartIcon="@Icons.Material.Filled.Close" OnClick="CancelAsync" Class="mr-2">
             Cancel
         </MudButton>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" Disabled="@(!IsDirty || isSaving)" OnClick="SaveAsync">
@@ -76,6 +76,13 @@
     [Parameter]
     public EventCallback<ParticipantUpdateDto> OnSave { get; set; }
 
+    /// <summary>Raised once the panel should close, after any unsaved edits have been confirmed as expendable.</summary>
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    [Inject]
+    private IDialogService DialogService { get; set; } = default!;
+
     private bool IsDirty => currentUpdate != Participant.Update || blockers != Participant.Blockers;
 
     private string PriorLabel => Participant.PriorMeetingDate is { } date
@@ -98,11 +105,26 @@
 
     private void CopyPriorForward() => currentUpdate = Participant.PriorUpdate;
 
-    /// <summary>Throws away unsaved edits by re-seeding both boxes from what is stored. The panel stays open so the person can start again.</summary>
-    private void Cancel()
+    /// <summary>Closes the panel, asking first when there are edits that have not been saved. Unsaved text is discarded, so the boxes re-seed from storage when the panel is next opened.</summary>
+    private async Task CancelAsync()
     {
+        if (IsDirty)
+        {
+            bool? confirmed = await DialogService.ShowMessageBoxAsync(
+                "Discard changes",
+                $"Close the update for {Participant.DisplayName} without saving? The changes typed here are lost.",
+                yesText: "Discard",
+                cancelText: "Keep editing");
+
+            if (confirmed != true)
+            {
+                return;
+            }
+        }
+
         currentUpdate = Participant.Update;
         blockers = Participant.Blockers;
+        await OnClose.InvokeAsync();
     }
 
     private async Task SaveAsync()

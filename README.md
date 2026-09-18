@@ -51,7 +51,9 @@ The board has three columns and one tap moves a person rightwards through them.
 
 An undo arrow on each card moves someone back a column if you mis-tap.
 
-The notes icon on a card opens that person's update panel, which has three boxes:
+The notes icon on a card opens that person's update panel. The icon is coloured once anything has been recorded for that person on that date, so you can see at a glance who still owes an update, and the card of whoever's panel is open carries an outline.
+
+The panel has three boxes:
 
 | Box | Behaviour |
 | --- | --------- |
@@ -59,7 +61,7 @@ The notes icon on a card opens that person's update panel, which has three boxes
 | Current update | Markdown editor with a formatting toolbar and a preview toggle. |
 | Blockers | Same editor. A card showing blockers gets a warning icon on the board. |
 
-Save writes both boxes; Cancel throws away the unsaved edits and puts back what was last stored, leaving the panel open.
+Save writes both boxes. Cancel closes the panel, and asks first when there are edits that have not been saved.
 
 Everything is keyed by standup, person, and date, so navigating to last Tuesday shows exactly what was recorded on last Tuesday.
 
@@ -114,53 +116,31 @@ Run the tests with `dotnet test`.
 
 ## Configuration
 
-Every setting binds to a typed options class through `IOptions<T>` and is validated at startup, so a missing or malformed value fails the app immediately rather than on the first request.
+The release stage creates the resource group, then deploys the platform resources, then builds the image straight into the registry it just created, then deploys the app. The only one-time setup in Azure DevOps is:
 
-Nothing is provisioned by hand. The release stage creates the resource group, then deploys the platform resources, then builds the image straight into the registry it just created, then deploys the app. The only one-time setup in Azure DevOps is:
-
-1. An Azure Resource Manager service connection named `StandFast-Azure-PRD`. The name lives in `azure-pipelines.yaml` rather than a variable group, because Azure DevOps resolves service connection references while compiling the pipeline, before any variable group has been read.
-2. The two variable groups below, with both authorised for the pipeline. A group that exists but is not authorised fails the run identically to one that does not exist.
+1. An **Azure Resource Manager** service connection named `StandFast-Azure`. The name lives in `azure-pipelines.yaml` rather than a variable group, because Azure DevOps resolves service connection references while compiling the pipeline, before any variable group has been read.
+2. The two variable groups below, with both authorized for the pipeline. A group that exists but is not authorized fails the run identically to one that does not exist.
+3. Azure DevOps Pipelines Environment (e.g., `StandFast PRD`).
 
 ### Everything you set
 
-One table, in the order you would fill it in. Anything not listed is derived or deployed, and the last group of rows says which.
+Broken down by environment <env> for `loc` (Local Development), `dev` (Development cloud-based environment), and `prd` (Production cloud-based environment):
 
-| LOC Setting    | LOC Key | LOC Value | DEV Setting | DEV Key | DEV Value | PRD Setting | PRD Key | PRD Value | Notes |
-| -------------- | ------- | --------- | ----------- | ------- | --------- | ----------- | ------- | --------- | ----- |
-| `secrets.json` |         |           |             |         |           |             |         |           |       |
-| `secrets.json` |         |           |             |         |           |             |         |           |       |
-| `secrets.json` |         |           |             |         |           |             |         |           |       |
-| `secrets.json` |         |           |             |         |           |             |         |           |       |
-| `secrets.json` |         |           |             |         |           |             |         |           |       |
-
-
-
-
-
-| Where you set it | Name | Notes |
-| ---------------- | ---- | ----- |
-| User secrets, local | `Oidc:Authority` | Your provider's issuer URL, for example `https://yourbusiness.kinde.com`. Every endpoint is read from its discovery document, so none is configured individually. |
-| User secrets, local | `Oidc:ClientId` | Confidential client id from the provider. |
-| User secrets, local | `Oidc:ClientSecret` | Client secret from the provider. The only secret the app holds. |
-| User secrets, local | `AzureTableStorage:ConnectionString` | Use value `UseDevelopmentStorage=true` for Azurite. |
-| User secrets, local | `AzureTableStorage:TablePrefix` | `StandFast` for PRD, `StandFastDev` for DEV, and `StandFastLoc` for Azurite. |
-| User secrets, local, optional | `StandFastUi:DisplayTimeZoneId` | The [time zone id](#time-zones) the board resolves "today" in. Empty falls back to the server time zone. |
-| `appsettings.Development.json` | `AzureTableStorage:ConnectionString` | Points at Azurite. Change only to aim local development at a real storage account. |
-| `standfast-vars` group | `a_AppBase` | `standfast`. First segment of every resource name and the `Product` tag. Identical across environments, which is why it is in the pipeline-level group. |
-| `standfast-<env>-vars` group | `a_RegionToken` | Region segment of every resource name (e.g., `usnorth`). |
-| `standfast-<env>-vars` group | `a_Location` | Azure region everything is created in (e.g., `northcentralus`). |
-| `standfast-<env>-vars` group | `a_OidcAuthority` | Same value as `Oidc:Authority`, for the deployed environment. |
-| `standfast-<env>-vars` group | `a_OidcClientId` | Same value as `Oidc:ClientId`, for the deployed environment. |
-| `standfast-<env>-vars` group | `a_OidcClientSecret` | Same value as `Oidc:ClientSecret`. Mark this variable as secret; it is stored in Key Vault as `oidc-client-secret` and surfaced to the container app as a Key Vault reference. |
-| `standfast-<env>-vars` group | `a_DisplayTimeZoneId` | Same value as `StandFastUi:DisplayTimeZoneId`, for the deployed environment. |
-| `appsettings.json` | `Oidc:CallbackPath`, `Oidc:SignedOutCallbackPath`, `Oidc:SignedOutRedirectUri` | Standard ASP.NET Core paths. Both callback paths must be registered with the provider; the release stage prints the exact URLs to register. |
-| `appsettings.json` | `AzureTableStorage:CreateTablesOnStartup` | Creates missing tables on first use. Turn it off where the identity has no table-create rights. |
-| Nothing to set | `AzureTableStorage:ServiceUri` | Set by Bicep from the storage account it creates. The app then authenticates with `DefaultAzureCredential` and no key is involved. |
-| Nothing to set | `AzureTableStorage:TablePrefix` | Set by Bicep from the app base name and environment code, so one storage account can hold several environments. |
-| Nothing to set | `StandFastUi:DataProtectionBlobUri` | Set by Bicep from the storage account it creates. Holds the shared Data Protection key ring, which more than one replica requires. |
-| Nothing to set | Resource group, registry login server, image tag | Derived by the release stage from `a_AppBase`, `a_RegionToken` and the build number. |
-
-`<env>` is the lower-cased environment code, so `standfast-prd-vars`. The `g_` variables in `azure-pipelines.yaml` and the `v_` values the release stage computes are part of the pipeline, not settings, and need nothing from you.
+| Local Development Setting Location | Local Development Key                                        | Local Development Value                  | Cloud ENV  Setting Location                        | Cloud ENV Key                                                | Cloud ENV Value             | Notes                                                        |
+| ---------------------------------- | ------------------------------------------------------------ | ---------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------ | --------------------------- | ------------------------------------------------------------ |
+| `secrets.json`                     | `Oidc:Authority`                                             | (HTTPS Url)                              | `standfast-<env>-vars` group                       | `a_OidcAuthority`                                            | (HTTPS Url)                 | Your provider's issuer URL, for example `https://yourbusiness.kinde.com`. Every endpoint is read from its discovery document, so none is configured individually. |
+| `secrets.json`                     | `Oidc:ClientId`                                              | (Client ID)                              | `standfast-<env>-vars` group                       | `a_OidcClientId`                                             | (Client ID)                 | Confidential client id from the provider.                    |
+| `secrets.json`                     | `Oidc:ClientSecret`                                          | (Client Secret)                          | `standfast-<env>-vars` group                       | `a_OidcClientSecret`                                         | (Client Secret)             | Client secret from the provider. Mark this variable as secret if a group variable. It can be stored in Key Vault as `oidc-client-secret` and surfaced to the container app as a Key Vault reference. |
+| `secrets.json`                     | `StandFastUi:DisplayTimeZoneId`                              | (e.g., `Central Standard Time`)          | `standfast-<env>-vars` group                       | `a_DisplayTimeZoneId`                                        |                             | The [time zone id](#time-zones) the board resolves "today" in. Empty falls back to the server time zone. |
+| (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-<env>-vars` group                       | `a_RegionToken`                                              | (e.g., `usnorth`)           | Region segment of every resource name                        |
+| (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-<env>-vars` group                       | `a_Location`                                                 | (e.g., `northcentralus`)    | Azure region everything is created in                        |
+| (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-vars` group                             | `a_AppBase`                                                  | `standfast`                 | First segment of every resource name and the `Product` tag. Identical across environments |
+| `secrets.json`                     | `AzureTableStorage:ConnectionString`                         | `UseDevelopmentStorage=true` for Azurite |                                                    |                                                              |                             | Table storage for data records                               |
+| `secrets.json`                     | `AzureTableStorage:TablePrefix`                              | `StandFastLoc`                           | `appsettings.json`, `appsettings.Development.json` | `AzureTableStorage:TablePrefix`                              | `StandFast`, `StandFastDev` | Prefix to use for all tables created in the storage account. |
+| `secrets.json`                     | `AzureTableStorage:CreateTablesOnStartup`                    | `true`                                   | `appsettings.json`                                 | `AzureTableStorage:CreateTablesOnStartup`                    | `true`                      | (OPTIONAL) Creates missing tables on first use. Turn it off where the identity has no table-create rights. |
+| `appsettings.json`                 | `Oidc:CallbackPath`, `Oidc:SignedOutCallbackPath`, `Oidc:SignedOutRedirectUri` | (See file)                               | `appsettings.json`                                 | `Oidc:CallbackPath`, `Oidc:SignedOutCallbackPath`, `Oidc:SignedOutRedirectUri` | (See file)                  | Standard ASP.NET Core paths. Both callback paths must be registered with the provider; the release stage prints the exact URLs to register. |
+| (n/a)                              | (n/a)                                                        | (n/a)                                    | (n/a)                                              | `AzureTableStorage:ServiceUri`                               |                             | Set by Bicep from the storage account it creates. The app then authenticates with `DefaultAzureCredential` and no key is involved. |
+|                                    |                                                              |                                          |                                                    |                                                              |                             |                                                              |
 
 ### Naming by location
 
@@ -409,3 +389,5 @@ What you set up once in Azure DevOps is in [Configuration](#configuration).
 - Added a Backup screen that downloads everything the app holds as a single file, and restores one back by replacing all current data. The audit log is left out of both, so restoring an old backup never wipes the record of who changed what.
 - Fixed the repository's ignore rules, which were quietly leaving the new backup source folders out of version control.
 - Added an F5 launch configuration and build/test tasks for the editor, with Hot Reload switched off to stop a debugger error appearing in the Debug Console on every run.
+- Coloured the notes icon on a board card once that person has an update recorded for the date, so it is obvious who still owes one, with the outline on the card left to mark whose panel is open.
+- Changed Cancel on the update panel to always be available and to close the panel, asking first whether unsaved edits should be lost.
