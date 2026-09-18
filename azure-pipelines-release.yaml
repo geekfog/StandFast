@@ -4,9 +4,7 @@
 # straight into that registry, and the app pass deploys it. That ordering is why no resource has to exist before the first run.
 #
 # Which branches may release to an environment is the environment's own business, so it is the a_AllowedBranches variable in that
-# environment's group rather than anything in this file. Reading it needs a stage of its own: a stage's condition is evaluated before
-# that stage's variables are expanded, so a group variable cannot gate the stage it is linked to. Gating from the stage in front also
-# means the release stage is skipped outright rather than started and abandoned, so its Environment's approvals are never raised.
+# environment's group rather than anything in this file.
 parameters:
   - name: p_publishEnvironment
     type: string
@@ -16,81 +14,15 @@ parameters:
     type: string
 
 stages:
-  - stage: Gate_${{ parameters.p_publishEnvironment }}
-    displayName: Gate ${{ parameters.p_publishEnvironment }}
-    dependsOn: ${{ parameters.p_dependsOn }}
-    # A pull request validates the merge rather than a branch, so it never releases whatever the environment allows. Build.Reason is a
-    # predefined pipeline variable, which is why this one test can live in a stage condition when the branch list cannot.
-    condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
-    variables:
-      - group: standfast-${{ lower(parameters.p_publishEnvironment) }}-vars
-    jobs:
-      - job: BranchGateJob
-        displayName: Check the branch may release
-        pool:
-          vmImage: $(g_VmImage)
-        steps:
-          # Nothing here reads the repository, and skipping the checkout is most of this job's run time.
-          - checkout: none
-
-          - task: PowerShell@2
-            name: BranchGate
-            displayName: Evaluate a_AllowedBranches
-            env:
-              # Passed as environment variables rather than expanded into the script text, so a pattern containing a quote cannot break it.
-              ALLOWED_BRANCHES: $(a_AllowedBranches)
-              SOURCE_BRANCH: $(Build.SourceBranch)
-              PUBLISH_ENVIRONMENT: ${{ parameters.p_publishEnvironment }}
-            inputs:
-              targetType: inline
-              pwsh: true
-              script: |
-                $ErrorActionPreference = 'Stop'
-
-                # Compared on the short name, so a pattern may be written either way round: 'release/*' and 'refs/heads/release/*' both work.
-                $branch = $env:SOURCE_BRANCH -replace '^refs/heads/', ''
-                $allowed = $env:ALLOWED_BRANCHES
-
-                # A variable the group does not define arrives as its own unexpanded macro text, which means "not configured" exactly as empty does.
-                # The marker is assembled rather than written out, because the agent expands macro syntax in this script too: spelled literally it
-                # would become the variable's value and then match every configured value.
-                $unsetMarker = '$' + '(a_AllowedBranches)'
-
-                if ([string]::IsNullOrWhiteSpace($allowed) -or $allowed -eq $unsetMarker) {
-                  Write-Host "a_AllowedBranches is not set for $env:PUBLISH_ENVIRONMENT, so any branch that triggers the pipeline may release."
-                  Write-Host "##vso[task.setvariable variable=v_IsAllowedBranch;isOutput=true]true"
-                  return
-                }
-
-                # Comma, semicolon or one per line, so the variable reads the same however it was typed into the group.
-                $patterns = $allowed -split '[,;\r\n]' | ForEach-Object { $_.Trim() } | Where-Object { $_ }
-
-                $isAllowed = $false
-                foreach ($pattern in $patterns) {
-                  # A trailing slash is shorthand for everything beneath a path, so 'release/' and 'release/*' mean the same thing.
-                  $candidate = $pattern -replace '^refs/heads/', ''
-                  if ($candidate.EndsWith('/')) {
-                    $candidate += '*'
-                  }
-
-                  if ($branch -like $candidate) {
-                    $isAllowed = $true
-                    Write-Host "Branch '$branch' matches '$pattern', so $env:PUBLISH_ENVIRONMENT will be released."
-                    break
-                  }
-                }
-
-                if (-not $isAllowed) {
-                  Write-Host "Branch '$branch' matches none of [$($patterns -join ', ')], so the $env:PUBLISH_ENVIRONMENT release stage is skipped."
-                }
-
-                Write-Host "##vso[task.setvariable variable=v_IsAllowedBranch;isOutput=true]$($isAllowed.ToString().ToLowerInvariant())"
-
   - stage: Release_${{ parameters.p_publishEnvironment }}
     displayName: Release ${{ parameters.p_publishEnvironment }}
-    dependsOn: Gate_${{ parameters.p_publishEnvironment }}
-    # A skipped gate leaves the output unset, which is not 'true', so a pull request stops here as well.
-    condition: and(succeeded(), eq(dependencies.Gate_${{ parameters.p_publishEnvironment }}.outputs['BranchGateJob.BranchGate.v_IsAllowedBranch'], 'true'))
+    dependsOn: ${{ parameters.p_dependsOn }}
+    # a_AllowedBranches is a pipe-delimited list of the branches that may release here, written without the refs/heads/ prefix, for
+    # example "main|release/1.2". An undefined or empty variable reads as an empty string, which allows every branch.
+    condition: >-
+      and(succeeded(),
+          or(eq(variables['a_AllowedBranches'], ''),
+             containsValue(split(variables['a_AllowedBranches'], '|'), replace(variables['Build.SourceBranch'], 'refs/heads/', ''))))
     variables:
       - group: standfast-${{ lower(parameters.p_publishEnvironment) }}-vars
     jobs:
