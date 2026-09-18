@@ -106,9 +106,9 @@ StandFast.slnx
 
 ## Running it locally
 
-Azurite supplies Table Storage, and the development settings already point at it. Install Azurite from npm, start it, then start the app with `dotnet run --project src/StandFast.Ui`.
+Azurite supplies Table Storage. Install it from npm, start it, then start the app with `dotnet run --project src/StandFast.Ui`.
 
-Sign-in needs an application registered with your OpenID Connect provider. In Kinde, create a **Back-end web** application, add `https://localhost:7111/signin-oidc` to its allowed callback URLs and `https://localhost:7111/signout-callback-oidc` to its allowed logout redirect URLs, then put `Oidc:Authority` (your `https://yourbusiness.kinde.com` domain), `Oidc:ClientId` and `Oidc:ClientSecret` in user secrets rather than in `appsettings.json`. The project already carries a `UserSecretsId`.
+Everything sensitive goes into user secrets rather than into `appsettings.json`; the project already carries a `UserSecretsId`. At a minimum that is `AzureTableStorage:ConnectionString` set to `UseDevelopmentStorage=true` for Azurite, and the three OIDC values. Sign-in needs an application registered with your OpenID Connect provider: in Kinde, create a **Back-end web** application, add `https://localhost:7111/signin-oidc` to its allowed callback URLs and `https://localhost:7111/signout-callback-oidc` to its allowed logout redirect URLs, then set `Oidc:Authority` (your `https://yourbusiness.kinde.com` domain), `Oidc:ClientId` and `Oidc:ClientSecret`. [Everything you set](#everything-you-set) lists the rest.
 
 Run the tests with `dotnet test`.
 
@@ -124,23 +124,37 @@ The release stage creates the resource group, then deploys the platform resource
 
 ### Everything you set
 
-Broken down by environment <env> for `loc` (Local Development), `dev` (Development cloud-based environment), and `prd` (Production cloud-based environment):
+Local development on the left, a deployed environment on the right. `<env>` is the lower-cased environment code of a cloud environment, so the group is `standfast-prd-vars` for production. `azure-pipelines.yaml` currently includes one release stage, PRD; a `dev` environment is a second template block plus its own `standfast-dev-vars` group.
 
 | Local Development Setting Location | Local Development Key                                        | Local Development Value                  | Cloud ENV  Setting Location                        | Cloud ENV Key                                                | Cloud ENV Value             | Notes                                                        |
 | ---------------------------------- | ------------------------------------------------------------ | ---------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------ | --------------------------- | ------------------------------------------------------------ |
 | `secrets.json`                     | `Oidc:Authority`                                             | (HTTPS Url)                              | `standfast-<env>-vars` group                       | `a_OidcAuthority`                                            | (HTTPS Url)                 | Your provider's issuer URL, for example `https://yourbusiness.kinde.com`. Every endpoint is read from its discovery document, so none is configured individually. |
 | `secrets.json`                     | `Oidc:ClientId`                                              | (Client ID)                              | `standfast-<env>-vars` group                       | `a_OidcClientId`                                             | (Client ID)                 | Confidential client id from the provider.                    |
-| `secrets.json`                     | `Oidc:ClientSecret`                                          | (Client Secret)                          | `standfast-<env>-vars` group                       | `a_OidcClientSecret`                                         | (Client Secret)             | Client secret from the provider. Mark this variable as secret if a group variable. It can be stored in Key Vault as `oidc-client-secret` and surfaced to the container app as a Key Vault reference. |
-| `secrets.json`                     | `StandFastUi:DisplayTimeZoneId`                              | (e.g., `Central Standard Time`)          | `standfast-<env>-vars` group                       | `a_DisplayTimeZoneId`                                        |                             | The [time zone id](#time-zones) the board resolves "today" in. Empty falls back to the server time zone. |
+| `secrets.json`                     | `Oidc:ClientSecret`                                          | (Client Secret)                          | `standfast-<env>-vars` group                       | `a_OidcClientSecret`                                         | (Client Secret)             | Client secret from the provider. Mark the group variable as secret. Bicep always stores it in Key Vault as `oidc-client-secret` and gives the container app a Key Vault reference, so the value never becomes a plain environment variable. |
+| `secrets.json`, optional           | `StandFastUi:DisplayTimeZoneId`                              | (e.g., `Central Standard Time`)          | `standfast-<env>-vars` group                       | `a_DisplayTimeZoneId`                                        | (e.g., `Central Standard Time`) | The [time zone id](#time-zones) the board resolves "today" in. The group variable must exist, because the pipeline passes it on every run; leave its value empty and the app falls back to the server time zone, which in the container is UTC. Locally, omitting it falls back to your machine's zone. |
 | (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-<env>-vars` group                       | `a_RegionToken`                                              | (e.g., `usnorth`)           | Region segment of every resource name                        |
 | (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-<env>-vars` group                       | `a_Location`                                                 | (e.g., `northcentralus`)    | Azure region everything is created in                        |
 | (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-vars` group                             | `a_AppBase`                                                  | `standfast`                 | First segment of every resource name and the `Product` tag. Identical across environments |
-| `secrets.json`                     | `AzureTableStorage:ConnectionString`                         | `UseDevelopmentStorage=true` for Azurite |                                                    |                                                              |                             | Table storage for data records                               |
-| `secrets.json`                     | `AzureTableStorage:TablePrefix`                              | `StandFastLoc`                           | `appsettings.json`, `appsettings.Development.json` | `AzureTableStorage:TablePrefix`                              | `StandFast`, `StandFastDev` | Prefix to use for all tables created in the storage account. |
-| `secrets.json`                     | `AzureTableStorage:CreateTablesOnStartup`                    | `true`                                   | `appsettings.json`                                 | `AzureTableStorage:CreateTablesOnStartup`                    | `true`                      | (OPTIONAL) Creates missing tables on first use. Turn it off where the identity has no table-create rights. |
+| `secrets.json`                     | `AzureTableStorage:ConnectionString`                         | `UseDevelopmentStorage=true` for Azurite | (n/a)                                              | (n/a)                                                        | (n/a)                       | Table storage for data records. Required locally: no committed file sets it, and startup fails unless either this or `ServiceUri` is present. Left empty in the cloud, where `ServiceUri` and the managed identity are used instead. |
+| `appsettings.Development.json`     | `AzureTableStorage:TablePrefix`                              | `StandFastDev`                           | (n/a)                                              | (n/a)                                                        | (n/a)                       | Prefix on every table name, so one storage account can hold several environments. Committed, and overridable in `secrets.json` if you want your own. Letters and digits only, starting with a letter, 21 characters at most. Set by Bicep in the cloud. |
+| `appsettings.json`, optional       | `AzureTableStorage:CreateTablesOnStartup`                    | `true`                                   | `appsettings.json`, optional                       | `AzureTableStorage:CreateTablesOnStartup`                    | `true`                      | Already `true` in the committed file, so there is nothing to do unless you are turning it off where the identity has no table-create rights. |
 | `appsettings.json`                 | `Oidc:CallbackPath`, `Oidc:SignedOutCallbackPath`, `Oidc:SignedOutRedirectUri` | (See file)                               | `appsettings.json`                                 | `Oidc:CallbackPath`, `Oidc:SignedOutCallbackPath`, `Oidc:SignedOutRedirectUri` | (See file)                  | Standard ASP.NET Core paths. Both callback paths must be registered with the provider; the release stage prints the exact URLs to register. |
-| (n/a)                              | (n/a)                                                        | (n/a)                                    | (n/a)                                              | `AzureTableStorage:ServiceUri`                               |                             | Set by Bicep from the storage account it creates. The app then authenticates with `DefaultAzureCredential` and no key is involved. |
-|                                    |                                                              |                                          |                                                    |                                                              |                             |                                                              |
+| `appsettings.json`, optional       | `Oidc:Scopes`                                                | `openid`, `profile`, `email`             | `appsettings.json`, optional                       | `Oidc:Scopes`                                                | `openid`, `profile`, `email` | Anything listed is added to those three rather than replacing them. Only needed if your provider requires an extra scope. |
+
+#### Set for you
+
+Nothing here is yours to fill in. It is listed so a value you find in the deployed app can be traced back to what produced it.
+
+| Key                                   | Where it comes from                                          |
+| ------------------------------------- | ------------------------------------------------------------ |
+| `AzureTableStorage:ServiceUri`        | Bicep, from the storage account it creates. The app then authenticates with `DefaultAzureCredential` and no key is involved. Empty locally, which is what makes the connection string take over. |
+| `AzureTableStorage:TablePrefix`       | Bicep, as `a_AppBase` + the environment code, so `standfastPRD`. Overrides the committed `appsettings.json` value in the cloud. |
+| `StandFastUi:DataProtectionBlobUri`   | Bicep, from the same storage account. Holds the shared Data Protection key ring, which more than one replica requires. |
+| `ASPNETCORE_ENVIRONMENT`              | Bicep, always `Production`, in every cloud environment including DEV. `appsettings.Development.json` is therefore a local-only file and never applies to a deployed environment. |
+| Resource group, registry login server, image tag | The release stage, from `a_AppBase`, `a_RegionToken` and the build number. |
+| `p_MinReplicas`, `p_MaxReplicas`      | `infra/main.bicep` defaults of 1 and 3. No variable group feeds them; change the defaults to change the scale range, and read [What bites Blazor Server specifically](#what-bites-blazor-server-specifically) before dropping the minimum to zero. |
+
+The `g_` variables declared in `azure-pipelines.yaml` and the `v_` values the release stage computes are part of the pipeline rather than settings, and need nothing from you.
 
 ### Naming by location
 
@@ -174,6 +188,7 @@ Later sources override earlier ones: `appsettings.json` is the base, `appsetting
 | `US Eastern Standard Time` | `America/Indiana/Indianapolis` | Indiana (East) |
 
 For anywhere else, `TimeZoneInfo.GetSystemTimeZones()` lists every id the .NET C# runtime accepts.
+
 # 📐 Architecture Summary
 
 ## Layering
@@ -391,3 +406,4 @@ What you set up once in Azure DevOps is in [Configuration](#configuration).
 - Added an F5 launch configuration and build/test tasks for the editor, with Hot Reload switched off to stop a debugger error appearing in the Debug Console on every run.
 - Coloured the notes icon on a board card once that person has an update recorded for the date, so it is obvious who still owes one, with the outline on the card left to mark whose panel is open.
 - Changed Cancel on the update panel to always be available and to close the panel, asking first whether unsaved edits should be lost.
+- Corrected the configuration table against what the code and the deployment actually do, and split out a short list of the values that are filled in for you.
