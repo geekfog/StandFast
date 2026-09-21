@@ -72,7 +72,7 @@ Everything is keyed by standup, person, and date, so navigating to last Tuesday 
 | ------- | ----------- |
 | Platform | .NET 10, Linux containers |
 | Development Environment | Visual Studio Code or Visual Studio 2026 |
-| Compiler | .NET SDK 10.0.400 (pinned in `global.json`) |
+| Compiler | .NET SDK 10.0.400, pinned in `global.json` and in the `SDK_VERSION` argument of `Dockerfile`; the two must be bumped together |
 | Programming Language | C# 14 |
 | UI | Blazor Server (interactive server render mode) with MudBlazor 9 |
 | Markdown | Markdig for rendering, a custom toolbar plus a small JavaScript selection helper for editing |
@@ -467,4 +467,4 @@ One thing to confirm on the first run: the variable group is linked to the relea
 - Documented the one permission the deployment principal needs beyond Contributor, without which the first deployment fails partway through with an authorization error.
 - Stopped requiring a signed-in user for stylesheets, scripts and the Blazor framework files, which were being sent through the identity provider like any page.
 - Added a site icon, so the browser stops asking for one that was never there and reporting it as a missing file.
-- Made the container build fail when the Blazor startup script is missing from the published output, instead of shipping an app that loads but cannot respond to a click.
+- Fixed the deployed app loading but never responding to a click: the build was picking up whatever .NET SDK was newest, and the newest one stopped including Blazor's startup script in the published output. The build now uses one fixed SDK version and fails outright if that script is missing.
