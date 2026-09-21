@@ -6,7 +6,7 @@ namespace StandFast.Infrastructure.Tests.Integration;
 /// </summary>
 public sealed class AzuriteEndpointTests
 {
-    /// <summary>A port nothing listens on. The connection is refused rather than timing out, which is the case that used to escape the probe.</summary>
+    /// <summary>A port nothing listens on, so the connection is refused outright instead of timing out.</summary>
     private const int ClosedPort = 10099;
 
     private const string UnroutableHost = "0.0.0.1";

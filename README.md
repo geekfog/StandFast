@@ -72,7 +72,7 @@ Everything is keyed by standup, person, and date, so navigating to last Tuesday 
 | ------- | ----------- |
 | Platform | .NET 10, Linux containers |
 | Development Environment | Visual Studio Code or Visual Studio 2026 |
-| Compiler | .NET SDK 10.0.400, pinned in `global.json` and in the `SDK_VERSION` argument of `Dockerfile`; the two must be bumped together |
+| Compiler | .NET SDK 10.0.400 (pinned in `global.json`) |
 | Programming Language | C# 14 |
 | UI | Blazor Server (interactive server render mode) with MudBlazor 9 |
 | Markdown | Markdig for rendering, a custom toolbar plus a small JavaScript selection helper for editing |
@@ -410,6 +410,8 @@ If those three were not needed, the same Bicep would happily scale this to zero 
 
 Building in the registry rather than on the agent means there is no Docker registry service connection and no Docker daemon in the pipeline. The cost is that each environment builds its own image rather than promoting one artefact; with a registry per environment that would need an import step either way.
 
+`Dockerfile` restores the project files in their own layer so a source-only change keeps the cached restore, and then publishes with the sources in place, restoring a second time. That second restore is what makes the image correct: a restore evaluated before the Razor components exist settles the project's static web assets without Blazor's framework files among them, and a publish reusing that result omits `wwwroot/_framework`. Such an image serves every page, stylesheet and package asset while returning 404 for `blazor.web.js`, which renders the app and leaves it unable to respond to a click. Nothing else about it looks wrong, which is why the build asserts that file exists.
+
 What you set up once in Azure DevOps is in [Configuration](#configuration).
 
 ### Branch filtering
@@ -467,4 +469,4 @@ One thing to confirm on the first run: the variable group is linked to the relea
 - Documented the one permission the deployment principal needs beyond Contributor, without which the first deployment fails partway through with an authorization error.
 - Stopped requiring a signed-in user for stylesheets, scripts and the Blazor framework files, which were being sent through the identity provider like any page.
 - Added a site icon, so the browser stops asking for one that was never there and reporting it as a missing file.
-- Fixed the deployed app loading but never responding to a click: the build was picking up whatever .NET SDK was newest, and the newest one stopped including Blazor's startup script in the published output. The build now uses one fixed SDK version and fails outright if that script is missing.
+- Fixed the deployed app loading but never responding to a click: the container build was leaving Blazor's startup script out of the published output, so the browser asked for a file that was not there. The build now also checks the script is present and fails rather than shipping an app that cannot work.

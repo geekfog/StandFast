@@ -2,14 +2,9 @@
 
 # Build and publish the Blazor Server app, then run it on the chiseled ASP.NET runtime.
 # The "extra" chiseled variant is required: the app uses ICU and the tz database for time zone aware meeting dates, which the plain chiseled image omits.
-#
-# The SDK is pinned to an exact patch and must stay equal to the version in global.json. The floating "10.0" tag moved to 10.0.401, whose publish emits
-# no wwwroot/_framework at all, which ships an app that renders and then 404s its own startup script. The runtime tag stays floating so the container
-# keeps picking up runtime security patches, which do not affect what publish produces.
-ARG SDK_VERSION=10.0.400
-ARG RUNTIME_VERSION=10.0
+ARG DOTNET_VERSION=10.0
 
-FROM mcr.microsoft.com/dotnet/sdk:${SDK_VERSION} AS build
+FROM mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION} AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
@@ -22,15 +17,17 @@ COPY src/StandFast.Ui/StandFast.Ui.csproj src/StandFast.Ui/
 RUN dotnet restore src/StandFast.Ui/StandFast.Ui.csproj
 
 COPY src/ src/
-RUN dotnet publish src/StandFast.Ui/StandFast.Ui.csproj --configuration ${BUILD_CONFIGURATION} --no-restore --output /app/publish
 
-# blazor.web.js comes from the SDK rather than from this repository, so the SDK version decides whether it lands in the publish output. An image
-# without it starts and serves pages, and the only symptom is a 404 in the browser console and an app that never responds to a click. This guard is
-# what caught that, so it stays: it turns a silently broken image into a failed build the next time an SDK changes this.
-RUN dotnet --version && ls -l /app/publish/wwwroot/_framework \
- && test -f /app/publish/wwwroot/_framework/blazor.web.js
+# The publish restores with the sources in place. A restore evaluated before the Razor components exist settles the project's static web assets
+# without Blazor's framework files among them, and a publish reusing that result omits wwwroot/_framework: the image then serves every page,
+# stylesheet and package asset while returning 404 for blazor.web.js, which renders the app and leaves it unable to respond to a click. The restore
+# layer above is still worth its cache, because the packages it fetched are already in the image.
+RUN dotnet publish src/StandFast.Ui/StandFast.Ui.csproj --configuration ${BUILD_CONFIGURATION} --output /app/publish
 
-FROM mcr.microsoft.com/dotnet/aspnet:${RUNTIME_VERSION}-noble-chiseled-extra AS runtime
+# Everything about such an image looks correct until a browser console is open, so its startup script is asserted to exist here.
+RUN test -f /app/publish/wwwroot/_framework/blazor.web.js
+
+FROM mcr.microsoft.com/dotnet/aspnet:${DOTNET_VERSION}-noble-chiseled-extra AS runtime
 WORKDIR /app
 
 # Container Apps ingress talks plain HTTP to the container and terminates TLS itself, so the app listens on a single HTTP port.

@@ -70,9 +70,8 @@ try
     app.UseAuthorization();
     app.UseAntiforgery();
 
-    // Stylesheets, scripts and the Blazor framework files are not secrets, and the fallback policy would otherwise put every one of them behind a
-    // sign-in: the browser is sent to the identity provider for each asset, which at best styles the sign-in page wrongly and at worst fails outright
-    // because an asset request cannot complete an interactive redirect.
+    // The fallback policy covers every endpoint, and each stylesheet, script and Blazor framework file is one, so they opt out explicitly. None of
+    // them is secret, and a browser fetching an asset cannot complete an interactive sign-in redirect.
     app.MapStaticAssets().AllowAnonymous();
     app.MapStandFastAuthentication();
     app.MapStandFastBackup();
