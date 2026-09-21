@@ -19,6 +19,12 @@ RUN dotnet restore src/StandFast.Ui/StandFast.Ui.csproj
 COPY src/ src/
 RUN dotnet publish src/StandFast.Ui/StandFast.Ui.csproj --configuration ${BUILD_CONFIGURATION} --no-restore --output /app/publish
 
+# blazor.web.js is contributed by the SDK rather than by this repository, so the floating sdk tag decides whether it lands in the publish output. An
+# image without it starts and serves pages, and the only symptom is a 404 in the browser console and an app with no interactivity, so fail here
+# instead. The SDK version is printed because it is the variable that makes this differ between a developer machine and the build agent.
+RUN dotnet --version && ls -l /app/publish/wwwroot/_framework \
+ && test -f /app/publish/wwwroot/_framework/blazor.web.js
+
 FROM mcr.microsoft.com/dotnet/aspnet:${DOTNET_VERSION}-noble-chiseled-extra AS runtime
 WORKDIR /app
 

@@ -466,3 +466,5 @@ One thing to confirm on the first run: the variable group is linked to the relea
 - Fixed the deployment creating its resource group under the wrong name, so it is now named for the application, environment and region rather than the application alone.
 - Documented the one permission the deployment principal needs beyond Contributor, without which the first deployment fails partway through with an authorization error.
 - Stopped requiring a signed-in user for stylesheets, scripts and the Blazor framework files, which were being sent through the identity provider like any page.
+- Added a site icon, so the browser stops asking for one that was never there and reporting it as a missing file.
+- Made the container build fail when the Blazor startup script is missing from the published output, instead of shipping an app that loads but cannot respond to a click.
