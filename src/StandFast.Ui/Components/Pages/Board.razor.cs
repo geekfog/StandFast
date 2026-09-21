@@ -19,6 +19,7 @@ public partial class Board
 
     private IReadOnlyList<StandupDto> standups = [];
     private StandupBoardDto? board;
+    private IReadOnlyCollection<DateOnly> presentedDates = [];
     private TimeZoneInfo timeZone = TimeZoneInfo.Local;
     private DateOnly today;
     private Guid? selectedPersonId;
@@ -74,7 +75,11 @@ public partial class Board
 
         loadedStandupId = SelectedStandupId;
         loadedDate = SelectedDate;
-        board = await BoardService.GetBoardAsync(SelectedStandupId, SelectedDate);
+
+        IReadOnlyList<DateOnly> week = MeetingCalendar.Week(SelectedDate);
+        (board, presentedDates) = (
+            await BoardService.GetBoardAsync(SelectedStandupId, SelectedDate),
+            await BoardService.GetPresentedDatesAsync(SelectedStandupId, week[0], week[^1]));
     }
 
     private IReadOnlyList<BoardParticipantDto> ParticipantsIn(AttendanceState state) =>
@@ -128,5 +133,20 @@ public partial class Board
         }
 
         board = board with { Participants = [.. board.Participants.Select(participant => participant.PersonId == updated.PersonId ? updated : participant)] };
+        SyncPresentedMarker();
+    }
+
+    /// <summary>Holds the week strip's marker for the selected date in step with the board after a tap, so the week does not have to be refetched.</summary>
+    private void SyncPresentedMarker()
+    {
+        bool hasPresented = board?.Participants.Any(participant => participant.State == AttendanceState.Presented) == true;
+        if (hasPresented == presentedDates.Contains(SelectedDate))
+        {
+            return;
+        }
+
+        presentedDates = hasPresented
+            ? [.. presentedDates, SelectedDate]
+            : [.. presentedDates.Where(date => date != SelectedDate)];
     }
 }

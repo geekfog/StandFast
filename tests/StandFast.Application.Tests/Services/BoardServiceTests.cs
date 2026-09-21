@@ -126,6 +126,55 @@ public sealed class BoardServiceTests
         });
 
     [Fact]
+    public async Task GetPresentedDatesAsync_ReturnsOnlyDatesSomeonePresentedOn()
+    {
+        BoardTestContext context = new();
+        Person person = await context.AddMemberAsync("Ada", "Lovelace");
+
+        // Presented yesterday, only marked available today: today is not a finished standup and must not be marked.
+        await context.Entries.UpsertAsync(new StandupEntry
+        {
+            StandupId = context.Standup.Id,
+            PersonId = person.Id,
+            MeetingDate = BoardTestContext.Yesterday,
+            State = AttendanceState.Presented,
+            PresentedUtc = BoardTestContext.Now,
+        });
+        await context.Entries.UpsertAsync(new StandupEntry
+        {
+            StandupId = context.Standup.Id,
+            PersonId = person.Id,
+            MeetingDate = BoardTestContext.Today,
+            State = AttendanceState.Available,
+            MarkedAvailableUtc = BoardTestContext.Now,
+        });
+
+        IReadOnlyCollection<DateOnly> dates = await context.Service.GetPresentedDatesAsync(context.Standup.Id, BoardTestContext.Today.AddDays(-7), BoardTestContext.Today);
+
+        Assert.Equal([BoardTestContext.Yesterday], dates);
+    }
+
+    [Fact]
+    public async Task GetPresentedDatesAsync_ExcludesDatesOutsideTheRange()
+    {
+        BoardTestContext context = new();
+        Person person = await context.AddMemberAsync("Ada", "Lovelace");
+
+        await context.Entries.UpsertAsync(new StandupEntry
+        {
+            StandupId = context.Standup.Id,
+            PersonId = person.Id,
+            MeetingDate = BoardTestContext.Today.AddDays(-30),
+            State = AttendanceState.Presented,
+            PresentedUtc = BoardTestContext.Now,
+        });
+
+        IReadOnlyCollection<DateOnly> dates = await context.Service.GetPresentedDatesAsync(context.Standup.Id, BoardTestContext.Today.AddDays(-7), BoardTestContext.Today);
+
+        Assert.Empty(dates);
+    }
+
+    [Fact]
     public async Task SaveUpdateAsync_IgnoresSomeoneWhoIsNotOnTheRoster()
     {
         BoardTestContext context = new();

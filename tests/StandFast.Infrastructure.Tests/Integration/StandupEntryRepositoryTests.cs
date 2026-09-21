@@ -90,6 +90,53 @@ public sealed class StandupEntryRepositoryTests : IClassFixture<AzuriteTableFixt
         Assert.Equal("Theirs", theirs.Current?.Update);
     }
 
+    [AzuriteFact]
+    public async Task GetPresentedDatesAsync_ReturnsOnlyPresentedDatesInsideTheRange()
+    {
+        await SeedAsync(Today.AddDays(-10), "Before the range", AttendanceState.Presented);
+        await SeedAsync(Today.AddDays(-2), "Presented", AttendanceState.Presented);
+        await SeedAsync(Today.AddDays(-1), "Only marked available");
+        await SeedAsync(Today.AddDays(3), "After the range", AttendanceState.Presented);
+
+        IReadOnlyCollection<DateOnly> dates = await fixture.Entries.GetPresentedDatesAsync(standupId, Today.AddDays(-6), Today);
+
+        Assert.Equal([Today.AddDays(-2)], dates);
+    }
+
+    [AzuriteFact]
+    public async Task GetPresentedDatesAsync_CoversEveryParticipantAndReportsEachDateOnce()
+    {
+        Guid otherPersonId = Guid.CreateVersion7();
+        await SeedAsync(Today, "Mine", AttendanceState.Presented);
+        await fixture.Entries.UpsertAsync(new StandupEntry
+        {
+            StandupId = standupId,
+            PersonId = otherPersonId,
+            MeetingDate = Today,
+            State = AttendanceState.Presented,
+        });
+
+        IReadOnlyCollection<DateOnly> dates = await fixture.Entries.GetPresentedDatesAsync(standupId, Today.AddDays(-6), Today);
+
+        Assert.Equal([Today], dates);
+    }
+
+    [AzuriteFact]
+    public async Task GetPresentedDatesAsync_IgnoresOtherStandups()
+    {
+        await fixture.Entries.UpsertAsync(new StandupEntry
+        {
+            StandupId = Guid.CreateVersion7(),
+            PersonId = personId,
+            MeetingDate = Today,
+            State = AttendanceState.Presented,
+        });
+
+        IReadOnlyCollection<DateOnly> dates = await fixture.Entries.GetPresentedDatesAsync(standupId, Today.AddDays(-6), Today);
+
+        Assert.Empty(dates);
+    }
+
     private Task SeedAsync(DateOnly meetingDate, string update, AttendanceState state = AttendanceState.Available) =>
         fixture.Entries.UpsertAsync(new StandupEntry
         {

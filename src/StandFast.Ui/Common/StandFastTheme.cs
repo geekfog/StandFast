@@ -5,12 +5,15 @@ namespace StandFast.Ui.Common;
 /// <summary>The app's MudBlazor theme. Board column colours are derived from these palette entries so the UI stays consistent if the palette changes.</summary>
 public static class StandFastTheme
 {
+    // Tertiary is the red that marks a participant with an update recorded, in each theme. It carries the primary green's saturation and lightness at
+    // hue 355, so it sits at the same visual weight against its background. The exact complement of the green is a plum, which does not read as red.
     public static readonly MudTheme Default = new()
     {
         PaletteLight = new PaletteLight
         {
             Primary = "#2f6f4e",
             Secondary = "#4a6fa5",
+            Tertiary = "#6f2f34",
             AppbarBackground = "#2f6f4e",
             Background = "#f6f7f5",
         },
@@ -18,6 +21,7 @@ public static class StandFastTheme
         {
             Primary = "#6fbf8f",
             Secondary = "#7fa3d6",
+            Tertiary = "#bf6f76",
             AppbarBackground = "#1d2a23",
         },
         LayoutProperties = new LayoutProperties

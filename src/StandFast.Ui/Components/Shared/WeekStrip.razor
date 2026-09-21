@@ -17,6 +17,9 @@
                 <div class="d-flex flex-column align-center">
                     <MudText Typo="Typo.caption">@day.ToString(UiFormats.WeekdayAbbreviation)</MudText>
                     <MudText Typo="Typo.h6">@day.Day</MudText>
+                    @* The marker keeps its space when absent, so the day numbers stay on one baseline across the strip. *@
+                    <span class="@(PresentedDates.Contains(day) ? "standfast-day-marker standfast-day-marker-presented" : "standfast-day-marker")"
+                          aria-label="@(PresentedDates.Contains(day) ? "Has a recorded standup" : null)"></span>
                 </div>
             </MudButton>
         }
@@ -46,6 +49,10 @@
 
     [Parameter]
     public bool HideUnscheduledDays { get; set; }
+
+    /// <summary>Dates on which someone presented. Each is marked, so a week with a finished standup is recognisable without opening it.</summary>
+    [Parameter]
+    public IReadOnlyCollection<DateOnly> PresentedDates { get; set; } = [];
 
     private Task SelectAsync(DateOnly date) => SelectedDateChanged.InvokeAsync(date);
 

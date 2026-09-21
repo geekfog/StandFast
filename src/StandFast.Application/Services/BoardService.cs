@@ -75,6 +75,9 @@ public sealed class BoardService(
         return new StandupEntryPair(entry, pair.Prior).ToParticipantDto(context.Value.Member, context.Value.Person);
     }
 
+    public Task<IReadOnlyCollection<DateOnly>> GetPresentedDatesAsync(Guid standupId, DateOnly from, DateOnly to, CancellationToken cancellationToken = default) =>
+        entries.GetPresentedDatesAsync(standupId, from, to, cancellationToken);
+
     private async Task<BoardParticipantDto?> ChangeStateAsync(Guid standupId, DateOnly meetingDate, Guid personId, Func<AttendanceState, AttendanceState> transition, CancellationToken cancellationToken)
     {
         (StandupMember Member, Person Person)? context = await ResolveParticipantAsync(standupId, personId, cancellationToken);

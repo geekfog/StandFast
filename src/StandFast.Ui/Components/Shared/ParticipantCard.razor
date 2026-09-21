@@ -24,11 +24,11 @@
 
     @* The card body is the tap target that advances a participant, so the per-button actions stop the click from bubbling back up to it. *@
     <div class="d-flex align-center" @onclick:stopPropagation="true">
-        @* Colour marks who already has an update recorded today; the card's outline is what marks the one currently open. *@
+        @* Colour marks who already has an update recorded, in every column; the card's outline is what marks the one currently open. *@
         <MudTooltip Text="@UpdateActionDescription">
             <MudIconButton Icon="@Icons.Material.Filled.EditNote"
                            Size="Size.Small"
-                           Color="@(Participant.HasUpdate ? Color.Primary : Color.Default)"
+                           Color="@(Participant.HasUpdate ? Color.Tertiary : Color.Default)"
                            OnClick="OnSelectAsync"
                            aria-label="@($"{UpdateActionDescription} for {Participant.DisplayName}")" />
         </MudTooltip>

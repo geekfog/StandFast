@@ -28,6 +28,8 @@ public static class MeetingCalendar
 
     public static string ToDateKey(DateOnly date) => date.ToString(DateKeyFormat, System.Globalization.CultureInfo.InvariantCulture);
 
+    public static DateOnly FromDateKey(string dateKey) => DateOnly.ParseExact(dateKey, DateKeyFormat, System.Globalization.CultureInfo.InvariantCulture);
+
     public static string ToRouteValue(DateOnly date) => date.ToString(DateRouteFormat, System.Globalization.CultureInfo.InvariantCulture);
 
     public static DateOnly? ParseRouteValue(string? value) =>

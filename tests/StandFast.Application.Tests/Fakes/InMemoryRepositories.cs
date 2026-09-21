@@ -1,5 +1,6 @@
 using StandFast.Domain.Abstractions;
 using StandFast.Domain.Entities;
+using StandFast.Domain.Enums;
 
 namespace StandFast.Application.Tests.Fakes;
 
@@ -89,5 +90,15 @@ public sealed class InMemoryStandupEntryRepository : IStandupEntryRepository
     {
         entries[(entry.StandupId, entry.PersonId, entry.MeetingDate)] = entry;
         return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlyCollection<DateOnly>> GetPresentedDatesAsync(Guid standupId, DateOnly from, DateOnly to, CancellationToken cancellationToken = default)
+    {
+        IReadOnlyCollection<DateOnly> dates = entries.Values
+            .Where(entry => entry.StandupId == standupId && entry.State == AttendanceState.Presented && entry.MeetingDate >= from && entry.MeetingDate <= to)
+            .Select(entry => entry.MeetingDate)
+            .ToHashSet();
+
+        return Task.FromResult(dates);
     }
 }

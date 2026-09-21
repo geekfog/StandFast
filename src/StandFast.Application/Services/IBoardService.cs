@@ -13,4 +13,7 @@ public interface IBoardService
     Task<BoardParticipantDto?> RevertAsync(Guid standupId, DateOnly meetingDate, Guid personId, CancellationToken cancellationToken = default);
 
     Task<BoardParticipantDto?> SaveUpdateAsync(ParticipantUpdateDto update, CancellationToken cancellationToken = default);
+
+    /// <summary>Dates in the inclusive range on which someone presented, which the week strip marks so a month of standups is scannable.</summary>
+    Task<IReadOnlyCollection<DateOnly>> GetPresentedDatesAsync(Guid standupId, DateOnly from, DateOnly to, CancellationToken cancellationToken = default);
 }

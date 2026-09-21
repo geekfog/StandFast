@@ -50,9 +50,11 @@ The board has three columns and one tap moves a person rightwards through them.
 2. **Present, can be called on** holds the people who are actually there, oldest arrival first so whoever has waited longest sits at the top. Tap a name when you call on them and they finish. Each card here carries the turn that person took at the previous standup, so someone who went late last time can be called early today. Anyone who was not at that standup shows ∞ instead of a number.
 3. **Presented** holds everyone who has given their update, in the order they gave it.
 
+A dot under a date in the week strip means someone presented on that date, so a week with a finished standup is recognisable without opening each day.
+
 An undo arrow on each card moves someone back a column if you mis-tap.
 
-The notes icon on a card opens that person's update panel. The icon is coloured once anything has been recorded for that person on that date, so you can see at a glance who still owes an update, and the card of whoever's panel is open carries an outline.
+The notes icon on a card opens that person's update panel. The icon turns red once anything has been recorded for that person on that date, in all three columns, so you can see at a glance who still owes an update. The card of whoever's panel is open carries an outline.
 
 The panel has three boxes:
 
@@ -298,6 +300,8 @@ Rendering the board is then one range query per roster member, run in parallel. 
 
 `StorageKeys` is the only place a partition or row key is constructed, and its ordering guarantees are covered by tests, because getting this wrong fails silently by showing the wrong prior update rather than by throwing.
 
+"Which dates did this standup finish on" is answered from the same keys without touching a partition directly. Entry partition keys are the standup id followed by the person id, so bracketing the person half with the all-zero and all-ones guids covers exactly one standup's participants, and the inverted row keys bound the date range. Both keys are therefore constrained, the query reads one standup's slice of one week, and only the date column comes back. This is what marks the week strip.
+
 "Which standups is this person on" is the one question the key design cannot answer from a partition, because memberships are partitioned by standup. The People screen gets it from a single unfiltered query over `StandupMembers`, which is a table scan. That is deliberate: the table holds one small row per person per standup, so scanning it costs less than maintaining a second index written on every roster change, and the alternative of one partition query per standup trades a scan for N round trips.
 
 ### Why Table Storage and not SQL
@@ -469,4 +473,6 @@ One thing to confirm on the first run: the variable group is linked to the relea
 - Documented the one permission the deployment principal needs beyond Contributor, without which the first deployment fails partway through with an authorization error.
 - Stopped requiring a signed-in user for stylesheets, scripts and the Blazor framework files, which were being sent through the identity provider like any page.
 - Added a site icon, so the browser stops asking for one that was never there and reporting it as a missing file.
+- Made the notes icon red on any card with an update recorded, in all three columns, so who has already been captured stands out from the green used elsewhere.
+- Marked the dates in the week strip that someone presented on, so a day with a finished standup can be spotted without opening it.
 - Fixed the deployed app loading but never responding to a click: the container build was leaving Blazor's startup script out of the published output, so the browser asked for a file that was not there. The build now also checks the script is present and fails rather than shipping an app that cannot work.

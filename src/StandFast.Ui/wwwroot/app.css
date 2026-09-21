@@ -27,6 +27,18 @@
     outline-offset: -2px;
 }
 
+/* Dot beneath a day in the week strip, marking a date someone presented on. Always laid out, coloured only when the date has one. */
+.standfast-day-marker {
+    border-radius: 50%;
+    height: 0.35rem;
+    margin-top: 0.15rem;
+    width: 0.35rem;
+}
+
+.standfast-day-marker-presented {
+    background-color: var(--mud-palette-success);
+}
+
 .standfast-markdown-toolbar {
     background-color: var(--mud-palette-background-gray);
     border-bottom: 1px solid var(--mud-palette-lines-default);
