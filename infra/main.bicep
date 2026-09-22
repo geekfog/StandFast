@@ -41,8 +41,11 @@ param p_DisplayTimeZoneId string = 'Central Standard Time'
 @description('Custom domain the app answers on, for example standup.yourbusiness.com. Empty leaves the app reachable only on its generated Container Apps URL.')
 param p_CustomDomain string = ''
 
-@description('Name of an existing managed certificate in the environment that already covers the custom domain. Empty issues one. The release stage looks the name up, so the certificate an environment already holds is the one that stays bound.')
-param p_CustomDomainCertificateName string = ''
+@description('Resource id of a certificate in the environment that already covers the custom domain. The release stage looks it up, so the certificate an environment already holds is the one that stays bound.')
+param p_CustomDomainCertificateId string = ''
+
+@description('True issues the managed certificate named <NameBase>mc for the custom domain and binds it. Azure issues a managed certificate only for a hostname an app in the environment already carries, so the release stage sets this on the pass after the one that binds the domain.')
+param p_IssueCustomDomainCertificate bool = false
 
 @description('Replica bounds. The floor stays at one so a scale to zero never drops a live standup circuit.')
 param p_MinReplicas int = 1
@@ -57,9 +60,15 @@ var v_DataProtectionContainer = 'dataprotection'
 var v_DataProtectionBlob = 'keys.xml'
 var v_ClientSecretName = 'oidc-client-secret'
 var v_BindCustomDomain = p_DeployApp && !empty(p_CustomDomain)
-var v_CertificateName = empty(p_CustomDomainCertificateName) ? '${v_NameBase}mc' : p_CustomDomainCertificateName
-var v_IssueCertificate = v_BindCustomDomain && empty(p_CustomDomainCertificateName)
-var v_CertificateId = resourceId('Microsoft.App/managedEnvironments/managedCertificates', v_EnvironmentName, v_CertificateName)
+var v_IssueCertificate = v_BindCustomDomain && p_IssueCustomDomainCertificate
+var v_CertificateName = '${v_NameBase}mc'
+var v_CertificateId = empty(p_CustomDomainCertificateId) ? resourceId('Microsoft.App/managedEnvironments/managedCertificates', v_EnvironmentName, v_CertificateName) : p_CustomDomainCertificateId
+// A domain whose certificate is still to be issued is bound without one, which is the state Azure issues a managed certificate from. It serves HTTPS on the domain once a certificate is bound.
+var v_CustomDomains = !v_BindCustomDomain ? [] : [
+  union({ name: p_CustomDomain }, v_IssueCertificate || !empty(p_CustomDomainCertificateId)
+    ? { bindingType: 'SniEnabled', certificateId: v_CertificateId }
+    : { bindingType: 'Disabled' })
+]
 
 // Built-in role definition ids. The container app holds one user assigned identity and is granted only the data-plane roles it needs.
 var v_Roles = {
@@ -248,13 +257,7 @@ resource containerApp 'Microsoft.App/containerApps@2025-07-01' = if (p_DeployApp
         targetPort: v_ContainerPort
         transport: 'auto'
         allowInsecure: false
-        customDomains: v_BindCustomDomain ? [
-          {
-            name: p_CustomDomain
-            bindingType: 'SniEnabled'
-            certificateId: v_CertificateId
-          }
-        ] : []
+        customDomains: v_CustomDomains
         // Blazor Server holds a stateful SignalR circuit per browser. Without sticky sessions a reconnect can land on another replica and drop the circuit.
         stickySessions: {
           affinity: 'sticky'

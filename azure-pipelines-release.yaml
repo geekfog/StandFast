@@ -126,29 +126,50 @@ stages:
                       $ErrorActionPreference = 'Stop'
                       $image = "$(v_RegistryLoginServer)/$(g_ImageRepository):$(Build.BuildNumber)"
 
-                      # A managed certificate the environment already holds for the domain is the one the app is bound to, so a release neither reissues it nor leaves a second
-                      # certificate behind. Finding none, the template issues one. The certificates are read over the management API because az containerapp is an extension the agent
-                      # does not carry.
-                      $certificateName = ''
-                      if ('$(a_CustomDomain)') {
-                        $subscriptionId = az account show --query id --output tsv
-                        $certificatesUrl = "https://management.azure.com/subscriptions/$subscriptionId/resourceGroups/$(v_ResourceGroup)/providers/Microsoft.App/managedEnvironments/$(v_EnvironmentName)/managedCertificates?api-version=$(g_ContainerAppsApiVersion)"
-                        $certificateName = [string]((az rest --method get --url $certificatesUrl --output json | ConvertFrom-Json).value |
-                          Where-Object { $_.properties.subjectName -eq '$(a_CustomDomain)' -and $_.properties.provisioningState -eq 'Succeeded' } |
-                          Select-Object -First 1 -ExpandProperty name)
-                        if ($certificateName) {
-                          Write-Host "Reusing managed certificate $certificateName for $(a_CustomDomain)"
+                      function Invoke-AppDeployment {
+                        param([string[]] $p_Parameters = @())
+
+                        $result = az deployment group create `
+                          --resource-group '$(v_ResourceGroup)' `
+                          --template-file '$(Build.SourcesDirectory)/infra/main.bicep' `
+                          --parameters '@$(Pipeline.Workspace)/parameters.json' p_DeployApp=true p_ContainerImage=$image @p_Parameters `
+                          --query properties.outputs --output json
+
+                        if ($LASTEXITCODE -ne 0) {
+                          throw 'The container app deployment failed.'
                         }
-                        else {
-                          Write-Host "No managed certificate covers $(a_CustomDomain) yet; the deployment issues one"
-                        }
+
+                        return $result | ConvertFrom-Json
                       }
 
-                      $outputs = az deployment group create `
-                        --resource-group '$(v_ResourceGroup)' `
-                        --template-file '$(Build.SourcesDirectory)/infra/main.bicep' `
-                        --parameters '@$(Pipeline.Workspace)/parameters.json' p_DeployApp=true p_ContainerImage=$image p_CustomDomainCertificateName=$certificateName `
-                        --query properties.outputs --output json | ConvertFrom-Json
+                      # The certificate an environment already holds for the domain is the one the app binds, so a release neither reissues it nor leaves a second certificate behind.
+                      # Both collections are read because an uploaded certificate and a managed one live apart, and over the management API because az containerapp is an extension the
+                      # agent does not carry.
+                      $certificateId = ''
+                      if ('$(a_CustomDomain)') {
+                        $subscriptionId = az account show --query id --output tsv
+                        $environmentUrl = "https://management.azure.com/subscriptions/$subscriptionId/resourceGroups/$(v_ResourceGroup)/providers/Microsoft.App/managedEnvironments/$(v_EnvironmentName)"
+
+                        $certificateId = [string](@('managedCertificates', 'certificates') |
+                          ForEach-Object { (az rest --method get --url ($environmentUrl + '/' + $_ + '?api-version=$(g_ContainerAppsApiVersion)') --output json | ConvertFrom-Json).value } |
+                          Where-Object { $_.properties.subjectName -eq '$(a_CustomDomain)' -and $_.properties.provisioningState -eq 'Succeeded' } |
+                          Select-Object -First 1 -ExpandProperty id)
+                      }
+
+                      if ('$(a_CustomDomain)' -and -not $certificateId) {
+                        # Azure issues a managed certificate only for a hostname an app in the environment already carries, so the domain is bound without a certificate first and the
+                        # certificate is issued and bound on the pass after it.
+                        Write-Host "No certificate covers $(a_CustomDomain) yet; binding the domain, then issuing one"
+                        Invoke-AppDeployment | Out-Null
+                        $outputs = Invoke-AppDeployment @('p_IssueCustomDomainCertificate=true')
+                      }
+                      else {
+                        if ($certificateId) {
+                          Write-Host "Binding $(a_CustomDomain) to the certificate the environment already holds: $certificateId"
+                        }
+
+                        $outputs = Invoke-AppDeployment @("p_CustomDomainCertificateId=$certificateId")
+                      }
 
                       $applicationUrl = $outputs.o_ApplicationUrl.value
                       Write-Host "StandFast ${{ parameters.p_publishEnvironment }} is available at $applicationUrl"

@@ -477,7 +477,9 @@ One thing to confirm on the first run: the variable group is linked to the relea
 
 `a_CustomDomain` in the environment's variable group is the domain the app answers on. The Bicep binds it to the container app's ingress, which is what keeps it in place: a deployment rewrites the app's whole ingress configuration, so a domain bound by hand in the portal lasts only until the next release.
 
-The certificate is a free Azure managed certificate. Before deploying the app, the release stage reads the environment's managed certificates and passes the name of the one whose subject is the domain, so an environment that already has a certificate keeps it rather than collecting a second one; finding none, the deployment issues one named `<AppBase><Env><Region>mc`. Either way the certificate renews itself.
+The certificate is a free Azure managed certificate. Before deploying the app, the release stage reads the environment's certificates, both uploaded and managed, and passes the id of the one whose subject is the domain, so an environment that already has a certificate keeps it rather than collecting a second one.
+
+Finding none, the stage deploys twice: once binding the domain with no certificate on it, then again to issue `<AppBase><Env><Region>mc` and bind it. Azure issues a managed certificate only for a hostname that an app in the environment already carries, so there is no single pass that can do both. Later releases find that certificate and deploy once. It renews itself.
 
 Two DNS records at your registrar have to exist before the domain is set, because the certificate is issued only after Azure resolves them:
 
