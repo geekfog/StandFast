@@ -42,7 +42,7 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
 
 - **People** are a flat directory: first name, last name, email, active flag, an optional "display as" override, and markdown notes. When "display as" is set, that is how the person appears everywhere, including the roster and the board; otherwise they appear as first and last name. The People screen also lists which standups each person presents at and which they can lead.
 - **Standups** are recurring meeting definitions: name, the days they run on, start time, time zone, and two rosters. The Presenter Roster is who gives an update; the Leader Roster is who may run the meeting. The same person can be on both.
-- **The board** is one standup on one date. It opens on today with the current week across the top, a dropdown picks the standup independently of the date, and a second dropdown under it records who is leading that day.
+- **The board** is one standup on one date. It opens on today with the current week across the top, a dropdown picks the standup independently of the date, and a second dropdown beside it records who is leading that day.
 - **Reports** chart what a standup has recorded over a period. A dropdown picks the report, a second picks the standup, and quick-pick buttons set how far back it runs.
 - **Backup** downloads everything the app holds as one file and restores it again, replacing whatever is there at the time. The audit log and each user's own settings are excluded from both directions.
 - **Appearance** is light or dark, chosen from the toggle in the title bar and remembered for whoever is signed in. It follows that person to any browser or machine they sign in from, and a user who has never chosen gets light.
@@ -55,7 +55,7 @@ The board has three columns and one tap moves a person rightwards through them.
 2. **Present, can be called on** holds the people who are actually there, oldest arrival first so whoever has waited longest sits at the top. Tap a name when you call on them and they finish. Each card here carries the turn that person took at the previous standup, so someone who went late last time can be called early today. Anyone who was not at that standup shows ∞ instead of a number.
 3. **Presented** holds everyone who has given their update, in the order they gave it.
 
-The Leader dropdown under the standup picker records who ran the standup that day. It offers the standup's Leader Roster and nobody else, it is per date rather than per standup, and it can be left empty, so a standup nobody was picked for reads as exactly that.
+The Leader dropdown beside the standup picker records who ran the standup that day. It offers the standup's Leader Roster and nobody else, it is per date rather than per standup, and it can be left empty, so a standup nobody was picked for reads as exactly that.
 
 A dot under a date in the week strip means someone presented on that date, so a week with a finished standup is recognisable without opening each day.
 
@@ -548,4 +548,4 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 - Made a report chart spread across the full width of the browser window and follow it as the window is resized, packing the dates only as tightly as their labels allow before scrolling sideways instead.
 - Gave each standup a second roster of the people who may run it, alongside the roster of the people who present. The Standups screen has a button for each, and someone can be on both.
 - Renamed the People table's Standups column to Presenters and added a Leaders column beside it, so each person's two kinds of involvement read separately.
-- Added a Leader dropdown to the board, under the standup picker, for recording who ran the standup on the day being viewed. It offers that standup's Leader Roster, applies to that date alone, and can be left empty.
+- Added a Leader dropdown to the board, beside the standup picker, for recording who ran the standup on the day being viewed. It offers that standup's Leader Roster, applies to that date alone, and can be left empty.

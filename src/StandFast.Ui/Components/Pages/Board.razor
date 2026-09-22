@@ -7,15 +7,17 @@
 <h1 class="mud-typography mud-typography-h5 mb-4">@SelectedDate.ToDateTime(TimeOnly.MinValue).ToString(UiFormats.LongDate)</h1>
 
 <MudGrid Spacing="3">
-    <MudItem xs="12" md="4">
+    <MudItem xs="12" sm="6" md="2">
         <MudSelect T="Guid" Value="@SelectedStandupId" ValueChanged="OnStandupChangedAsync" Label="Standup" Variant="Variant.Outlined" Dense="true" Disabled="@(standups.Count == 0)">
             @foreach (StandupDto standup in standups)
             {
                 <MudSelectItem T="Guid" Value="@standup.Id">@standup.Name</MudSelectItem>
             }
         </MudSelect>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="2">
         <MudSelect T="Guid?" Value="@board?.LeaderPersonId" ValueChanged="OnLeaderChangedAsync" Label="@RosterLabels.Name(RosterRole.Leader)" Variant="Variant.Outlined" Dense="true" Clearable="true"
-                   Class="mt-3" Disabled="@(LeaderCandidates.Count == 0)" HelperText="@LeaderHelperText">
+                   Disabled="@(LeaderCandidates.Count == 0)" HelperText="@LeaderHelperText">
             @foreach (StandupMemberDto leader in LeaderCandidates)
             {
                 <MudSelectItem T="Guid?" Value="@leader.PersonId">@leader.DisplayName</MudSelectItem>
