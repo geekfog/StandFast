@@ -2,6 +2,7 @@ using StandFast.Application.Auditing;
 using StandFast.Application.Services;
 using StandFast.Application.Validation;
 using StandFast.Domain.Entities;
+using StandFast.Domain.Enums;
 
 namespace StandFast.Application.Tests.Fakes;
 
@@ -32,16 +33,20 @@ public sealed class BoardTestContext
 
     public Standup Standup { get; } = new() { Name = "Platform daily" };
 
-    public async Task<Person> AddMemberAsync(string firstName, string lastName)
+    public async Task<Person> AddMemberAsync(string firstName, string lastName, RosterRole role = RosterRole.Presenter)
     {
         await Standups.UpsertAsync(Standup);
 
         Person person = new() { FirstName = firstName, LastName = lastName, Email = $"{firstName}.{lastName}@example.com".ToLowerInvariant() };
         await People.UpsertAsync(person);
-        await Standups.UpsertMemberAsync(new StandupMember { StandupId = Standup.Id, PersonId = person.Id, DisplayOrder = 10 });
+        await AddMemberAsync(person, role);
 
         return person;
     }
+
+    /// <summary>Puts an existing person on one of the standup's rosters, which is how a test gives somebody a second role.</summary>
+    public Task AddMemberAsync(Person person, RosterRole role) =>
+        Standups.UpsertMemberAsync(new StandupMember { StandupId = Standup.Id, PersonId = person.Id, Role = role, DisplayOrder = 10 });
 }
 
 /// <summary>Captures audit calls so tests can assert an action was recorded without a logging pipeline.</summary>

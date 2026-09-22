@@ -31,4 +31,11 @@ public static class StandupMappings
 
     public static StandupMemberDto ToDto(this StandupMember member, Person person) =>
         new(member.StandupId, member.PersonId, person.DisplayName, person.Email, member.DisplayOrder, member.IsActive);
+
+    /// <summary>
+    /// One roster as the screens show it: memberships joined to their people, in roster order. A membership whose person record has gone is dropped,
+    /// which is what an interrupted delete leaves behind.
+    /// </summary>
+    public static IReadOnlyList<StandupMemberDto> ToRoster(this IEnumerable<StandupMember> members, IReadOnlyDictionary<Guid, Person> peopleById) =>
+        members.Where(member => peopleById.ContainsKey(member.PersonId)).Select(member => member.ToDto(peopleById[member.PersonId])).InRosterOrder();
 }

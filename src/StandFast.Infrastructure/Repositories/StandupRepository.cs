@@ -2,6 +2,7 @@ using Azure;
 using Azure.Data.Tables;
 using StandFast.Domain.Abstractions;
 using StandFast.Domain.Entities;
+using StandFast.Domain.Enums;
 using StandFast.Infrastructure.Mapping;
 using StandFast.Infrastructure.Storage;
 using StandFast.Infrastructure.TableEntities;
@@ -41,25 +42,22 @@ public sealed class StandupRepository(ITableClientProvider tables) : IStandupRep
         TableClient standupClient = await tables.GetAsync(StorageNames.Standups, cancellationToken);
         await standupClient.DeleteEntityAsync(StorageKeys.StandupPartition, StorageKeys.StandupRowKey(id), ETag.All, cancellationToken);
 
-        // The roster is a child partition of the standup, so it is removed with the standup rather than left orphaned.
-        TableClient memberClient = await tables.GetAsync(StorageNames.StandupMembers, cancellationToken);
-        string partitionKey = StorageKeys.MemberPartitionKey(id);
-
-        await foreach (StandupMemberTableEntity entity in memberClient.QueryAsync<StandupMemberTableEntity>(TableClient.CreateQueryFilter($"PartitionKey eq {partitionKey}"), cancellationToken: cancellationToken))
+        // Every roster and the meeting record are child partitions of the standup, so they are removed with it rather than left orphaned.
+        foreach (string childTable in RosterRoleExtensions.InDisplayOrder.Select(StorageNames.MemberTable).Append(StorageNames.StandupMeetings))
         {
-            await memberClient.DeleteEntityAsync(entity.PartitionKey, entity.RowKey, ETag.All, cancellationToken);
+            await ClearPartitionAsync(childTable, StorageKeys.StandupChildPartitionKey(id), cancellationToken);
         }
     }
 
-    public async Task<IReadOnlyList<StandupMember>> GetMembersAsync(Guid standupId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<StandupMember>> GetMembersAsync(Guid standupId, RosterRole role, CancellationToken cancellationToken = default)
     {
-        TableClient client = await tables.GetAsync(StorageNames.StandupMembers, cancellationToken);
-        string partitionKey = StorageKeys.MemberPartitionKey(standupId);
+        TableClient client = await tables.GetAsync(StorageNames.MemberTable(role), cancellationToken);
+        string partitionKey = StorageKeys.StandupChildPartitionKey(standupId);
         List<StandupMember> members = [];
 
         await foreach (StandupMemberTableEntity entity in client.QueryAsync<StandupMemberTableEntity>(TableClient.CreateQueryFilter($"PartitionKey eq {partitionKey}"), cancellationToken: cancellationToken))
         {
-            members.Add(entity.ToDomain());
+            members.Add(entity.ToDomain(role));
         }
 
         return members;
@@ -69,14 +67,14 @@ public sealed class StandupRepository(ITableClientProvider tables) : IStandupRep
     /// The only query in the app without a partition key. Answering "which standups is this person on" means crossing every standup's partition,
     /// and the membership table holds one small row per person per standup, so a scan is cheaper here than a second index written on every change.
     /// </summary>
-    public async Task<IReadOnlyList<StandupMember>> GetAllMembersAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<StandupMember>> GetAllMembersAsync(RosterRole role, CancellationToken cancellationToken = default)
     {
-        TableClient client = await tables.GetAsync(StorageNames.StandupMembers, cancellationToken);
+        TableClient client = await tables.GetAsync(StorageNames.MemberTable(role), cancellationToken);
         List<StandupMember> members = [];
 
         await foreach (StandupMemberTableEntity entity in client.QueryAsync<StandupMemberTableEntity>(cancellationToken: cancellationToken))
         {
-            members.Add(entity.ToDomain());
+            members.Add(entity.ToDomain(role));
         }
 
         return members;
@@ -84,13 +82,38 @@ public sealed class StandupRepository(ITableClientProvider tables) : IStandupRep
 
     public async Task UpsertMemberAsync(StandupMember member, CancellationToken cancellationToken = default)
     {
-        TableClient client = await tables.GetAsync(StorageNames.StandupMembers, cancellationToken);
+        TableClient client = await tables.GetAsync(StorageNames.MemberTable(member.Role), cancellationToken);
         await client.UpsertEntityAsync(member.ToTableEntity(), TableUpdateMode.Replace, cancellationToken);
     }
 
-    public async Task RemoveMemberAsync(Guid standupId, Guid personId, CancellationToken cancellationToken = default)
+    public async Task RemoveMemberAsync(Guid standupId, Guid personId, RosterRole role, CancellationToken cancellationToken = default)
     {
-        TableClient client = await tables.GetAsync(StorageNames.StandupMembers, cancellationToken);
-        await client.DeleteEntityAsync(StorageKeys.MemberPartitionKey(standupId), StorageKeys.MemberRowKey(personId), ETag.All, cancellationToken);
+        TableClient client = await tables.GetAsync(StorageNames.MemberTable(role), cancellationToken);
+        await client.DeleteEntityAsync(StorageKeys.StandupChildPartitionKey(standupId), StorageKeys.MemberRowKey(personId), ETag.All, cancellationToken);
+    }
+
+    public async Task<StandupMeeting?> GetMeetingAsync(Guid standupId, DateOnly meetingDate, CancellationToken cancellationToken = default)
+    {
+        TableClient client = await tables.GetAsync(StorageNames.StandupMeetings, cancellationToken);
+        NullableResponse<StandupMeetingTableEntity> response = await client.GetEntityIfExistsAsync<StandupMeetingTableEntity>(
+            StorageKeys.StandupChildPartitionKey(standupId), StorageKeys.MeetingRowKey(meetingDate), cancellationToken: cancellationToken);
+
+        return response.HasValue ? response.Value!.ToDomain() : null;
+    }
+
+    public async Task UpsertMeetingAsync(StandupMeeting meeting, CancellationToken cancellationToken = default)
+    {
+        TableClient client = await tables.GetAsync(StorageNames.StandupMeetings, cancellationToken);
+        await client.UpsertEntityAsync(meeting.ToTableEntity(), TableUpdateMode.Replace, cancellationToken);
+    }
+
+    private async Task ClearPartitionAsync(string logicalTableName, string partitionKey, CancellationToken cancellationToken)
+    {
+        TableClient client = await tables.GetAsync(logicalTableName, cancellationToken);
+
+        await foreach (TableEntity entity in client.QueryAsync<TableEntity>(TableClient.CreateQueryFilter($"PartitionKey eq {partitionKey}"), select: [nameof(ITableEntity.RowKey)], cancellationToken: cancellationToken))
+        {
+            await client.DeleteEntityAsync(partitionKey, entity.RowKey, ETag.All, cancellationToken);
+        }
     }
 }

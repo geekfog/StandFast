@@ -62,6 +62,11 @@ public partial class Board
 
     private BoardParticipantDto? SelectedParticipant => board?.Participants.FirstOrDefault(participant => participant.PersonId == selectedPersonId);
 
+    private IReadOnlyList<StandupMemberDto> LeaderCandidates => board?.Leaders ?? [];
+
+    /// <summary>Says why the leader picker is empty, since an empty dropdown on its own reads as a standup with nobody available to lead.</summary>
+    private string? LeaderHelperText => LeaderCandidates.Count == 0 ? $"Nobody is on the {RosterLabels.RosterTitle(RosterRole.Leader).ToLowerInvariant()} for this standup." : null;
+
     protected override async Task OnInitializedAsync()
     {
         timeZone = UiOptions.Value.ResolveTimeZone();
@@ -110,6 +115,16 @@ public partial class Board
         }));
 
         return Task.CompletedTask;
+    }
+
+    private async Task OnLeaderChangedAsync(Guid? personId)
+    {
+        if (board is null || !await BoardService.SetLeaderAsync(SelectedStandupId, SelectedDate, personId))
+        {
+            return;
+        }
+
+        board = board with { LeaderPersonId = personId };
     }
 
     private void SelectParticipant(Guid personId) => selectedPersonId = selectedPersonId == personId ? null : personId;

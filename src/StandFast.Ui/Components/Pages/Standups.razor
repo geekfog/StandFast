@@ -16,7 +16,7 @@
         <MudTh>Runs on</MudTh>
         <MudTh>Start</MudTh>
         <MudTh>Status</MudTh>
-        <MudTh Style="width: 10rem;"></MudTh>
+        <MudTh Style="width: 13rem;"></MudTh>
     </HeaderContent>
     <RowTemplate>
         <MudTd DataLabel="Name">
@@ -29,7 +29,10 @@
             <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Default)">@(context.IsActive ? "Active" : "Inactive")</MudChip>
         </MudTd>
         <MudTd>
-            <MudIconButton Icon="@Icons.Material.Filled.Groups" Size="Size.Small" OnClick="@(() => ManageMembersAsync(context))" aria-label="@($"Manage roster for {context.Name}")" />
+            @foreach (RosterRole role in RosterRoleExtensions.InDisplayOrder)
+            {
+                <MudIconButton Icon="@RosterLabels.RosterIcon(role)" Size="Size.Small" OnClick="@(() => ManageMembersAsync(context, role))" aria-label="@($"Manage the {RosterLabels.RosterTitle(role)} for {context.Name}")" />
+            }
             <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => EditAsync(context))" aria-label="@($"Edit {context.Name}")" />
             <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteAsync(context))" aria-label="@($"Delete {context.Name}")" />
         </MudTd>
@@ -72,12 +75,13 @@
         }
     }
 
-    private async Task ManageMembersAsync(StandupDto standup)
+    private async Task ManageMembersAsync(StandupDto standup, RosterRole role)
     {
         DialogParameters<StandupMembersDialog> parameters = new()
         {
             { dialog => dialog.StandupId, standup.Id },
             { dialog => dialog.StandupName, standup.Name },
+            { dialog => dialog.Role, role },
         };
 
         await DialogService.ShowAsync<StandupMembersDialog>(null, parameters);

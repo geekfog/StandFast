@@ -40,9 +40,9 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
 
 ## What it does
 
-- **People** are a flat directory: first name, last name, email, active flag, an optional "display as" override, and markdown notes. When "display as" is set, that is how the person appears everywhere, including the roster and the board; otherwise they appear as first and last name. The People screen also lists which standups each person is on.
-- **Standups** are recurring meeting definitions: name, the days they run on, start time, time zone, and a roster of people.
-- **The board** is one standup on one date. It opens on today with the current week across the top, and a dropdown picks the standup independently of the date.
+- **People** are a flat directory: first name, last name, email, active flag, an optional "display as" override, and markdown notes. When "display as" is set, that is how the person appears everywhere, including the roster and the board; otherwise they appear as first and last name. The People screen also lists which standups each person presents at and which they can lead.
+- **Standups** are recurring meeting definitions: name, the days they run on, start time, time zone, and two rosters. The Presenter Roster is who gives an update; the Leader Roster is who may run the meeting. The same person can be on both.
+- **The board** is one standup on one date. It opens on today with the current week across the top, a dropdown picks the standup independently of the date, and a second dropdown under it records who is leading that day.
 - **Reports** chart what a standup has recorded over a period. A dropdown picks the report, a second picks the standup, and quick-pick buttons set how far back it runs.
 - **Backup** downloads everything the app holds as one file and restores it again, replacing whatever is there at the time. The audit log and each user's own settings are excluded from both directions.
 - **Appearance** is light or dark, chosen from the toggle in the title bar and remembered for whoever is signed in. It follows that person to any browser or machine they sign in from, and a user who has never chosen gets light.
@@ -51,9 +51,11 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
 
 The board has three columns and one tap moves a person rightwards through them.
 
-1. **Roster** holds everyone on the standup, always alphabetical by the name shown. Tap a name as you see them join.
+1. **Roster** holds everyone on the standup's Presenter Roster, always alphabetical by the name shown. Tap a name as you see them join.
 2. **Present, can be called on** holds the people who are actually there, oldest arrival first so whoever has waited longest sits at the top. Tap a name when you call on them and they finish. Each card here carries the turn that person took at the previous standup, so someone who went late last time can be called early today. Anyone who was not at that standup shows ∞ instead of a number.
 3. **Presented** holds everyone who has given their update, in the order they gave it.
+
+The Leader dropdown under the standup picker records who ran the standup that day. It offers the standup's Leader Roster and nobody else, it is per date rather than per standup, and it can be left empty, so a standup nobody was picked for reads as exactly that.
 
 A dot under a date in the week strip means someone presented on that date, so a week with a finished standup is recognisable without opening each day.
 
@@ -282,13 +284,15 @@ Ids are version 7 GUIDs. They sort by creation time, which keeps row keys from f
 
 ## Data model and Azure Table Storage
 
-Six tables, all prefixed with `AzureTableStorage:TablePrefix`:
+Eight tables, all prefixed with `AzureTableStorage:TablePrefix`:
 
 | Table | Partition key | Row key | Holds |
 | ----- | ------------- | ------- | ----- |
 | `People` | `Person` | Person id | The directory. One partition because it is small and always listed whole. |
 | `Standups` | `Standup` | Standup id | Meeting definitions. Same reasoning. |
-| `StandupMembers` | Standup id | Person id | The roster. One partition per standup, which is exactly how the board reads it. The People screen's Standups column is the one query that crosses partitions; see below. |
+| `StandupMembers` | Standup id | Person id | The Presenter Roster. One partition per standup, which is exactly how the board reads it. The People screen's role columns are the one query that crosses partitions; see below. |
+| `StandupLeaders` | Standup id | Person id | The Leader Roster, in the same shape. A role gets its own table rather than a column on `StandupMembers`, so the person id stays the whole row key and one person can hold both roles on one standup. |
+| `StandupMeetings` | Standup id | Meeting date | What is recorded about a standup on one date apart from any participant, which is who led it. A row exists only once something has been set, so a date with no row is a meeting nobody annotated. |
 | `StandupEntries` | Standup id + person id | Inverted meeting date | Attendance state, the update, and the blockers. |
 | `UserPreferences` | `UserPreferences` | OpenID Connect subject | One row per signed-in user, holding their chosen appearance and the address the provider reports for them. Always read one user at a time, so one partition and a point read. Outside backup and restore; see [Backup and restore](#backup-and-restore). |
 | `AuditLog` | Date bucket | Timestamp | Written by Serilog, not by the repositories. Outside backup and restore; see [Backup and restore](#backup-and-restore). |
@@ -327,7 +331,9 @@ Rendering the board is then one range query per roster member, run in parallel. 
 
 The presenting order report reads the same bounded range with a longer span and one more column, returning who presented and when rather than only the dates. Both queries build their filter from one place, so the range and the "has presented" test cannot drift apart. A year of a twenty-person standup is a few thousand rows of three columns, which is one query rather than the per-person round trips the board makes, because a report wants the whole slice at once while the board wants two rows per person.
 
-"Which standups is this person on" is the one question the key design cannot answer from a partition, because memberships are partitioned by standup. The People screen gets it from a single unfiltered query over `StandupMembers`, which is a table scan. That is deliberate: the table holds one small row per person per standup, so scanning it costs less than maintaining a second index written on every roster change, and the alternative of one partition query per standup trades a scan for N round trips.
+"Which standups is this person on" is the one question the key design cannot answer from a partition, because memberships are partitioned by standup. The People screen gets it from a single unfiltered query over each role's membership table, which is a table scan apiece. That is deliberate: a membership table holds one small row per person per standup, so scanning it costs less than maintaining a second index written on every roster change, and the alternative of one partition query per standup trades a scan for N round trips.
+
+Everything hanging off a standup uses that standup's id as its partition key, in `StandupMembers`, `StandupLeaders` and `StandupMeetings` alike. Deleting a standup therefore clears three named partitions and nothing has to be searched for.
 
 ### Why Table Storage and not SQL
 
@@ -335,7 +341,7 @@ Agreed, and for more reasons than cost. Every read this app performs is either "
 
 Two caveats worth knowing before the design ossifies:
 
-- **No cross-table transactions.** Deleting a standup removes its roster in a loop, not atomically. If that matters later, move the roster into the standup partition so the delete becomes one batch.
+- **No cross-table transactions.** Deleting a standup removes its rosters and its meetings in a loop, not atomically. If that matters later, move them into the standup partition so the delete becomes one batch.
 - **No ad-hoc queries.** Reports work only where the keys already bound the answer. The presenting order report does, because it asks for one standup over a date range and both halves of the key constrain that. "Show me everyone who was blocked in August" does not: it filters on a column, which means a scan or a second index table written at the same time as the entry. A report of that shape is the point to revisit the store, and moving to SQL then is a contained change because the repository interfaces are the only seam that would move.
 
 ## Markdown editing
@@ -540,3 +546,6 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 - Added a Reports screen with a dropdown for choosing which report to show, a picker for the standup, and quick-pick buttons for the last 30, 60, 90 or 180 days or the last year.
 - Added the first report, Presenting Order vs Date: a line per person showing the turn they took at each standup over the period, with a dot on the days they presented and ∞ along the bottom for the days they did not. Everyone gets their own colour, and once the colours run out they come back as dashed lines so no two people ever look alike. The same numbers are also available as a table under the chart.
 - Made a report chart spread across the full width of the browser window and follow it as the window is resized, packing the dates only as tightly as their labels allow before scrolling sideways instead.
+- Gave each standup a second roster of the people who may run it, alongside the roster of the people who present. The Standups screen has a button for each, and someone can be on both.
+- Renamed the People table's Standups column to Presenters and added a Leaders column beside it, so each person's two kinds of involvement read separately.
+- Added a Leader dropdown to the board, under the standup picker, for recording who ran the standup on the day being viewed. It offers that standup's Leader Roster, applies to that date alone, and can be left empty.

@@ -37,9 +37,13 @@ public static class StorageKeys
 
     public static string StandupRowKey(Guid standupId) => standupId.ToString("D");
 
-    public static string MemberPartitionKey(Guid standupId) => standupId.ToString("D");
+    /// <summary>Rosters and meetings both hang off a standup, so each of their tables holds one standup's rows in a single partition.</summary>
+    public static string StandupChildPartitionKey(Guid standupId) => standupId.ToString("D");
 
     public static string MemberRowKey(Guid personId) => personId.ToString("D");
+
+    /// <summary>Meetings are read one date at a time, so the plain date key is enough and keeps the partition in chronological order.</summary>
+    public static string MeetingRowKey(DateOnly meetingDate) => MeetingCalendar.ToDateKey(meetingDate);
 
     /// <summary>Highest value the <c>D</c> format can produce, so a partition key built from it bounds every person within one standup.</summary>
     private static readonly Guid MaxGuid = new(Enumerable.Repeat((byte)0xFF, 16).ToArray());

@@ -18,6 +18,7 @@ public sealed class BoardService(
     IAuditLog audit) : IBoardService
 {
     private const string AuditTargetType = nameof(StandupEntry);
+    private const string MeetingAuditTargetType = nameof(StandupMeeting);
 
     public async Task<StandupBoardDto> GetBoardAsync(Guid standupId, DateOnly meetingDate, CancellationToken cancellationToken = default)
     {
@@ -27,10 +28,16 @@ public sealed class BoardService(
             return StandupBoardDto.Empty(meetingDate);
         }
 
-        (IReadOnlyList<StandupMember> members, Dictionary<Guid, Person> peopleById) = await LoadRosterAsync(standupId, cancellationToken);
+        Task<IReadOnlyList<StandupMember>> presenterTask = standups.GetMembersAsync(standupId, RosterRole.Presenter, cancellationToken);
+        Task<IReadOnlyList<StandupMember>> leaderTask = standups.GetMembersAsync(standupId, RosterRole.Leader, cancellationToken);
+        Task<IReadOnlyList<Person>> peopleTask = people.GetAllAsync(cancellationToken);
+        Task<StandupMeeting?> meetingTask = standups.GetMeetingAsync(standupId, meetingDate, cancellationToken);
+        await Task.WhenAll(presenterTask, leaderTask, peopleTask, meetingTask);
 
-        (StandupMember Member, Person Person, StandupEntryPair Pair)[] loaded = await Task.WhenAll(members
-            .Where(member => peopleById.ContainsKey(member.PersonId))
+        Dictionary<Guid, Person> peopleById = peopleTask.Result.ToDictionary(person => person.Id);
+
+        (StandupMember Member, Person Person, StandupEntryPair Pair)[] loaded = await Task.WhenAll(presenterTask.Result
+            .Where(member => member.IsActive && peopleById.ContainsKey(member.PersonId))
             .Select(async member => (
                 Member: member,
                 Person: peopleById[member.PersonId],
@@ -44,7 +51,17 @@ public sealed class BoardService(
             .Select(item => item.Pair.ToParticipantDto(item.Member, item.Person))
             .InColumnOrder(AttendanceState.Roster);
 
-        return new StandupBoardDto(standup.Id, standup.Name, meetingDate, standup.OccursOn(meetingDate), participants, priorTurns);
+        IReadOnlyList<StandupMemberDto> leaders = leaderTask.Result.Where(member => member.IsActive).ToRoster(peopleById);
+
+        return new StandupBoardDto(
+            standup.Id,
+            standup.Name,
+            meetingDate,
+            standup.OccursOn(meetingDate),
+            participants,
+            leaders,
+            meetingTask.Result?.LeaderPersonId,
+            priorTurns);
     }
 
     public Task<BoardParticipantDto?> AdvanceAsync(Guid standupId, DateOnly meetingDate, Guid personId, CancellationToken cancellationToken = default) =>
@@ -74,6 +91,26 @@ public sealed class BoardService(
         audit.Record(AuditEvents.UpdateSaved, AuditTargetType, EntryTargetId(update.StandupId, update.PersonId, update.MeetingDate), $"Update saved for {context.Value.Person.DisplayName}.");
 
         return new StandupEntryPair(entry, pair.Prior).ToParticipantDto(context.Value.Member, context.Value.Person);
+    }
+
+    public async Task<bool> SetLeaderAsync(Guid standupId, DateOnly meetingDate, Guid? personId, CancellationToken cancellationToken = default)
+    {
+        Person? leader = personId is { } id ? await ResolveLeaderAsync(standupId, id, cancellationToken) : null;
+        if (personId is not null && leader is null)
+        {
+            return false;
+        }
+
+        StandupMeeting? existing = await standups.GetMeetingAsync(standupId, meetingDate, cancellationToken);
+        StandupMeeting meeting = existing ?? new StandupMeeting { StandupId = standupId, MeetingDate = meetingDate, CreatedUtc = clock.UtcNow };
+
+        meeting.LeaderPersonId = personId;
+        meeting.ModifiedUtc = existing is null ? null : clock.UtcNow;
+
+        await standups.UpsertMeetingAsync(meeting, cancellationToken);
+        audit.Record(AuditEvents.LeaderChanged, MeetingAuditTargetType, MeetingTargetId(standupId, meetingDate), leader is null ? "Leader cleared." : $"{leader.DisplayName} is leading.");
+
+        return true;
     }
 
     public Task<IReadOnlyCollection<DateOnly>> GetPresentedDatesAsync(Guid standupId, DateOnly from, DateOnly to, CancellationToken cancellationToken = default) =>
@@ -107,19 +144,9 @@ public sealed class BoardService(
         return new StandupEntryPair(entry, pair.Prior).ToParticipantDto(context.Value.Member, context.Value.Person);
     }
 
-    private async Task<(IReadOnlyList<StandupMember> Members, Dictionary<Guid, Person> PeopleById)> LoadRosterAsync(Guid standupId, CancellationToken cancellationToken)
-    {
-        Task<IReadOnlyList<StandupMember>> memberTask = standups.GetMembersAsync(standupId, cancellationToken);
-        Task<IReadOnlyList<Person>> peopleTask = people.GetAllAsync(cancellationToken);
-        await Task.WhenAll(memberTask, peopleTask);
-
-        IReadOnlyList<StandupMember> activeMembers = [.. memberTask.Result.Where(member => member.IsActive)];
-        return (activeMembers, peopleTask.Result.ToDictionary(person => person.Id));
-    }
-
     private async Task<(StandupMember Member, Person Person)?> ResolveParticipantAsync(Guid standupId, Guid personId, CancellationToken cancellationToken)
     {
-        StandupMember? member = (await standups.GetMembersAsync(standupId, cancellationToken)).FirstOrDefault(candidate => candidate.PersonId == personId && candidate.IsActive);
+        StandupMember? member = await FindActiveMemberAsync(standupId, personId, RosterRole.Presenter, cancellationToken);
         if (member is null)
         {
             return null;
@@ -129,7 +156,16 @@ public sealed class BoardService(
         return person is null ? null : (member, person);
     }
 
+    /// <summary>The person behind a leader pick, or null when they are not on the standup's leader roster or their person record has gone.</summary>
+    private async Task<Person?> ResolveLeaderAsync(Guid standupId, Guid personId, CancellationToken cancellationToken) =>
+        await FindActiveMemberAsync(standupId, personId, RosterRole.Leader, cancellationToken) is null ? null : await people.GetAsync(personId, cancellationToken);
+
+    private async Task<StandupMember?> FindActiveMemberAsync(Guid standupId, Guid personId, RosterRole role, CancellationToken cancellationToken) =>
+        (await standups.GetMembersAsync(standupId, role, cancellationToken)).FirstOrDefault(candidate => candidate.PersonId == personId && candidate.IsActive);
+
     private static string? Normalise(string? markdown) => string.IsNullOrWhiteSpace(markdown) ? null : markdown.Trim();
 
     private static string EntryTargetId(Guid standupId, Guid personId, DateOnly meetingDate) => $"{standupId}/{personId}/{MeetingCalendar.ToRouteValue(meetingDate)}";
+
+    private static string MeetingTargetId(Guid standupId, DateOnly meetingDate) => $"{standupId}/{MeetingCalendar.ToRouteValue(meetingDate)}";
 }

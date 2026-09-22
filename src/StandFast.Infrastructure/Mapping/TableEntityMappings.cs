@@ -93,10 +93,12 @@ public static class TableEntityMappings
         ETag = ToETag(standup.ETag),
     };
 
-    public static StandupMember ToDomain(this StandupMemberTableEntity entity) => new()
+    /// <summary>The role is carried by the table the row came from rather than by a column, so the caller supplies the role it queried.</summary>
+    public static StandupMember ToDomain(this StandupMemberTableEntity entity, RosterRole role) => new()
     {
         StandupId = Guid.Parse(entity.PartitionKey),
         PersonId = Guid.Parse(entity.RowKey),
+        Role = role,
         DisplayOrder = entity.DisplayOrder,
         IsActive = entity.IsActive,
         CreatedUtc = entity.CreatedUtc,
@@ -105,12 +107,32 @@ public static class TableEntityMappings
 
     public static StandupMemberTableEntity ToTableEntity(this StandupMember member) => new()
     {
-        PartitionKey = StorageKeys.MemberPartitionKey(member.StandupId),
+        PartitionKey = StorageKeys.StandupChildPartitionKey(member.StandupId),
         RowKey = StorageKeys.MemberRowKey(member.PersonId),
         DisplayOrder = member.DisplayOrder,
         IsActive = member.IsActive,
         CreatedUtc = member.CreatedUtc,
         ETag = ToETag(member.ETag),
+    };
+
+    public static StandupMeeting ToDomain(this StandupMeetingTableEntity entity) => new()
+    {
+        StandupId = Guid.Parse(entity.PartitionKey),
+        MeetingDate = MeetingCalendar.FromDateKey(entity.RowKey),
+        LeaderPersonId = entity.LeaderPersonId,
+        CreatedUtc = entity.CreatedUtc,
+        ModifiedUtc = entity.ModifiedUtc,
+        ETag = entity.ETag.ToString(),
+    };
+
+    public static StandupMeetingTableEntity ToTableEntity(this StandupMeeting meeting) => new()
+    {
+        PartitionKey = StorageKeys.StandupChildPartitionKey(meeting.StandupId),
+        RowKey = StorageKeys.MeetingRowKey(meeting.MeetingDate),
+        LeaderPersonId = meeting.LeaderPersonId,
+        CreatedUtc = meeting.CreatedUtc,
+        ModifiedUtc = meeting.ModifiedUtc,
+        ETag = ToETag(meeting.ETag),
     };
 
     public static StandupEntry ToDomain(this StandupEntryTableEntity entity) => new()

@@ -77,15 +77,46 @@ public sealed class TableEntityMappingsTests
         Assert.Equal(entry.Blockers, restored.Blockers);
     }
 
-    [Fact]
-    public void StandupMember_RoundTripsCompositeKey()
+    [Theory]
+    [InlineData(RosterRole.Presenter)]
+    [InlineData(RosterRole.Leader)]
+    public void StandupMember_RoundTripsCompositeKeyAndTakesItsRoleFromTheTableItCameFrom(RosterRole role)
     {
-        StandupMember member = new() { StandupId = Guid.CreateVersion7(), PersonId = Guid.CreateVersion7(), DisplayOrder = 20 };
+        StandupMember member = new() { StandupId = Guid.CreateVersion7(), PersonId = Guid.CreateVersion7(), Role = role, DisplayOrder = 20 };
 
-        StandupMember restored = member.ToTableEntity().ToDomain();
+        StandupMember restored = member.ToTableEntity().ToDomain(role);
 
         Assert.Equal(member.StandupId, restored.StandupId);
         Assert.Equal(member.PersonId, restored.PersonId);
+        Assert.Equal(role, restored.Role);
         Assert.Equal(member.DisplayOrder, restored.DisplayOrder);
+    }
+
+    [Fact]
+    public void StandupMeeting_RoundTripsTheDateAndTheLeader()
+    {
+        StandupMeeting meeting = new()
+        {
+            StandupId = Guid.CreateVersion7(),
+            MeetingDate = new DateOnly(2026, 9, 15),
+            LeaderPersonId = Guid.CreateVersion7(),
+            CreatedUtc = DateTimeOffset.UnixEpoch,
+        };
+
+        StandupMeetingTableEntity stored = meeting.ToTableEntity();
+        StandupMeeting restored = stored.ToDomain();
+
+        Assert.Equal("20260915", stored.RowKey);
+        Assert.Equal(meeting.StandupId, restored.StandupId);
+        Assert.Equal(meeting.MeetingDate, restored.MeetingDate);
+        Assert.Equal(meeting.LeaderPersonId, restored.LeaderPersonId);
+    }
+
+    [Fact]
+    public void StandupMeeting_RoundTripsWithNobodyLeading()
+    {
+        StandupMeeting meeting = new() { StandupId = Guid.CreateVersion7(), MeetingDate = new DateOnly(2026, 9, 15), CreatedUtc = DateTimeOffset.UnixEpoch };
+
+        Assert.Null(meeting.ToTableEntity().ToDomain().LeaderPersonId);
     }
 }

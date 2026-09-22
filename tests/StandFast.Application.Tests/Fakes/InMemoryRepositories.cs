@@ -30,7 +30,8 @@ public sealed class InMemoryPersonRepository : IPersonRepository
 public sealed class InMemoryStandupRepository : IStandupRepository
 {
     private readonly Dictionary<Guid, Standup> standups = [];
-    private readonly Dictionary<(Guid StandupId, Guid PersonId), StandupMember> members = [];
+    private readonly Dictionary<(Guid StandupId, Guid PersonId, RosterRole Role), StandupMember> members = [];
+    private readonly Dictionary<(Guid StandupId, DateOnly MeetingDate), StandupMeeting> meetings = [];
 
     public Task<IReadOnlyList<Standup>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Standup>>([.. standups.Values]);
 
@@ -45,29 +46,43 @@ public sealed class InMemoryStandupRepository : IStandupRepository
     public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
         standups.Remove(id);
-        foreach ((Guid StandupId, Guid PersonId) key in members.Keys.Where(key => key.StandupId == id).ToList())
+        foreach ((Guid StandupId, Guid PersonId, RosterRole Role) key in members.Keys.Where(key => key.StandupId == id).ToList())
         {
             members.Remove(key);
+        }
+
+        foreach ((Guid StandupId, DateOnly MeetingDate) key in meetings.Keys.Where(key => key.StandupId == id).ToList())
+        {
+            meetings.Remove(key);
         }
 
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyList<StandupMember>> GetMembersAsync(Guid standupId, CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<StandupMember>>([.. members.Values.Where(member => member.StandupId == standupId)]);
+    public Task<IReadOnlyList<StandupMember>> GetMembersAsync(Guid standupId, RosterRole role, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<StandupMember>>([.. members.Values.Where(member => member.StandupId == standupId && member.Role == role)]);
 
-    public Task<IReadOnlyList<StandupMember>> GetAllMembersAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<StandupMember>>([.. members.Values]);
+    public Task<IReadOnlyList<StandupMember>> GetAllMembersAsync(RosterRole role, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<StandupMember>>([.. members.Values.Where(member => member.Role == role)]);
 
     public Task UpsertMemberAsync(StandupMember member, CancellationToken cancellationToken = default)
     {
-        members[(member.StandupId, member.PersonId)] = member;
+        members[(member.StandupId, member.PersonId, member.Role)] = member;
         return Task.CompletedTask;
     }
 
-    public Task RemoveMemberAsync(Guid standupId, Guid personId, CancellationToken cancellationToken = default)
+    public Task RemoveMemberAsync(Guid standupId, Guid personId, RosterRole role, CancellationToken cancellationToken = default)
     {
-        members.Remove((standupId, personId));
+        members.Remove((standupId, personId, role));
+        return Task.CompletedTask;
+    }
+
+    public Task<StandupMeeting?> GetMeetingAsync(Guid standupId, DateOnly meetingDate, CancellationToken cancellationToken = default) =>
+        Task.FromResult(meetings.GetValueOrDefault((standupId, meetingDate)));
+
+    public Task UpsertMeetingAsync(StandupMeeting meeting, CancellationToken cancellationToken = default)
+    {
+        meetings[(meeting.StandupId, meeting.MeetingDate)] = meeting;
         return Task.CompletedTask;
     }
 }

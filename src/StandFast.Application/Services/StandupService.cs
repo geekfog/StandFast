@@ -4,6 +4,7 @@ using StandFast.Application.Dtos;
 using StandFast.Application.Mapping;
 using StandFast.Domain.Abstractions;
 using StandFast.Domain.Entities;
+using StandFast.Domain.Enums;
 
 namespace StandFast.Application.Services;
 
@@ -56,55 +57,49 @@ public sealed class StandupService(IStandupRepository standups, IPersonRepositor
         audit.Record(AuditEvents.StandupDeleted, AuditTargetType, id.ToString(), existing.Name);
     }
 
-    public async Task<IReadOnlyList<StandupMemberDto>> GetMembersAsync(Guid standupId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<StandupMemberDto>> GetMembersAsync(Guid standupId, RosterRole role, CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<StandupMember> members = await standups.GetMembersAsync(standupId, cancellationToken);
+        IReadOnlyList<StandupMember> members = await standups.GetMembersAsync(standupId, role, cancellationToken);
         Dictionary<Guid, Person> peopleById = (await people.GetAllAsync(cancellationToken)).ToDictionary(person => person.Id);
 
-        return members
-            .Where(member => peopleById.ContainsKey(member.PersonId))
-            .Select(member => member.ToDto(peopleById[member.PersonId]))
-            .InRosterOrder();
+        return members.ToRoster(peopleById);
     }
 
-    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<string>>> GetStandupNamesByPersonAsync(CancellationToken cancellationToken = default)
+    public async Task<StandupNamesByPersonDto> GetStandupNamesByPersonAsync(CancellationToken cancellationToken = default)
     {
         Task<IReadOnlyList<Standup>> standupTask = standups.GetAllAsync(cancellationToken);
-        Task<IReadOnlyList<StandupMember>> memberTask = standups.GetAllMembersAsync(cancellationToken);
-        await Task.WhenAll(standupTask, memberTask);
+        Task<IReadOnlyList<StandupMember>>[] memberTasks = [.. RosterRoleExtensions.InDisplayOrder.Select(role => standups.GetAllMembersAsync(role, cancellationToken))];
+        await Task.WhenAll([standupTask, .. memberTasks]);
 
         Dictionary<Guid, string> namesById = standupTask.Result.ToDictionary(standup => standup.Id, standup => standup.Name);
 
-        return memberTask.Result
-            .Where(member => member.IsActive && namesById.ContainsKey(member.StandupId))
-            .GroupBy(member => member.PersonId)
-            .ToDictionary(
-                group => group.Key,
-                group => (IReadOnlyList<string>)[.. group.Select(member => namesById[member.StandupId]).OrderBy(name => name, StringComparer.OrdinalIgnoreCase)]);
+        return new StandupNamesByPersonDto(RosterRoleExtensions.InDisplayOrder
+            .Select((role, index) => (Role: role, Memberships: memberTasks[index].Result))
+            .ToDictionary(item => item.Role, item => NamesByPerson(item.Memberships, namesById)));
     }
 
-    public async Task AddMemberAsync(Guid standupId, Guid personId, CancellationToken cancellationToken = default)
+    public async Task AddMemberAsync(Guid standupId, Guid personId, RosterRole role, CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<StandupMember> existing = await standups.GetMembersAsync(standupId, cancellationToken);
+        IReadOnlyList<StandupMember> existing = await standups.GetMembersAsync(standupId, role, cancellationToken);
         StandupMember? member = existing.FirstOrDefault(candidate => candidate.PersonId == personId);
         int nextOrder = existing.Count == 0 ? AppendedMemberOrderStep : existing.Max(candidate => candidate.DisplayOrder) + AppendedMemberOrderStep;
 
-        member ??= new StandupMember { StandupId = standupId, PersonId = personId, DisplayOrder = nextOrder, CreatedUtc = clock.UtcNow };
+        member ??= new StandupMember { StandupId = standupId, PersonId = personId, Role = role, DisplayOrder = nextOrder, CreatedUtc = clock.UtcNow };
         member.IsActive = true;
 
         await standups.UpsertMemberAsync(member, cancellationToken);
-        audit.Record(AuditEvents.MemberAdded, MemberAuditTargetType, $"{standupId}/{personId}", "Added to standup roster.");
+        audit.Record(AuditEvents.MemberAdded, MemberAuditTargetType, MemberTargetId(standupId, personId, role), $"Added to the {role} roster.");
     }
 
-    public async Task RemoveMemberAsync(Guid standupId, Guid personId, CancellationToken cancellationToken = default)
+    public async Task RemoveMemberAsync(Guid standupId, Guid personId, RosterRole role, CancellationToken cancellationToken = default)
     {
-        await standups.RemoveMemberAsync(standupId, personId, cancellationToken);
-        audit.Record(AuditEvents.MemberRemoved, MemberAuditTargetType, $"{standupId}/{personId}", "Removed from standup roster.");
+        await standups.RemoveMemberAsync(standupId, personId, role, cancellationToken);
+        audit.Record(AuditEvents.MemberRemoved, MemberAuditTargetType, MemberTargetId(standupId, personId, role), $"Removed from the {role} roster.");
     }
 
-    public async Task SetMemberOrderAsync(Guid standupId, Guid personId, int displayOrder, CancellationToken cancellationToken = default)
+    public async Task SetMemberOrderAsync(Guid standupId, Guid personId, RosterRole role, int displayOrder, CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<StandupMember> members = await standups.GetMembersAsync(standupId, cancellationToken);
+        IReadOnlyList<StandupMember> members = await standups.GetMembersAsync(standupId, role, cancellationToken);
         StandupMember? member = members.FirstOrDefault(candidate => candidate.PersonId == personId);
         if (member is null)
         {
@@ -114,4 +109,15 @@ public sealed class StandupService(IStandupRepository standups, IPersonRepositor
         member.DisplayOrder = displayOrder;
         await standups.UpsertMemberAsync(member, cancellationToken);
     }
+
+    /// <summary>Standup names per person for one role's memberships. A membership whose standup has gone is dropped, which is what an interrupted delete leaves behind.</summary>
+    private static IReadOnlyDictionary<Guid, IReadOnlyList<string>> NamesByPerson(IReadOnlyList<StandupMember> memberships, IReadOnlyDictionary<Guid, string> namesById) =>
+        memberships
+            .Where(member => member.IsActive && namesById.ContainsKey(member.StandupId))
+            .GroupBy(member => member.PersonId)
+            .ToDictionary(
+                group => group.Key,
+                group => (IReadOnlyList<string>)[.. group.Select(member => namesById[member.StandupId]).OrderBy(name => name, StringComparer.OrdinalIgnoreCase)]);
+
+    private static string MemberTargetId(Guid standupId, Guid personId, RosterRole role) => $"{standupId}/{personId}/{role}";
 }

@@ -3,7 +3,7 @@
 
 <MudDialog>
     <TitleContent>
-        <MudText Typo="Typo.h6">Roster: @StandupName</MudText>
+        <MudText Typo="Typo.h6">@RosterLabels.RosterTitle(Role): @StandupName</MudText>
     </TitleContent>
     <DialogContent>
         <div class="d-flex align-end gap-2 mb-4">
@@ -56,6 +56,10 @@
     [Parameter]
     public string StandupName { get; set; } = string.Empty;
 
+    /// <summary>Which of the standup's rosters is being edited. Each role has its own membership list, so the same dialog serves both.</summary>
+    [Parameter]
+    public RosterRole Role { get; set; } = RosterRole.Presenter;
+
     private IEnumerable<PersonDto> AddablePeople => people.Where(person => person.IsActive && members.All(member => member.PersonId != person.Id));
 
     protected override async Task OnInitializedAsync()
@@ -64,7 +68,7 @@
         await ReloadAsync();
     }
 
-    private async Task ReloadAsync() => members = await StandupService.GetMembersAsync(StandupId);
+    private async Task ReloadAsync() => members = await StandupService.GetMembersAsync(StandupId, Role);
 
     private async Task AddAsync()
     {
@@ -73,14 +77,14 @@
             return;
         }
 
-        await StandupService.AddMemberAsync(StandupId, personId);
+        await StandupService.AddMemberAsync(StandupId, personId, Role);
         personToAdd = null;
         await ReloadAsync();
     }
 
     private async Task RemoveAsync(Guid personId)
     {
-        await StandupService.RemoveMemberAsync(StandupId, personId);
+        await StandupService.RemoveMemberAsync(StandupId, personId, Role);
         await ReloadAsync();
     }
 

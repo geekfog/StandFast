@@ -14,6 +14,13 @@
                 <MudSelectItem T="Guid" Value="@standup.Id">@standup.Name</MudSelectItem>
             }
         </MudSelect>
+        <MudSelect T="Guid?" Value="@board?.LeaderPersonId" ValueChanged="OnLeaderChangedAsync" Label="@RosterLabels.Name(RosterRole.Leader)" Variant="Variant.Outlined" Dense="true" Clearable="true"
+                   Class="mt-3" Disabled="@(LeaderCandidates.Count == 0)" HelperText="@LeaderHelperText">
+            @foreach (StandupMemberDto leader in LeaderCandidates)
+            {
+                <MudSelectItem T="Guid?" Value="@leader.PersonId">@leader.DisplayName</MudSelectItem>
+            }
+        </MudSelect>
     </MudItem>
     <MudItem xs="12" md="8">
         <WeekStrip SelectedDate="@SelectedDate" SelectedDateChanged="OnDateChangedAsync" Today="@today" ScheduledDays="@SelectedStandupDays" PresentedDates="@presentedDates" />

@@ -1,3 +1,5 @@
+using StandFast.Domain.Enums;
+
 namespace StandFast.Infrastructure.Storage;
 
 /// <summary>Logical table names. Combined with the configured prefix by <see cref="TableClientProvider"/>; nothing else builds a table name.</summary>
@@ -6,6 +8,8 @@ public static class StorageNames
     public const string People = "People";
     public const string Standups = "Standups";
     public const string StandupMembers = "StandupMembers";
+    public const string StandupLeaders = "StandupLeaders";
+    public const string StandupMeetings = "StandupMeetings";
     public const string StandupEntries = "StandupEntries";
     public const string UserPreferences = "UserPreferences";
     public const string AuditLog = "AuditLog";
@@ -16,8 +20,18 @@ public static class StorageNames
     /// explains the restore itself. <see cref="UserPreferences"/> is absent for a related reason: it belongs to the people using the app rather
     /// than to the board data, so restoring last month's copy of the board leaves everyone's own settings alone.
     /// </summary>
-    public static readonly IReadOnlyList<string> DataTables = [People, Standups, StandupMembers, StandupEntries];
+    public static readonly IReadOnlyList<string> DataTables = [People, Standups, StandupMembers, StandupLeaders, StandupMeetings, StandupEntries];
 
     /// <summary>Every table the app creates. Tests clean up from this list, so a table added above is never left behind.</summary>
     public static readonly IReadOnlyList<string> AllTables = [.. DataTables, UserPreferences, AuditLog];
+
+    /// <summary>
+    /// The table holding one roster role's memberships. Each role gets its own table rather than a column, so the rows keep the person id as their
+    /// whole row key and one person can hold both roles on the same standup.
+    /// </summary>
+    public static string MemberTable(RosterRole role) => role switch
+    {
+        RosterRole.Leader => StandupLeaders,
+        _ => StandupMembers,
+    };
 }

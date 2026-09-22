@@ -44,7 +44,7 @@ public sealed class BackupRestoreTests : IClassFixture<AzuriteTableFixture>
         Assert.Equal(entry.PresentedUtc, restoredEntry.Current?.PresentedUtc);
 
         Assert.Equal(StorageNames.DataTables.Count, written.Count);
-        Assert.Single(await fixture.Standups.GetMembersAsync(standup.Id));
+        Assert.Single(await fixture.Standups.GetMembersAsync(standup.Id, RosterRole.Presenter));
     }
 
     [AzuriteFact]

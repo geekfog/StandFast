@@ -190,4 +190,75 @@ public sealed class BoardServiceTests
 
         Assert.Null(participant);
     }
+
+    [Fact]
+    public async Task GetBoardAsync_OffersTheLeaderRosterWithoutPuttingItInAColumn()
+    {
+        BoardTestContext context = new();
+        await context.AddMemberAsync("Ada", "Lovelace");
+        Person leader = await context.AddMemberAsync("Grace", "Hopper", RosterRole.Leader);
+
+        StandupBoardDto board = await context.Service.GetBoardAsync(context.Standup.Id, BoardTestContext.Today);
+
+        Assert.Equal(leader.Id, Assert.Single(board.Leaders).PersonId);
+        Assert.Equal("Ada Lovelace", Assert.Single(board.Participants).DisplayName);
+        Assert.Null(board.LeaderPersonId);
+    }
+
+    [Fact]
+    public async Task SetLeaderAsync_RecordsTheLeaderAgainstThatDateAlone()
+    {
+        BoardTestContext context = new();
+        Person leader = await context.AddMemberAsync("Grace", "Hopper", RosterRole.Leader);
+
+        Assert.True(await context.Service.SetLeaderAsync(context.Standup.Id, BoardTestContext.Today, leader.Id));
+
+        StandupBoardDto today = await context.Service.GetBoardAsync(context.Standup.Id, BoardTestContext.Today);
+        StandupBoardDto yesterday = await context.Service.GetBoardAsync(context.Standup.Id, BoardTestContext.Yesterday);
+
+        Assert.Equal(leader.Id, today.LeaderPersonId);
+        Assert.Null(yesterday.LeaderPersonId);
+    }
+
+    [Fact]
+    public async Task SetLeaderAsync_ClearsTheLeaderWhenNobodyIsPicked()
+    {
+        BoardTestContext context = new();
+        Person leader = await context.AddMemberAsync("Grace", "Hopper", RosterRole.Leader);
+
+        await context.Service.SetLeaderAsync(context.Standup.Id, BoardTestContext.Today, leader.Id);
+        Assert.True(await context.Service.SetLeaderAsync(context.Standup.Id, BoardTestContext.Today, null));
+
+        StandupBoardDto board = await context.Service.GetBoardAsync(context.Standup.Id, BoardTestContext.Today);
+
+        Assert.Null(board.LeaderPersonId);
+    }
+
+    [Fact]
+    public async Task SetLeaderAsync_RefusesAnyoneOffTheLeaderRoster()
+    {
+        BoardTestContext context = new();
+        Person presenter = await context.AddMemberAsync("Ada", "Lovelace");
+
+        Assert.False(await context.Service.SetLeaderAsync(context.Standup.Id, BoardTestContext.Today, presenter.Id));
+
+        StandupBoardDto board = await context.Service.GetBoardAsync(context.Standup.Id, BoardTestContext.Today);
+
+        Assert.Null(board.LeaderPersonId);
+    }
+
+    [Fact]
+    public async Task SetLeaderAsync_AcceptsSomeoneOnBothRosters()
+    {
+        BoardTestContext context = new();
+        Person person = await context.AddMemberAsync("Ada", "Lovelace");
+        await context.AddMemberAsync(person, RosterRole.Leader);
+
+        Assert.True(await context.Service.SetLeaderAsync(context.Standup.Id, BoardTestContext.Today, person.Id));
+
+        StandupBoardDto board = await context.Service.GetBoardAsync(context.Standup.Id, BoardTestContext.Today);
+
+        Assert.Equal(person.Id, board.LeaderPersonId);
+        Assert.Single(board.Participants);
+    }
 }

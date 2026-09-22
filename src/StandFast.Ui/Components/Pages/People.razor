@@ -15,7 +15,10 @@
     <HeaderContent>
         <MudTh>Name</MudTh>
         <MudTh>Email</MudTh>
-        <MudTh>Standups</MudTh>
+        @foreach (RosterRole role in RosterRoleExtensions.InDisplayOrder)
+        {
+            <MudTh>@RosterLabels.Plural(role)</MudTh>
+        }
         <MudTh>Status</MudTh>
         <MudTh Style="width: 7rem;"></MudTh>
     </HeaderContent>
@@ -34,16 +37,19 @@
             }
         </MudTd>
         <MudTd DataLabel="Email">@context.Email</MudTd>
-        <MudTd DataLabel="Standups">
-            @foreach (string standupName in StandupsFor(context.Id))
-            {
-                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Class="ma-1">@standupName</MudChip>
-            }
-            @if (StandupsFor(context.Id).Count == 0)
-            {
-                <MudText Typo="Typo.caption" Class="mud-text-secondary">None</MudText>
-            }
-        </MudTd>
+        @foreach (RosterRole role in RosterRoleExtensions.InDisplayOrder)
+        {
+            <MudTd DataLabel="@RosterLabels.Plural(role)">
+                @foreach (string standupName in standupNames.For(role, context.Id))
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Class="ma-1">@standupName</MudChip>
+                }
+                @if (standupNames.For(role, context.Id).Count == 0)
+                {
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">None</MudText>
+                }
+            </MudTd>
+        }
         <MudTd DataLabel="Status">
             <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Default)">@(context.IsActive ? "Active" : "Inactive")</MudChip>
         </MudTd>
@@ -56,26 +62,22 @@
 </MudTable>
 
 @code {
-    private static readonly IReadOnlyList<string> NoStandups = [];
-
     private IReadOnlyList<PersonDto> people = [];
-    private IReadOnlyDictionary<Guid, IReadOnlyList<string>> standupsByPerson = new Dictionary<Guid, IReadOnlyList<string>>();
+    private StandupNamesByPersonDto standupNames = StandupNamesByPersonDto.Empty;
     private bool isLoading = true;
 
     protected override Task OnInitializedAsync() => ReloadAsync();
-
-    private IReadOnlyList<string> StandupsFor(Guid personId) => standupsByPerson.GetValueOrDefault(personId, NoStandups);
 
     private async Task ReloadAsync()
     {
         isLoading = true;
 
         Task<IReadOnlyList<PersonDto>> peopleTask = PersonService.GetAllAsync();
-        Task<IReadOnlyDictionary<Guid, IReadOnlyList<string>>> assignmentsTask = StandupService.GetStandupNamesByPersonAsync();
+        Task<StandupNamesByPersonDto> assignmentsTask = StandupService.GetStandupNamesByPersonAsync();
         await Task.WhenAll(peopleTask, assignmentsTask);
 
         people = peopleTask.Result;
-        standupsByPerson = assignmentsTask.Result;
+        standupNames = assignmentsTask.Result;
         isLoading = false;
     }
 
