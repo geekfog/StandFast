@@ -21,6 +21,9 @@ variables:
     value: ubuntu-latest
   - name: g_ImageRepository
     value: standfast-ui
+  # Matches the Microsoft.App version infra/main.bicep declares, so a certificate read over the management API sees the resource the same way the deployment does.
+  - name: g_ContainerAppsApiVersion
+    value: '2025-07-01'
 
 stages:
   - stage: Test

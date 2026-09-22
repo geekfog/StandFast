@@ -38,17 +38,28 @@ param p_OidcClientSecret string
 @description('Windows or IANA time zone the board treats as today, for example Central Standard Time.')
 param p_DisplayTimeZoneId string = 'Central Standard Time'
 
+@description('Custom domain the app answers on, for example standup.yourbusiness.com. Empty leaves the app reachable only on its generated Container Apps URL.')
+param p_CustomDomain string = ''
+
+@description('Name of an existing managed certificate in the environment that already covers the custom domain. Empty issues one. The release stage looks the name up, so the certificate an environment already holds is the one that stays bound.')
+param p_CustomDomainCertificateName string = ''
+
 @description('Replica bounds. The floor stays at one so a scale to zero never drops a live standup circuit.')
 param p_MinReplicas int = 1
 param p_MaxReplicas int = 3
 
 var v_NameBase = toLower('${p_AppBase}${p_Environment}${p_RegionToken}')
 var v_ContainerAppName = '${v_NameBase}ca'
+var v_EnvironmentName = '${v_NameBase}cae'
 var v_ContainerPort = 8080
 var v_HealthPath = '/healthz'
 var v_DataProtectionContainer = 'dataprotection'
 var v_DataProtectionBlob = 'keys.xml'
 var v_ClientSecretName = 'oidc-client-secret'
+var v_BindCustomDomain = p_DeployApp && !empty(p_CustomDomain)
+var v_CertificateName = empty(p_CustomDomainCertificateName) ? '${v_NameBase}mc' : p_CustomDomainCertificateName
+var v_IssueCertificate = v_BindCustomDomain && empty(p_CustomDomainCertificateName)
+var v_CertificateId = resourceId('Microsoft.App/managedEnvironments/managedCertificates', v_EnvironmentName, v_CertificateName)
 
 // Built-in role definition ids. The container app holds one user assigned identity and is granted only the data-plane roles it needs.
 var v_Roles = {
@@ -191,7 +202,7 @@ resource registryRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 }
 
 resource environment 'Microsoft.App/managedEnvironments@2024-03-01' = {
-  name: '${v_NameBase}cae'
+  name: v_EnvironmentName
   location: p_Location
   tags: p_Tags
   properties: {
@@ -205,7 +216,20 @@ resource environment 'Microsoft.App/managedEnvironments@2024-03-01' = {
   }
 }
 
-resource containerApp 'Microsoft.App/containerApps@2024-03-01' = if (p_DeployApp) {
+// A deployment replaces the container app's ingress configuration wholesale, so the domain and the certificate it binds belong to the template; a binding held anywhere else does not survive a release.
+// Issuing a certificate reads public DNS: the domain's CNAME must already resolve to the container app, and its asuid TXT record must already carry the app's domain verification id.
+resource certificate 'Microsoft.App/managedEnvironments/managedCertificates@2025-07-01' = if (v_IssueCertificate) {
+  parent: environment
+  name: v_CertificateName
+  location: p_Location
+  tags: p_Tags
+  properties: {
+    subjectName: p_CustomDomain
+    domainControlValidation: 'CNAME'
+  }
+}
+
+resource containerApp 'Microsoft.App/containerApps@2025-07-01' = if (p_DeployApp) {
   name: v_ContainerAppName
   location: p_Location
   tags: p_Tags
@@ -224,6 +248,13 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = if (p_DeployApp
         targetPort: v_ContainerPort
         transport: 'auto'
         allowInsecure: false
+        customDomains: v_BindCustomDomain ? [
+          {
+            name: p_CustomDomain
+            bindingType: 'SniEnabled'
+            certificateId: v_CertificateId
+          }
+        ] : []
         // Blazor Server holds a stateful SignalR circuit per browser. Without sticky sessions a reconnect can land on another replica and drop the circuit.
         stickySessions: {
           affinity: 'sticky'
@@ -296,11 +327,18 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = if (p_DeployApp
     tableRole
     blobRole
     dataProtectionContainer
+    certificate
   ]
 }
 
 @description('Public URL of the deployed app. Register https://<this>/signin-oidc as an allowed callback URL and https://<this>/signout-callback-oidc as an allowed logout redirect URL with the identity provider.')
-output o_ApplicationUrl string = p_DeployApp ? 'https://${containerApp!.properties.configuration.ingress.fqdn}' : ''
+output o_ApplicationUrl string = p_DeployApp ? 'https://${empty(p_CustomDomain) ? containerApp!.properties.configuration.ingress.fqdn : p_CustomDomain}' : ''
+
+@description('Name of the container apps environment, which is where a custom domain certificate lives.')
+output o_EnvironmentName string = environment.name
+
+@description('Value the asuid TXT record must carry for a custom domain to verify against this app.')
+output o_CustomDomainVerificationId string = p_DeployApp ? containerApp!.properties.customDomainVerificationId : ''
 
 @description('Login server of the container registry the pipeline pushes to.')
 output o_RegistryLoginServer string = registry.properties.loginServer

@@ -39,6 +39,53 @@
     background-color: var(--mud-palette-success);
 }
 
+/* A report chart is drawn at a fixed pixel step per date, so a long period scrolls sideways rather than squeezing its labels together. */
+.standfast-chart-scroll {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.standfast-chart-grid line {
+    stroke: var(--mud-palette-lines-default);
+    stroke-width: 1;
+}
+
+.standfast-chart-axis text {
+    fill: var(--mud-palette-text-secondary);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.standfast-chart-line {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2;
+}
+
+/* Ringed in the surface colour so overlapping markers stay countable where several people share a turn number across days. */
+.standfast-chart-dot {
+    stroke: var(--mud-palette-surface);
+    stroke-width: 2;
+}
+
+.standfast-chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1.25rem;
+}
+
+.standfast-chart-legend-item {
+    align-items: center;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.standfast-chart-table-order {
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+}
+
 .standfast-markdown-toolbar {
     background-color: var(--mud-palette-background-gray);
     border-bottom: 1px solid var(--mud-palette-lines-default);

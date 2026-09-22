@@ -37,7 +37,8 @@ public sealed class BoardService(
                 Pair: await entries.GetCurrentAndPriorAsync(standupId, member.PersonId, meetingDate, cancellationToken))));
 
         // Ranked across the whole roster, so it has to happen here rather than while mapping any single participant.
-        IReadOnlyDictionary<Guid, int> priorTurns = PriorPresentationOrder.Rank(loaded.Select(item => item.Pair.Prior));
+        IReadOnlyDictionary<Guid, int> priorTurns = PresentationOrder.AtMostRecentMeeting(
+            loaded.Select(item => item.Pair.Prior?.CompletedTurn).OfType<Presentation>());
 
         IReadOnlyList<BoardParticipantDto> participants = loaded
             .Select(item => item.Pair.ToParticipantDto(item.Member, item.Person))

@@ -1,0 +1,100 @@
+@* Hand-drawn SVG rather than a chart component: the order axis ends in a symbol instead of a number, and each series needs its own dash pattern. *@
+
+<div class="standfast-chart-scroll" id="@hostId">
+    <svg width="@Geometry.Width" height="@Geometry.Height" viewBox="0 0 @Geometry.Width @Geometry.Height" role="img"
+         aria-label="@($"Presenting order for {Report.StandupName} across {Report.MeetingDates.Count} standups, {Report.Presenters.Count} people.")">
+        <g class="standfast-chart-grid">
+            @foreach (int row in Geometry.Rows)
+            {
+                <line x1="@ChartGeometry.PlotLeft" y1="@Geometry.RowY(row)" x2="@Geometry.PlotRight" y2="@Geometry.RowY(row)" />
+            }
+            @for (int column = 0; column < Report.MeetingDates.Count; column++)
+            {
+                <line x1="@Geometry.ColumnX(column)" y1="@ChartGeometry.PlotTop" x2="@Geometry.ColumnX(column)" y2="@Geometry.PlotBottom" />
+            }
+        </g>
+
+        @* Each label is wrapped in a group: Razor reads a bare <text> tag opening a code block as its own escape syntax rather than as SVG. *@
+        <g class="standfast-chart-axis">
+            @foreach (int row in Geometry.Rows)
+            {
+                <g><text x="@(ChartGeometry.PlotLeft - AxisLabelGap)" y="@Geometry.RowY(row)" text-anchor="end" dominant-baseline="middle">@Geometry.RowLabel(row)</text></g>
+            }
+            @for (int column = 0; column < Report.MeetingDates.Count; column++)
+            {
+                @* Rotated about the tick itself, so labels stay clear of one another however tightly the dates are packed. *@
+                <g>
+                    <text x="@Geometry.ColumnX(column)" y="@(Geometry.PlotBottom + AxisLabelGap)" text-anchor="end"
+                          transform="rotate(-45 @Geometry.ColumnX(column) @(Geometry.PlotBottom + AxisLabelGap))">@Report.MeetingDates[column].ToString(UiFormats.DayAndMonth)</text>
+                </g>
+            }
+        </g>
+
+        @for (int index = 0; index < Report.Presenters.Count; index++)
+        {
+            PresenterTimelineDto presenter = Report.Presenters[index];
+            SeriesStyle style = SeriesStyles.For(index, IsDarkMode);
+
+            <g>
+                <polyline class="standfast-chart-line" points="@Geometry.LinePoints(presenter)" stroke="@style.Color" stroke-dasharray="@style.DashArray" />
+
+                @for (int column = 0; column < presenter.OrdersByDate.Count; column++)
+                {
+                    if (presenter.OrdersByDate[column] is { } order)
+                    {
+                        <circle class="standfast-chart-dot" cx="@Geometry.ColumnX(column)" cy="@Geometry.RowY(order)" r="@DotRadius" fill="@style.Color">
+                            <title>@($"{presenter.DisplayName} — {Report.MeetingDates[column].ToString(UiFormats.ShortDate)} — {order.ToOrdinal()}")</title>
+                        </circle>
+                    }
+                }
+            </g>
+        }
+    </svg>
+</div>
+
+<div class="standfast-chart-legend mt-3">
+    @for (int index = 0; index < Report.Presenters.Count; index++)
+    {
+        PresenterTimelineDto presenter = Report.Presenters[index];
+        SeriesStyle style = SeriesStyles.For(index, IsDarkMode);
+
+        <div class="standfast-chart-legend-item">
+            <svg width="@LegendSwatchWidth" height="@LegendSwatchHeight" aria-label="@style.PatternName" role="img">
+                <line class="standfast-chart-line" x1="0" y1="@(LegendSwatchHeight / 2)" x2="@LegendSwatchWidth" y2="@(LegendSwatchHeight / 2)"
+                      stroke="@style.Color" stroke-dasharray="@style.DashArray" />
+            </svg>
+            <MudText Typo="Typo.body2">@presenter.DisplayName</MudText>
+        </div>
+    }
+</div>
+
+@* The palette puts several series below a 3:1 contrast ratio against the page, so the same numbers are available as text. *@
+<MudExpansionPanels Class="mt-4" Elevation="0">
+    <MudExpansionPanel Text="Order numbers as a table">
+        <div class="standfast-chart-scroll">
+            <MudSimpleTable Dense="true" Striped="true" Bordered="true" Style="width: auto;">
+                <thead>
+                    <tr>
+                        <th>Person</th>
+                        @foreach (DateOnly date in Report.MeetingDates)
+                        {
+                            <th class="standfast-chart-table-order">@date.ToString(UiFormats.DayAndMonth)</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (PresenterTimelineDto presenter in Report.Presenters)
+                    {
+                        <tr>
+                            <td>@presenter.DisplayName</td>
+                            @foreach (int? order in presenter.OrdersByDate)
+                            {
+                                <td class="standfast-chart-table-order">@(order?.ToString() ?? PresentationOrder.NoTurnSymbol)</td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </div>
+    </MudExpansionPanel>
+</MudExpansionPanels>

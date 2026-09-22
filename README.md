@@ -10,6 +10,7 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
 - [📃 Overview](#-overview)
   - [What it does](#what-it-does)
   - [The daily flow](#the-daily-flow)
+  - [Reports](#reports)
 - [💻 Technical Overview](#-technical-overview)
   - [Solution layout](#solution-layout)
   - [Running it locally](#running-it-locally)
@@ -22,6 +23,7 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
     - [Tables and keys](#tables-and-keys)
     - [Why Table Storage and not SQL](#why-table-storage-and-not-sql)
   - [Markdown editing](#markdown-editing)
+  - [Charting](#charting)
   - [Auditing and logging](#auditing-and-logging)
   - [Backup and restore](#backup-and-restore)
   - [OpenID Connect sign-in](#openid-connect-sign-in)
@@ -31,6 +33,7 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
     - [What bites Blazor Server specifically](#what-bites-blazor-server-specifically)
   - [Deploying](#deploying)
     - [Branch filtering](#branch-filtering)
+    - [Custom domain](#custom-domain)
 - [🚧 Change Summary](#-change-summary)
 
 # 📃 Overview
@@ -40,6 +43,7 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
 - **People** are a flat directory: first name, last name, email, active flag, an optional "display as" override, and markdown notes. When "display as" is set, that is how the person appears everywhere, including the roster and the board; otherwise they appear as first and last name. The People screen also lists which standups each person is on.
 - **Standups** are recurring meeting definitions: name, the days they run on, start time, time zone, and a roster of people.
 - **The board** is one standup on one date. It opens on today with the current week across the top, and a dropdown picks the standup independently of the date.
+- **Reports** chart what a standup has recorded over a period. A dropdown picks the report, a second picks the standup, and quick-pick buttons set how far back it runs.
 - **Backup** downloads everything the app holds as one file and restores it again, replacing whatever is there at the time. The audit log and each user's own settings are excluded from both directions.
 - **Appearance** is light or dark, chosen from the toggle in the title bar and remembered for whoever is signed in. It follows that person to any browser or machine they sign in from, and a user who has never chosen gets light.
 
@@ -70,6 +74,16 @@ The panel has three boxes:
 Save writes both boxes. Cancel closes the panel, and asks first when there are edits that have not been saved.
 
 Everything is keyed by standup, person, and date, so navigating to last Tuesday shows exactly what was recorded on last Tuesday.
+
+## Reports
+
+The Reports screen shows one report at a time. The report, the standup, and the period all live in the address, so a view can be pasted to someone else and they see the same thing.
+
+The period runs back from today and is set by the quick-pick buttons: 30 days, 60, 90, 180, or a year. It opens on 30 days.
+
+**Presenting Order vs Date** draws one line per person against the dates the standup ran. The vertical axis is the turn they took, first at the top, with ∞ along the bottom for a day they did not present; the horizontal axis is the dates themselves. A dot marks each day someone actually presented, and the line between dots shows whether they are drifting later or earlier over the period. Only days on which somebody presented appear, so a fortnight off does not fill the chart with empty columns, and only people who presented at least once in the period get a line — including anyone since taken off the roster, because the report is of what happened rather than of who is on the roster now.
+
+Each person gets their own colour. Past the eighth person the colours start again as dashed lines, then as longer dashes, and so on through thirteen patterns, so two people never share both a colour and a line style until the 105th. The legend carries each person's line drawn in their own style, and the order numbers are also available as a plain table under the chart.
 
 # 💻 Technical Overview
 
@@ -106,7 +120,7 @@ StandFast.slnx
 │   ├── StandFast.Infrastructure   Azure Table Storage implementation of the repositories
 │   └── StandFast.Ui               Blazor Server app
 └── tests/
-    ├── StandFast.Application.Tests     Board behaviour and calendar rules against in-memory fakes
+    ├── StandFast.Application.Tests     Board, report, and calendar rules against in-memory fakes
     └── StandFast.Infrastructure.Tests  Storage key ordering, table entity round-trips, and Azurite integration tests
 ```
 
@@ -172,6 +186,7 @@ Local development on the left, a deployed environment on the right. `<env>` is t
 | `secrets.json`                     | `Oidc:ClientId`                                              | (Client ID)                              | `standfast-<env>-vars` group                       | `a_OidcClientId`                                             | (Client ID)                 | Confidential client id from the provider.                    |
 | `secrets.json`                     | `Oidc:ClientSecret`                                          | (Client Secret)                          | `standfast-<env>-vars` group                       | `a_OidcClientSecret`                                         | (Client Secret)             | Client secret from the provider. Mark the group variable as secret. Bicep always stores it in Key Vault as `oidc-client-secret` and gives the container app a Key Vault reference, so the value never becomes a plain environment variable. |
 | `secrets.json`, optional           | `StandFastUi:DisplayTimeZoneId`                              | (e.g., `Central Standard Time`)          | `standfast-<env>-vars` group                       | `a_DisplayTimeZoneId`                                        | (e.g., `Central Standard Time`) | The [time zone id](#time-zones) the board resolves "today" in. The group variable must exist, because the pipeline passes it on every run; leave its value empty and the app falls back to the server time zone, which in the container is UTC. Locally, omitting it falls back to your machine's zone. |
+| (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-<env>-vars` group                       | `a_CustomDomain`                                             | (e.g., `standup.yourbusiness.com`) | The [custom domain](#custom-domain) the app answers on. The group variable must exist, because the pipeline passes it on every run; leave its value empty and the app is reachable only on its generated Container Apps URL. |
 | (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-<env>-vars` group                       | `a_AllowedBranches`                                          | (e.g., `main\|release/1.2`) | Pipe-delimited list of the branches that may release to this environment; see [Branch filtering](#branch-filtering). Leave it unset and every branch that triggers the pipeline releases here, which for a production environment is rarely what you want. |
 | (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-<env>-vars` group                       | `a_RegionToken`                                              | (e.g., `usnorth`)           | Region segment of every resource name                        |
 | (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-<env>-vars` group                       | `a_Location`                                                 | (e.g., `northcentralus`)    | Azure region everything is created in                        |
@@ -310,6 +325,8 @@ Rendering the board is then one range query per roster member, run in parallel. 
 
 "Which dates did this standup finish on" is answered from the same keys without touching a partition directly. Entry partition keys are the standup id followed by the person id, so bracketing the person half with the all-zero and all-ones guids covers exactly one standup's participants, and the inverted row keys bound the date range. Both keys are therefore constrained, the query reads one standup's slice of one week, and only the date column comes back. This is what marks the week strip.
 
+The presenting order report reads the same bounded range with a longer span and one more column, returning who presented and when rather than only the dates. Both queries build their filter from one place, so the range and the "has presented" test cannot drift apart. A year of a twenty-person standup is a few thousand rows of three columns, which is one query rather than the per-person round trips the board makes, because a report wants the whole slice at once while the board wants two rows per person.
+
 "Which standups is this person on" is the one question the key design cannot answer from a partition, because memberships are partitioned by standup. The People screen gets it from a single unfiltered query over `StandupMembers`, which is a table scan. That is deliberate: the table holds one small row per person per standup, so scanning it costs less than maintaining a second index written on every roster change, and the alternative of one partition query per standup trades a scan for N round trips.
 
 ### Why Table Storage and not SQL
@@ -319,7 +336,7 @@ Agreed, and for more reasons than cost. Every read this app performs is either "
 Two caveats worth knowing before the design ossifies:
 
 - **No cross-table transactions.** Deleting a standup removes its roster in a loop, not atomically. If that matters later, move the roster into the standup partition so the delete becomes one batch.
-- **No ad-hoc queries.** "Show me everyone who was blocked in August" means a scan, or a second index table written at the same time as the entry. If reporting becomes a real requirement rather than a nice-to-have, that is the point to revisit this, and moving to SQL then is a contained change because the repository interfaces are the only seam that would move.
+- **No ad-hoc queries.** Reports work only where the keys already bound the answer. The presenting order report does, because it asks for one standup over a date range and both halves of the key constrain that. "Show me everyone who was blocked in August" does not: it filters on a column, which means a scan or a second index table written at the same time as the entry. A report of that shape is the point to revisit the store, and moving to SQL then is a contained change because the repository interfaces are the only seam that would move.
 
 ## Markdown editing
 
@@ -328,6 +345,18 @@ Two caveats worth knowing before the design ossifies:
 Formatting runs through a small JavaScript helper, because wrapping a selection needs the caret position and the browser owns that. The helper computes the new text and hands it back to Blazor, which remains the owner of the value. Inline commands toggle: pressing bold on already-bold text unwraps it.
 
 Rendering uses a single pre-built Markdig pipeline with advanced extensions on and raw HTML disabled. Update text is user-supplied and rendered into the page, so HTML is escaped rather than executed.
+
+## Charting
+
+Report charts are SVG written by the component rather than a charting package. The presenting order chart needs an axis whose last tick is a symbol instead of a number, and a separate dash pattern per series; both are a few lines of geometry to draw and a fight to configure. `ChartGeometry` holds every pixel position and nothing else, so the markup reads positions rather than computing them and the layout can be checked on its own.
+
+A chart fills the width the window gives it. The dates are spread across whatever space is reported, down to a floor of 34 pixels apart, which is where their rotated labels would start to overlap; a period long enough to hit that floor grows past the window and scrolls sideways instead. Only the browser knows how much room there is, so `chart-resize.js` reports the width on the first paint and on every resize after it, and the component rebuilds its geometry from the number. The chart draws at the floor until the first measurement arrives, which is what the prerendered HTML carries.
+
+`SeriesStyles` assigns each series its colour and dash pattern. The eight hues are a palette validated for separation under simulated protanopia and deuteranopia and for lightness in both themes; the slot order is what makes neighbouring hues separable, so slots are not reordered. Series fill every hue at one dash pattern before moving to the next, which keeps a chart of eight or fewer people entirely in solid lines and guarantees a repeated colour always arrives with a different line.
+
+Three of the light steps and two of the dark ones fall below a 3:1 contrast ratio against the surface they are drawn on. The relief for that is the table of order numbers beneath the chart, which is why it is there rather than as a convenience.
+
+Series colours are picked in C# from the signed-in user's appearance setting, not by a stylesheet, because MudBlazor switches themes by rewriting its palette variables rather than by a selector a media query could match. Everything else the chart draws — grid, axis text, the ring around a marker — uses the MudBlazor palette variables and follows the theme on its own.
 
 ## Auditing and logging
 
@@ -444,6 +473,23 @@ Entries are whole branch names, compared one for one. `release/` does not stand 
 
 One thing to confirm on the first run: the variable group is linked to the release stage, and a stage's `condition` is evaluated close to when its variables are expanded. If `a_AllowedBranches` reads as empty in a run where it is set, the condition is being evaluated before the group is read, and the fix is to link the group at the root of `azure-pipelines.yaml` instead. Note which way this fails: an unreadable variable looks the same as an unset one, and an unset one allows every branch.
 
+### Custom domain
+
+`a_CustomDomain` in the environment's variable group is the domain the app answers on. The Bicep binds it to the container app's ingress, which is what keeps it in place: a deployment rewrites the app's whole ingress configuration, so a domain bound by hand in the portal lasts only until the next release.
+
+The certificate is a free Azure managed certificate. Before deploying the app, the release stage reads the environment's managed certificates and passes the name of the one whose subject is the domain, so an environment that already has a certificate keeps it rather than collecting a second one; finding none, the deployment issues one named `<AppBase><Env><Region>mc`. Either way the certificate renews itself.
+
+Two DNS records at your registrar have to exist before the domain is set, because the certificate is issued only after Azure resolves them:
+
+| Record | Name | Value |
+| ------ | ---- | ----- |
+| `CNAME` | The subdomain, for example `standup` | The app's generated host, `<app>.<region>.azurecontainerapps.io` |
+| `TXT` | `asuid.` plus the subdomain, for example `asuid.standup` | The domain verification id, which the release stage prints at the end of its log |
+
+The order for a new environment is therefore: release once with `a_CustomDomain` empty, take the generated URL and the verification id from the log, create the two records, then set `a_CustomDomain` and release again.
+
+Once the domain is set, the release log prints the callback URLs on the domain rather than the generated host, and those are the ones to register with the identity provider. The generated host keeps working, so a sign-in attempted there fails at the provider rather than at the app.
+
 # 🚧 Change Summary
 
 *Each entry is a specific version (release/\* branch), in descending order (newest version up top), with a plain bullet list summarizing each change without technical jargon.*
@@ -471,6 +517,7 @@ One thing to confirm on the first run: the variable group is linked to the relea
 - Added a Cancel button beside Save on the update panel, which discards unsaved edits.
 - Added a Standups column to the People table showing which standups each person is on.
 - Added seconds to the presented time on the board, so the order people presented in is unambiguous.
+- Fixed the custom web address being lost every time the app was released: it is now part of the deployment itself, and the release reuses the security certificate the site already has instead of replacing it.
 - Added a Backup screen that downloads everything the app holds as a single file, and restores one back by replacing all current data. The audit log is left out of both, so restoring an old backup never wipes the record of who changed what.
 - Fixed the repository's ignore rules, which were quietly leaving the new backup source folders out of version control.
 - Added an F5 launch configuration and build/test tasks for the editor, with Hot Reload switched off to stop a debugger error appearing in the Debug Console on every run.
@@ -488,3 +535,6 @@ One thing to confirm on the first run: the variable group is linked to the relea
 - Made the notes icon red on any card with an update recorded, in all three columns, so who has already been captured stands out from the green used elsewhere.
 - Marked the dates in the week strip that someone presented on, so a day with a finished standup can be spotted without opening it.
 - Fixed the deployed app loading but never responding to a click: the container build was leaving Blazor's startup script out of the published output, so the browser asked for a file that was not there. The build now also checks the script is present and fails rather than shipping an app that cannot work.
+- Added a Reports screen with a dropdown for choosing which report to show, a picker for the standup, and quick-pick buttons for the last 30, 60, 90 or 180 days or the last year.
+- Added the first report, Presenting Order vs Date: a line per person showing the turn they took at each standup over the period, with a dot on the days they presented and ∞ along the bottom for the days they did not. Everyone gets their own colour, and once the colours run out they come back as dashed lines so no two people ever look alike. The same numbers are also available as a table under the chart.
+- Made a report chart spread across the full width of the browser window and follow it as the window is resized, packing the dates only as tightly as their labels allow before scrolling sideways instead.

@@ -46,21 +46,47 @@ public sealed class StandupEntryRepository(ITableClientProvider tables) : IStand
     public async Task<IReadOnlyCollection<DateOnly>> GetPresentedDatesAsync(Guid standupId, DateOnly from, DateOnly to, CancellationToken cancellationToken = default)
     {
         TableClient client = await tables.GetAsync(StorageNames.StandupEntries, cancellationToken);
-        (string partitionFrom, string partitionTo) = StorageKeys.EntryPartitionRange(standupId);
-        (string rowFrom, string rowTo) = StorageKeys.EntryRowKeyRange(from, to);
-        int presented = (int)AttendanceState.Presented;
 
-        // Both keys are bounded, so this reads one standup's slice of one date range instead of scanning the table. Only the date column is
-        // projected, because the answer is a set of dates and a participant's update text can be large.
-        string filter = TableClient.CreateQueryFilter(
-            $"PartitionKey ge {partitionFrom} and PartitionKey le {partitionTo} and RowKey ge {rowFrom} and RowKey le {rowTo} and State eq {presented}");
-
+        // Only the date column is projected, because the answer is a set of dates and a participant's update text can be large.
         HashSet<DateOnly> dates = [];
-        await foreach (StandupEntryTableEntity entity in client.QueryAsync<StandupEntryTableEntity>(filter, select: [nameof(StandupEntryTableEntity.MeetingDateKey)], cancellationToken: cancellationToken))
+        await foreach (StandupEntryTableEntity entity in client.QueryAsync<StandupEntryTableEntity>(
+            PresentedInRangeFilter(standupId, from, to), select: [nameof(StandupEntryTableEntity.MeetingDateKey)], cancellationToken: cancellationToken))
         {
             dates.Add(MeetingCalendar.FromDateKey(entity.MeetingDateKey));
         }
 
         return dates;
+    }
+
+    public async Task<IReadOnlyList<Presentation>> GetPresentationsAsync(Guid standupId, DateOnly from, DateOnly to, CancellationToken cancellationToken = default)
+    {
+        TableClient client = await tables.GetAsync(StorageNames.StandupEntries, cancellationToken);
+        string[] columns = [nameof(StandupEntryTableEntity.PersonId), nameof(StandupEntryTableEntity.MeetingDateKey), nameof(StandupEntryTableEntity.PresentedUtc)];
+
+        List<Presentation> presentations = [];
+        await foreach (StandupEntryTableEntity entity in client.QueryAsync<StandupEntryTableEntity>(
+            PresentedInRangeFilter(standupId, from, to), select: columns, cancellationToken: cancellationToken))
+        {
+            if (entity.PresentedUtc is { } presentedUtc)
+            {
+                presentations.Add(new Presentation(entity.PersonId, MeetingCalendar.FromDateKey(entity.MeetingDateKey), presentedUtc));
+            }
+        }
+
+        return presentations;
+    }
+
+    /// <summary>
+    /// Matches the completed turns of one standup inside an inclusive date range. Both keys are bounded, so the query reads one standup's slice
+    /// of the range instead of scanning the table.
+    /// </summary>
+    private static string PresentedInRangeFilter(Guid standupId, DateOnly from, DateOnly to)
+    {
+        (string partitionFrom, string partitionTo) = StorageKeys.EntryPartitionRange(standupId);
+        (string rowFrom, string rowTo) = StorageKeys.EntryRowKeyRange(from, to);
+        int presented = (int)AttendanceState.Presented;
+
+        return TableClient.CreateQueryFilter(
+            $"PartitionKey ge {partitionFrom} and PartitionKey le {partitionTo} and RowKey ge {rowFrom} and RowKey le {rowTo} and State eq {presented}");
     }
 }

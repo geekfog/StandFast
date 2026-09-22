@@ -16,6 +16,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IPersonService, PersonService>();
         services.AddScoped<IStandupService, StandupService>();
         services.AddScoped<IBoardService, BoardService>();
+        services.AddScoped<IReportService, ReportService>();
         services.AddScoped<IBackupService, BackupService>();
         services.AddScoped<IUserPreferencesService, UserPreferencesService>();
 

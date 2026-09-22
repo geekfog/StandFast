@@ -1,3 +1,4 @@
+using StandFast.Domain.Common;
 using StandFast.Domain.Entities;
 using StandFast.Domain.Enums;
 
@@ -10,6 +11,7 @@ namespace StandFast.Infrastructure.Tests.Integration;
 public sealed class StandupEntryRepositoryTests : IClassFixture<AzuriteTableFixture>
 {
     private static readonly DateOnly Today = new(2026, 9, 15);
+    private static readonly DateTimeOffset NineAm = new(2026, 9, 15, 9, 0, 0, TimeSpan.Zero);
 
     private readonly AzuriteTableFixture fixture;
     private readonly Guid standupId = Guid.CreateVersion7();
@@ -136,6 +138,51 @@ public sealed class StandupEntryRepositoryTests : IClassFixture<AzuriteTableFixt
 
         Assert.Empty(dates);
     }
+
+    [AzuriteFact]
+    public async Task GetPresentationsAsync_ReturnsEveryParticipantsTurnInsideTheRange()
+    {
+        Guid otherPersonId = Guid.CreateVersion7();
+        DateOnly meetingDate = Today.AddDays(-2);
+
+        await SeedPresentedAsync(personId, meetingDate, NineAm.AddDays(-2));
+        await SeedPresentedAsync(otherPersonId, meetingDate, NineAm.AddDays(-2).AddMinutes(4));
+        await SeedAsync(meetingDate.AddDays(1), "Only marked available");
+
+        IReadOnlyList<Presentation> presentations = await fixture.Entries.GetPresentationsAsync(standupId, Today.AddDays(-6), Today);
+
+        Assert.Equal(2, presentations.Count);
+        Assert.All(presentations, presentation => Assert.Equal(meetingDate, presentation.MeetingDate));
+        Assert.Equal([personId, otherPersonId], presentations.OrderBy(presentation => presentation.PresentedUtc).Select(presentation => presentation.PersonId));
+    }
+
+    [AzuriteFact]
+    public async Task GetPresentationsAsync_IgnoresTurnsOutsideTheRangeAndInOtherStandups()
+    {
+        await SeedPresentedAsync(personId, Today.AddDays(-10), NineAm.AddDays(-10));
+        await SeedPresentedAsync(personId, Today.AddDays(3), NineAm.AddDays(3));
+        await fixture.Entries.UpsertAsync(new StandupEntry
+        {
+            StandupId = Guid.CreateVersion7(),
+            PersonId = personId,
+            MeetingDate = Today,
+            State = AttendanceState.Presented,
+            PresentedUtc = NineAm,
+        });
+
+        Assert.Empty(await fixture.Entries.GetPresentationsAsync(standupId, Today.AddDays(-6), Today));
+    }
+
+    private Task SeedPresentedAsync(Guid presenterId, DateOnly meetingDate, DateTimeOffset presentedUtc) =>
+        fixture.Entries.UpsertAsync(new StandupEntry
+        {
+            StandupId = standupId,
+            PersonId = presenterId,
+            MeetingDate = meetingDate,
+            State = AttendanceState.Presented,
+            MarkedAvailableUtc = presentedUtc.AddMinutes(-5),
+            PresentedUtc = presentedUtc,
+        });
 
     private Task SeedAsync(DateOnly meetingDate, string update, AttendanceState state = AttendanceState.Available) =>
         fixture.Entries.UpsertAsync(new StandupEntry

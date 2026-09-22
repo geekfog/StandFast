@@ -1,3 +1,4 @@
+using StandFast.Domain.Common;
 using StandFast.Domain.Enums;
 
 namespace StandFast.Domain.Entities;
@@ -30,4 +31,7 @@ public sealed class StandupEntry
 
     /// <summary>True when the participant has typed anything worth carrying forward as a prior update.</summary>
     public bool HasContent => !string.IsNullOrWhiteSpace(Update) || !string.IsNullOrWhiteSpace(Blockers);
+
+    /// <summary>The completed turn this entry records, or null while the participant has not presented. Ordering and reporting work from this projection.</summary>
+    public Presentation? CompletedTurn => PresentedUtc is null ? null : new Presentation(PersonId, MeetingDate, PresentedUtc.Value);
 }

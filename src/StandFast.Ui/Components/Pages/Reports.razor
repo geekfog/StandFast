@@ -1,0 +1,66 @@
+@page "/reports"
+@attribute [Authorize]
+@using StandFast.Application.Reporting
+@using StandFast.Ui.Components.Reports
+
+<PageTitle>@AppInfo.PageTitle("Reports")</PageTitle>
+
+<h1 class="mud-typography mud-typography-h5 mb-4">Reports</h1>
+
+<MudGrid Spacing="3">
+    <MudItem xs="12" md="4">
+        <MudSelect T="ReportKind" Value="@SelectedReport" ValueChanged="OnReportChangedAsync" Label="Report" Variant="Variant.Outlined" Dense="true">
+            @foreach (ReportKind report in ReportCatalog.All)
+            {
+                <MudSelectItem T="ReportKind" Value="@report">@report.Title()</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="12" md="4">
+        <MudSelect T="Guid" Value="@SelectedStandupId" ValueChanged="OnStandupChangedAsync" Label="Standup" Variant="Variant.Outlined" Dense="true" Disabled="@(standups.Count == 0)">
+            @foreach (StandupDto standup in standups)
+            {
+                <MudSelectItem T="Guid" Value="@standup.Id">@standup.Name</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="12" md="4" Class="d-flex align-center flex-wrap gap-1">
+        @foreach (ReportWindow window in ReportWindow.All)
+        {
+            <MudButton Variant="@(window.Days == SelectedDays ? Variant.Filled : Variant.Outlined)"
+                       Color="@(window.Days == SelectedDays ? Color.Primary : Color.Default)"
+                       Size="Size.Small"
+                       OnClick="@(() => OnDaysChangedAsync(window.Days))">@window.Label</MudButton>
+        }
+    </MudItem>
+</MudGrid>
+
+@if (standups.Count == 0)
+{
+    <MudAlert Severity="Severity.Info" Class="mt-4">
+        No standups defined yet. <MudLink Href="@UiRoutes.Standups">Create one</MudLink> and add people to its roster.
+    </MudAlert>
+}
+else if (timeline is null)
+{
+    <MudProgressLinear Indeterminate="true" Class="mt-4" />
+}
+else
+{
+    <MudPaper Outlined="true" Class="pa-4 mt-4">
+        <MudText Typo="Typo.h6">@SelectedReport.Title()</MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">@SelectedReport.Description()</MudText>
+        <MudText Typo="Typo.caption" Class="mud-text-secondary">
+            @timeline.StandupName · @timeline.From.ToString(UiFormats.ShortDate) to @timeline.To.ToString(UiFormats.ShortDate)
+        </MudText>
+
+        @if (timeline.HasData)
+        {
+            <PresentingOrderTimelineChart Report="@timeline" IsDarkMode="@Preferences.IsDarkMode" />
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Normal" Dense="true" Class="mt-3">Nobody presented at this standup over the selected period.</MudAlert>
+        }
+    </MudPaper>
+}

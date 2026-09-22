@@ -1,4 +1,5 @@
 using StandFast.Domain.Abstractions;
+using StandFast.Domain.Common;
 using StandFast.Domain.Entities;
 using StandFast.Domain.Enums;
 
@@ -100,6 +101,19 @@ public sealed class InMemoryStandupEntryRepository : IStandupEntryRepository
             .ToHashSet();
 
         return Task.FromResult(dates);
+    }
+
+    public Task<IReadOnlyList<Presentation>> GetPresentationsAsync(Guid standupId, DateOnly from, DateOnly to, CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<Presentation> presentations =
+        [
+            .. entries.Values
+                .Where(entry => entry.StandupId == standupId && entry.MeetingDate >= from && entry.MeetingDate <= to)
+                .Select(entry => entry.CompletedTurn)
+                .OfType<Presentation>(),
+        ];
+
+        return Task.FromResult(presentations);
     }
 }
 
