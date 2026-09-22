@@ -22,6 +22,7 @@ public sealed class AzuriteTableFixture : IDisposable
         Tables = new TableClientProvider(serviceClient, Options.Create(new TableStorageOptions { ConnectionString = AzuriteEndpoint.ConnectionString, TablePrefix = prefix }));
 
         People = new PersonRepository(Tables);
+        Preferences = new UserPreferencesRepository(Tables);
         Standups = new StandupRepository(Tables);
         Entries = new StandupEntryRepository(Tables);
         Backups = new TableBackupStore(Tables);
@@ -30,6 +31,8 @@ public sealed class AzuriteTableFixture : IDisposable
     public ITableClientProvider Tables { get; }
 
     public PersonRepository People { get; }
+
+    public UserPreferencesRepository Preferences { get; }
 
     public StandupRepository Standups { get; }
 
@@ -48,7 +51,7 @@ public sealed class AzuriteTableFixture : IDisposable
             return;
         }
 
-        foreach (string logicalName in StorageNames.DataTables.Append(StorageNames.AuditLog))
+        foreach (string logicalName in StorageNames.AllTables)
         {
             try
             {

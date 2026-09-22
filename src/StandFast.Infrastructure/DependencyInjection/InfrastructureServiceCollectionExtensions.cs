@@ -31,6 +31,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IPersonRepository, PersonRepository>();
         services.AddScoped<IStandupRepository, StandupRepository>();
         services.AddScoped<IStandupEntryRepository, StandupEntryRepository>();
+        services.AddScoped<IUserPreferencesRepository, UserPreferencesRepository>();
         services.AddScoped<IBackupStore, TableBackupStore>();
 
         return services;

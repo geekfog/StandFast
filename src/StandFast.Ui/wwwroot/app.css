@@ -120,3 +120,9 @@
     justify-content: center;
     width: 1.75rem;
 }
+
+/* Star marking the card of whoever is signed in. Dark yellow is fixed rather than taken from the palette, which reserves its colours for attendance
+   state and for whether an update has been recorded; this says something about the reader instead, and reads the same against either theme. */
+.standfast-self-marker {
+    color: #b8860b;
+}

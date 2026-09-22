@@ -40,7 +40,8 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
 - **People** are a flat directory: first name, last name, email, active flag, an optional "display as" override, and markdown notes. When "display as" is set, that is how the person appears everywhere, including the roster and the board; otherwise they appear as first and last name. The People screen also lists which standups each person is on.
 - **Standups** are recurring meeting definitions: name, the days they run on, start time, time zone, and a roster of people.
 - **The board** is one standup on one date. It opens on today with the current week across the top, and a dropdown picks the standup independently of the date.
-- **Backup** downloads everything the app holds as one file and restores it again, replacing whatever is there at the time. The audit log is excluded from both directions.
+- **Backup** downloads everything the app holds as one file and restores it again, replacing whatever is there at the time. The audit log and each user's own settings are excluded from both directions.
+- **Appearance** is light or dark, chosen from the toggle in the title bar and remembered for whoever is signed in. It follows that person to any browser or machine they sign in from, and a user who has never chosen gets light.
 
 ## The daily flow
 
@@ -51,6 +52,8 @@ The board has three columns and one tap moves a person rightwards through them.
 3. **Presented** holds everyone who has given their update, in the order they gave it.
 
 A dot under a date in the week strip means someone presented on that date, so a week with a finished standup is recognisable without opening each day.
+
+Your own card carries a dark yellow star after the name, in whichever column you are sitting in, so you can find yourself on a long roster without reading the names. It shows when the address you signed in with matches the one on your person record.
 
 An undo arrow on each card moves someone back a column if you mis-tap.
 
@@ -264,7 +267,7 @@ Ids are version 7 GUIDs. They sort by creation time, which keeps row keys from f
 
 ## Data model and Azure Table Storage
 
-Four tables, all prefixed with `AzureTableStorage:TablePrefix`:
+Six tables, all prefixed with `AzureTableStorage:TablePrefix`:
 
 | Table | Partition key | Row key | Holds |
 | ----- | ------------- | ------- | ----- |
@@ -272,7 +275,12 @@ Four tables, all prefixed with `AzureTableStorage:TablePrefix`:
 | `Standups` | `Standup` | Standup id | Meeting definitions. Same reasoning. |
 | `StandupMembers` | Standup id | Person id | The roster. One partition per standup, which is exactly how the board reads it. The People screen's Standups column is the one query that crosses partitions; see below. |
 | `StandupEntries` | Standup id + person id | Inverted meeting date | Attendance state, the update, and the blockers. |
+| `UserPreferences` | `UserPreferences` | OpenID Connect subject | One row per signed-in user, holding their chosen appearance and the address the provider reports for them. Always read one user at a time, so one partition and a point read. Outside backup and restore; see [Backup and restore](#backup-and-restore). |
 | `AuditLog` | Date bucket | Timestamp | Written by Serilog, not by the repositories. Outside backup and restore; see [Backup and restore](#backup-and-restore). |
+
+Settings are keyed by the provider's subject identifier rather than by a person record, because signing in and being on a roster are independent: anyone who can sign in gets settings, whether or not they appear on a board. That identifier comes from outside the app, so `StorageKeys` folds the characters Azure Table keys reject onto the separator and the row keeps the original value in its own column.
+
+The address stored beside those settings is what bridges the two sides. A signed-in user and a person on a roster are separate records with nothing in common but an email address, so the address the provider reports is written through on every sign-in that changes it, and the board marks the card whose person record carries the same one. `EmailAddress` holds the stored form and the comparison, so a roster address and a claim are normalised and matched on the same terms. Nothing matches when either side has no address, which is what makes an anonymous session mark nobody.
 
 ### Tables and keys
 
@@ -331,7 +339,7 @@ Audit event names live in `AuditEvents` so a later report reads the same constan
 
 ## Backup and restore
 
-The Backup screen downloads every application table as one JSON file and restores one back, replacing all current data. The audit log is not in either direction: Serilog owns that table, it is the record of who changed what, and restoring an older copy over it would erase the trail explaining the restore itself. `StorageNames.DataTables` is the single list of what a backup covers, and the Azurite fixture cleans up from the same list.
+The Backup screen downloads every application table as one JSON file and restores one back, replacing all current data. Two tables are in neither direction. The audit log is out because Serilog owns it, it is the record of who changed what, and restoring an older copy over it would erase the trail explaining the restore itself. User settings are out because they belong to the people using the app rather than to the board data, so restoring last month's copy of the board leaves everyone's own settings alone. `StorageNames.DataTables` is the single list of what a backup covers; `StorageNames.AllTables` adds the two it leaves out, and the Azurite fixture cleans up from that.
 
 The file carries rows as columns rather than as typed entities, with each value tagged by its storage type:
 
@@ -365,7 +373,9 @@ The static assets matter more than they look. `MapStaticAssets` registers every 
 
 Nothing in the code names a provider. `AuthenticationSetup` reads an `Authority`, a client id and a secret, and discovers every endpoint from `{Authority}/.well-known/openid-configuration`, so swapping providers is a configuration change. StandFast is configured against Kinde.
 
-Inbound claim mapping is switched off, so claims stay under their OIDC names: `sub` is the audit actor, with `name` and `email` for display. The legacy SOAP claim URIs never appear.
+Inbound claim mapping is switched off, so claims stay under their OIDC names: `sub` is the audit actor and the key user settings are stored under, `email` is what ties a signed-in user to their person record, and `name` is for display. The legacy SOAP claim URIs never appear. `UserClaims` is the only place a claim name is read.
+
+Where that principal comes from depends on what is running. `ICurrentUser` reads the HTTP context, which is what an audited service call has. An interactive Blazor circuit has no HTTP context, so a component that needs the signed-in user takes the cascading authentication state instead; the main layout does exactly that. It loads the settings once, on the prerender and again on the circuit, and cascades them to every page, so a screen that marks the reader's own row does not fetch them for itself.
 
 `/auth/login` and `/auth/logout` replace what an identity-provider-specific UI package would otherwise supply. Sign-out ends both the local cookie session and the provider's own session, so the next sign-in is a real one rather than a silent re-issue. The login endpoint accepts a `returnUrl`, and only site-relative values are honoured, so a crafted link cannot bounce a user to another host once authenticated.
 
@@ -473,6 +483,8 @@ One thing to confirm on the first run: the variable group is linked to the relea
 - Documented the one permission the deployment principal needs beyond Contributor, without which the first deployment fails partway through with an authorization error.
 - Stopped requiring a signed-in user for stylesheets, scripts and the Blazor framework files, which were being sent through the identity provider like any page.
 - Added a site icon, so the browser stops asking for one that was never there and reporting it as a missing file.
+- Made the light and dark mode choice stick to the person who made it, so it comes back the next time they sign in on any browser or machine. Anyone who has never chosen gets light.
+- Marked your own card on the board with a dark yellow star after your name, so you can pick yourself out of a long roster at a glance. The app remembers the address you sign in with, keeps it current if it changes at the identity provider, and matches it against your person record.
 - Made the notes icon red on any card with an update recorded, in all three columns, so who has already been captured stands out from the green used elsewhere.
 - Marked the dates in the week strip that someone presented on, so a day with a finished standup can be spotted without opening it.
 - Fixed the deployed app loading but never responding to a click: the container build was leaving Blazor's startup script out of the published output, so the browser asked for a file that was not there. The build now also checks the script is present and fails rather than shipping an app that cannot work.

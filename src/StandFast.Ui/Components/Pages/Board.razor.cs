@@ -26,6 +26,10 @@ public partial class Board
     private Guid loadedStandupId;
     private DateOnly loadedDate;
 
+    /// <summary>The signed-in user's settings, loaded once by the layout. The board uses them to mark whichever card is the reader's own.</summary>
+    [CascadingParameter]
+    private UserPreferencesDto Preferences { get; set; } = UserPreferencesDto.Default;
+
     [Inject]
     private IStandupService StandupService { get; set; } = default!;
 

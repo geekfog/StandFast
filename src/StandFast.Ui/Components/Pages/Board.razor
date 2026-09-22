@@ -55,6 +55,7 @@ else
                                          PriorTurn="@board.PriorTurnFor(participant.PersonId)"
                                          ShowPriorTurn="@(state == AttendanceState.Available)"
                                          IsSelected="@(participant.PersonId == selectedPersonId)"
+                                         IsSelf="@Preferences.IsSelf(participant.Email)"
                                          OnAdvance="AdvanceAsync"
                                          OnRevert="RevertAsync"
                                          OnSelect="SelectParticipant" />

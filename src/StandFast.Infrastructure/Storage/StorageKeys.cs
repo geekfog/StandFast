@@ -11,8 +11,14 @@ public static class StorageKeys
 
     public const string StandupPartition = "Standup";
 
-    /// <summary>Separator for composite keys. Azure Table keys forbid <c>/</c>, <c>\</c>, <c>#</c> and <c>?</c>; underscore is safe and readable in Storage Explorer.</summary>
+    /// <summary>Separator for composite keys. It is not one of the <see cref="ForbiddenKeyCharacters"/>, and underscore stays readable in Storage Explorer.</summary>
     public const string KeySeparator = "_";
+
+    /// <summary>Per-user settings are read one user at a time, so they share a partition and are told apart by the row key.</summary>
+    public const string UserPreferencesPartition = "UserPreferences";
+
+    /// <summary>Characters Azure Table Storage rejects in a partition or row key. Control characters are rejected as well and are tested for directly.</summary>
+    private static readonly char[] ForbiddenKeyCharacters = ['/', '\\', '#', '?'];
 
     /// <summary>Upper bound used to invert a <c>yyyyMMdd</c> date so row keys sort newest first. Value is 9999-12-31 rounded up to all nines.</summary>
     private const int InvertedDateCeiling = 99999999;
@@ -20,6 +26,14 @@ public static class StorageKeys
     private const string InvertedDateFormat = "D8";
 
     public static string PersonRowKey(Guid personId) => personId.ToString("D");
+
+    /// <summary>
+    /// Row key for one user's settings. The value is the identity provider's subject identifier, which arrives from outside the app, so the characters
+    /// Azure Table keys reject are folded onto the separator. Providers issue alphanumeric subjects, making this a guard rather than a transformation
+    /// that normally changes anything.
+    /// </summary>
+    public static string UserPreferencesRowKey(string userId) => string.Concat(userId.Select(character =>
+        ForbiddenKeyCharacters.Contains(character) || char.IsControl(character) ? KeySeparator[0] : character));
 
     public static string StandupRowKey(Guid standupId) => standupId.ToString("D");
 

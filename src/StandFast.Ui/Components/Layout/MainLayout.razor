@@ -1,4 +1,6 @@
+@using System.Security.Claims
 @inherits LayoutComponentBase
+@inject IUserPreferencesService PreferencesService
 
 <MudThemeProvider @bind-IsDarkMode="isDarkMode" Theme="StandFastTheme.Default" />
 <MudPopoverProvider />
@@ -32,7 +34,10 @@
 
     <MudMainContent>
         <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="my-4">
-            @Body
+            @* Every page is shown the signed-in user's settings from the one load the layout does, so no screen fetches them again to mark its own rows. *@
+            <CascadingValue Value="preferences">
+                @Body
+            </CascadingValue>
         </MudContainer>
     </MudMainContent>
 </MudLayout>
@@ -44,10 +49,44 @@
 </div>
 
 @code {
+    /// <summary>
+    /// The signed-in principal, which is how the layout knows whose settings to load. It comes from the cascading authentication state rather than
+    /// from <c>ICurrentUser</c> because the layout also runs inside an interactive circuit, where there is no HTTP context to read a principal from.
+    /// </summary>
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private UserPreferencesDto preferences = UserPreferencesDto.Default;
     private bool drawerOpen = true;
-    private bool isDarkMode;
+    private bool isDarkMode = UserPreferencesDto.Default.IsDarkMode;
+    private string? userId;
+
+    /// <summary>
+    /// Settings are loaded on the prerender as well as on the circuit, so the first painted HTML already carries the user's own theme and the page
+    /// does not start light and then switch.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        string? email = null;
+
+        if (AuthenticationStateTask is not null)
+        {
+            ClaimsPrincipal user = (await AuthenticationStateTask).User;
+            userId = user.UserId();
+            email = user.Email();
+        }
+
+        preferences = await PreferencesService.LoadAsync(userId, email);
+        isDarkMode = preferences.IsDarkMode;
+    }
 
     private void ToggleDrawer() => drawerOpen = !drawerOpen;
 
-    private void ToggleDarkMode() => isDarkMode = !isDarkMode;
+    private async Task ToggleDarkMode()
+    {
+        isDarkMode = !isDarkMode;
+        preferences = preferences with { IsDarkMode = isDarkMode };
+
+        await PreferencesService.SetDarkModeAsync(userId, isDarkMode);
+    }
 }

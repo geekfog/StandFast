@@ -102,3 +102,16 @@ public sealed class InMemoryStandupEntryRepository : IStandupEntryRepository
         return Task.FromResult(dates);
     }
 }
+
+public sealed class InMemoryUserPreferencesRepository : IUserPreferencesRepository
+{
+    private readonly Dictionary<string, UserPreferences> preferences = [];
+
+    public Task<UserPreferences?> GetAsync(string userId, CancellationToken cancellationToken = default) => Task.FromResult(preferences.GetValueOrDefault(userId));
+
+    public Task UpsertAsync(UserPreferences settings, CancellationToken cancellationToken = default)
+    {
+        preferences[settings.UserId] = settings;
+        return Task.CompletedTask;
+    }
+}

@@ -11,7 +11,15 @@
     <MudAvatar Color="@StandFastTheme.ColumnColor(Participant.State)" Size="Size.Medium">@Participant.Initials</MudAvatar>
 
     <div class="ml-3 flex-grow-1 standfast-participant-text">
-        <MudText Typo="Typo.body1">@Participant.DisplayName</MudText>
+        <div class="d-flex align-center">
+            <MudText Typo="Typo.body1">@Participant.DisplayName</MudText>
+            @if (IsSelf)
+            {
+                <MudTooltip Text="@SelfDescription">
+                    <MudIcon Icon="@Icons.Material.Filled.Star" Size="Size.Small" Class="standfast-self-marker ml-1" aria-label="@SelfDescription" />
+                </MudTooltip>
+            }
+        </div>
         <MudText Typo="Typo.caption" Class="mud-text-secondary">@StatusCaption</MudText>
     </div>
 
@@ -56,6 +64,10 @@
     [Parameter]
     public bool IsSelected { get; set; }
 
+    /// <summary>Marks the card belonging to whoever is signed in, so someone scanning a long roster finds themselves without reading the names.</summary>
+    [Parameter]
+    public bool IsSelf { get; set; }
+
     /// <summary>The turn this person took at the previous standup, or null when they were not there.</summary>
     [Parameter]
     public int? PriorTurn { get; set; }
@@ -72,6 +84,8 @@
 
     [Parameter]
     public EventCallback<Guid> OnSelect { get; set; }
+
+    private const string SelfDescription = "This is you";
 
     private string UpdateActionDescription => Participant.HasUpdate ? "Open recorded update" : "Open update";
 

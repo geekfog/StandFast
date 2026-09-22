@@ -42,6 +42,28 @@ public static class TableEntityMappings
         ETag = ToETag(person.ETag),
     };
 
+    public static UserPreferences ToDomain(this UserPreferencesTableEntity entity) => new()
+    {
+        UserId = entity.UserId,
+        Email = entity.Email,
+        IsDarkMode = entity.IsDarkMode,
+        CreatedUtc = entity.CreatedUtc,
+        ModifiedUtc = entity.ModifiedUtc,
+        ETag = entity.ETag.ToString(),
+    };
+
+    public static UserPreferencesTableEntity ToTableEntity(this UserPreferences preferences) => new()
+    {
+        PartitionKey = StorageKeys.UserPreferencesPartition,
+        RowKey = StorageKeys.UserPreferencesRowKey(preferences.UserId),
+        UserId = preferences.UserId,
+        Email = preferences.Email,
+        IsDarkMode = preferences.IsDarkMode,
+        CreatedUtc = preferences.CreatedUtc,
+        ModifiedUtc = preferences.ModifiedUtc,
+        ETag = ToETag(preferences.ETag),
+    };
+
     public static Standup ToDomain(this StandupTableEntity entity) => new()
     {
         Id = Guid.Parse(entity.RowKey),

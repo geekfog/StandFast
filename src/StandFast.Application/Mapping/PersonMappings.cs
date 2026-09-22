@@ -1,4 +1,5 @@
 using StandFast.Application.Dtos;
+using StandFast.Domain.Common;
 using StandFast.Domain.Entities;
 
 namespace StandFast.Application.Mapping;
@@ -20,12 +21,12 @@ public static class PersonMappings
         IsActive = person.IsActive,
     };
 
-    /// <summary>Copies editable fields onto the entity. Trimming and email casing are normalised here so stored values are consistent regardless of the caller.</summary>
+    /// <summary>Copies editable fields onto the entity, each in its stored form, so what is persisted is consistent regardless of the caller.</summary>
     public static void ApplyTo(this PersonEditDto dto, Person person)
     {
         person.FirstName = dto.FirstName.Trim();
         person.LastName = dto.LastName.Trim();
-        person.Email = dto.Email.Trim().ToLowerInvariant();
+        person.Email = EmailAddress.Normalise(dto.Email);
 
         // Blank and absent mean the same thing for both: fall back to the recorded name, and hold no notes.
         person.DisplayAs = Normalise(dto.DisplayAs);
