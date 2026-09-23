@@ -11,7 +11,7 @@
     <InvariantGlobalization>false</InvariantGlobalization>
     <Product>StandFast</Product>
     <Company>StandFast</Company>
-    <!-- Single source of truth for the assembly/package/container version. Bump here only. -->
+    <!-- Single source of truth for the application version as MM.mm.pp (Major.Minor.PatchNumber) -->
     <VersionPrefix>1.0.0</VersionPrefix>
   </PropertyGroup>
 

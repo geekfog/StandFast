@@ -12,9 +12,12 @@ pr:
   branches:
     include:
       - main
+      - release/*
 
 variables:
   - group: standfast-vars
+  - name: g_isStrPostMerge
+    value: $[ne(variables['Build.Reason'], 'PullRequest')] # 'PullRequest' during validation (release stages skipped), 'IndividualCI' after merge (release stages run)
   - name: g_BuildConfiguration
     value: Release
   - name: g_VmImage

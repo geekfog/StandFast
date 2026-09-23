@@ -32,6 +32,7 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
     - [What it costs you](#what-it-costs-you)
     - [What bites Blazor Server specifically](#what-bites-blazor-server-specifically)
   - [Deploying](#deploying)
+    - [Versions and branches](#versions-and-branches)
     - [Branch filtering](#branch-filtering)
     - [Custom domain](#custom-domain)
 - [🚧 Change Summary](#-change-summary)
@@ -46,7 +47,7 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
 - **Reports** chart what a standup has recorded over a period. A dropdown picks the report, a second picks the standup, and quick-pick buttons set how far back it runs.
 - **Backup** downloads everything the app holds as one file and restores it again, replacing whatever is there at the time. The audit log and each user's own settings are excluded from both directions.
 - **Appearance** is light or dark, chosen from the toggle in the title bar and remembered for whoever is signed in. It follows that person to any browser or machine they sign in from, and a user who has never chosen gets light.
-- **About** summarizes what the app is for and links to its source repository.
+- **About** shows the version, summarizes what the app is for, and links to its source repository.
 
 ## The daily flow
 
@@ -124,6 +125,7 @@ Each person gets their own colour. Past the eighth person the colours start agai
 
 ```text
 StandFast.slnx
+├── .github/rulesets/              Branch protection ruleset for main and release branches, imported into GitHub
 ├── .vscode/                       F5 launch configuration and build/test tasks
 ├── Directory.Build.props          Shared build settings and the single version number
 ├── Directory.Packages.props       Central package version management
@@ -204,7 +206,7 @@ Local development on the left, a deployed environment on the right. `<env>` is t
 | `secrets.json`                     | `Oidc:ClientSecret`                                          | (Client Secret)                          | `standfast-<env>-vars` group                       | `a_OidcClientSecret`                                         | (Client Secret)             | Client secret from the provider. Mark the group variable as secret. Bicep always stores it in Key Vault as `oidc-client-secret` and gives the container app a Key Vault reference, so the value never becomes a plain environment variable. |
 | `secrets.json`, optional           | `StandFastUi:DisplayTimeZoneId`                              | (e.g., `Central Standard Time`)          | `standfast-<env>-vars` group                       | `a_DisplayTimeZoneId`                                        | (e.g., `Central Standard Time`) | The [time zone id](#time-zones) the board resolves "today" in. The group variable must exist, because the pipeline passes it on every run; leave its value empty and the app falls back to the server time zone, which in the container is UTC. Locally, omitting it falls back to your machine's zone. |
 | (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-<env>-vars` group                       | `a_CustomDomain`                                             | (e.g., `standup.yourbusiness.com`) | The [custom domain](#custom-domain) the app answers on. The group variable must exist, because the pipeline passes it on every run; leave its value empty and the app is reachable only on its generated Container Apps URL. |
-| (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-<env>-vars` group                       | `a_AllowedBranches`                                          | (e.g., `main\|release/1.2`) | Pipe-delimited list of the branches that may release to this environment; see [Branch filtering](#branch-filtering). Leave it unset and every branch that triggers the pipeline releases here, which for a production environment is rarely what you want. |
+| (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-<env>-vars` group                       | `a_AllowedBranches`                                          | (e.g., `main\|release/`) | Pipe-delimited list of the branches that may release to this environment; see [Branch filtering](#branch-filtering). Leave it unset and every branch that triggers the pipeline releases here, which for a production environment is rarely what you want. |
 | (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-<env>-vars` group                       | `a_RegionToken`                                              | (e.g., `usnorth`)           | Region segment of every resource name                        |
 | (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-<env>-vars` group                       | `a_Location`                                                 | (e.g., `northcentralus`)    | Azure region everything is created in                        |
 | (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-vars` group                             | `a_AppBase`                                                  | `standfast`                 | First segment of every resource name and the `Product` tag. Identical across environments |
@@ -482,6 +484,18 @@ Building in the registry rather than on the agent means there is no Docker regis
 
 What you set up once in Azure DevOps is in [Configuration](#configuration).
 
+### Versions and branches
+
+`VersionPrefix` in `Directory.Build.props` is the only version. The About page shows it as `MM.mm`, plus `.pp` once a patch exists (`01.00.01`).
+
+| Branch | Holds | Created from | Merges into by pull request |
+| ------ | ----- | ------------ | --------------------------- |
+| `feature/*` | One change | The release branch it targets | `release/MM.mm` |
+| `release/MM.mm` | One version, e.g. `release/01.00`, with `VersionPrefix` matching; each fix after release raises the patch | `main` | `main`, once released |
+| `main` | The newest release | | |
+
+`main` and `release/*` accept changes only by pull request and cannot be force-pushed or deleted, per `.github/rulesets/protected-branches.json`, imported once under **Settings → Rules → Rulesets → New ruleset → Import a ruleset**. Pull requests into either run build and test only.
+
 ### Branch filtering
 
 Which branches may release to an environment is `a_AllowedBranches` in that environment's variable group, so tightening or loosening it is an edit in Azure DevOps rather than a pipeline change, and a new environment brings its own answer with it. The release stage's `condition` reads it directly; there is no extra stage, job or script behind it.
@@ -491,12 +505,8 @@ Write the branches as a pipe-delimited list, without the `refs/heads/` prefix:
 | You write | It matches |
 | --------- | ---------- |
 | `main` | That branch. |
-| `main\|release/1.2` | Either of those two. |
+| `main\|release/` | `main`, and every branch under `release/`, such as `release/01.00`. Matching ignores case. |
 | (unset or empty) | Every branch that triggers the pipeline. |
-
-Entries are whole branch names, compared one for one. `release/` does not stand for everything beneath it, because an Azure DevOps condition can test a list for an exact member but has no way to ask whether any entry is a prefix of the branch. A versioned release branch is therefore listed as it is named, and a new one is a variable group edit at the point it is cut.
-
-One thing to confirm on the first run: the variable group is linked to the release stage, and a stage's `condition` is evaluated close to when its variables are expanded. If `a_AllowedBranches` reads as empty in a run where it is set, the condition is being evaluated before the group is read, and the fix is to link the group at the root of `azure-pipelines.yaml` instead. Note which way this fails: an unreadable variable looks the same as an unset one, and an unset one allows every branch.
 
 ### Custom domain
 
@@ -521,7 +531,7 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 
 *Each entry is a specific version (release/\* branch), in descending order (newest version up top), with a plain bullet list summarizing each change without technical jargon.*
 
-### v01.00.00 — 2026-09-15
+### v01.00 — 2026-09-15
 
 - Created the StandFast solution: a daily scrum board with people, standup definitions, and a date-based board.
 - Added the three-column board that opens on today, with the current week across the top and a separate picker for which standup you are running.
@@ -574,3 +584,7 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 - Changed the "can be called on" column to list people alphabetically, the same way the roster does, instead of by who arrived first, so a name sits in the same place in both columns.
 - Added a Lock button beside the date on the board, which closes that day's standup so nothing on it can be changed by accident. A locked day still reads in full; unlocking asks first. Locking during or shortly after the standup records the time you pressed it, while locking much later records the last person who presented plus a few minutes, so a day closed the next morning does not read as though the meeting ran that long. How long "shortly after" is, and how many minutes get added, are both settings each environment can change.
 - Added an About page to the menu, showing the app icon, a summary of what StandFast is for, and a link to its source repository.
+- Added a version number, starting at 01.00, shown on the About page.
+- Set out how versions map to release branches, and made the main and release branches accept changes only through pull requests.
+- Pull requests into a release branch now get the same build and test check as pull requests into main, and pull request checks never deploy.
+- Allowed a folder such as `release/` in the list of branches that may deploy to an environment, so every release branch under it qualifies without being added one at a time.

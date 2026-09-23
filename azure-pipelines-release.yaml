@@ -18,11 +18,14 @@ stages:
     displayName: Release ${{ parameters.p_publishEnvironment }}
     dependsOn: ${{ parameters.p_dependsOn }}
     # a_AllowedBranches is a pipe-delimited list of the branches that may release here, written without the refs/heads/ prefix, for
-    # example "main|release/1.2". An undefined or empty variable reads as an empty string, which allows every branch.
+    # example "main|release/". An entry is a whole branch name, or a top-level folder ending in "/" that matches every branch under it.
+    # An undefined or empty variable reads as an empty string, which allows every branch.
     condition: >-
       and(succeeded(),
+          eq(variables['g_isStrPostMerge'], 'True'),
           or(eq(variables['a_AllowedBranches'], ''),
-             containsValue(split(variables['a_AllowedBranches'], '|'), replace(variables['Build.SourceBranch'], 'refs/heads/', ''))))
+             containsValue(split(variables['a_AllowedBranches'], '|'), replace(variables['Build.SourceBranch'], 'refs/heads/', '')),
+             containsValue(split(variables['a_AllowedBranches'], '|'), format('{0}/', split(replace(variables['Build.SourceBranch'], 'refs/heads/', ''), '/')[0]))))
     variables:
       - group: standfast-${{ lower(parameters.p_publishEnvironment) }}-vars
     jobs:
