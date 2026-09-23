@@ -18,8 +18,7 @@
                     <MudText Typo="Typo.caption">@day.ToString(UiFormats.WeekdayAbbreviation)</MudText>
                     <MudText Typo="Typo.h6">@day.Day</MudText>
                     @* The marker keeps its space when absent, so the day numbers stay on one baseline across the strip. *@
-                    <span class="@(PresentedDates.Contains(day) ? "standfast-day-marker standfast-day-marker-presented" : "standfast-day-marker")"
-                          aria-label="@(PresentedDates.Contains(day) ? "Has a recorded standup" : null)"></span>
+                    <span class="@($"standfast-day-marker {MarkerModifier(day)}")" aria-label="@MarkerDescription(day)"></span>
                 </div>
             </MudButton>
         }
@@ -53,6 +52,18 @@
     /// <summary>Dates on which someone presented. Each is marked, so a week with a finished standup is recognisable without opening it.</summary>
     [Parameter]
     public IReadOnlyCollection<DateOnly> PresentedDates { get; set; } = [];
+
+    /// <summary>Dates that have been closed to changes. A locked day is marked in place of the presented marker, since locking follows presenting.</summary>
+    [Parameter]
+    public IReadOnlyCollection<DateOnly> LockedDates { get; set; } = [];
+
+    private string MarkerModifier(DateOnly day) => LockedDates.Contains(day)
+        ? "standfast-day-marker-locked"
+        : PresentedDates.Contains(day) ? "standfast-day-marker-presented" : string.Empty;
+
+    private string? MarkerDescription(DateOnly day) => LockedDates.Contains(day)
+        ? "Locked standup"
+        : PresentedDates.Contains(day) ? "Has a recorded standup" : null;
 
     private Task SelectAsync(DateOnly date) => SelectedDateChanged.InvokeAsync(date);
 

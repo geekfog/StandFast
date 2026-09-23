@@ -39,6 +39,11 @@
     background-color: var(--mud-palette-success);
 }
 
+/* The same orange the Lock button and the locked banner carry, so one colour means "closed" wherever it appears. */
+.standfast-day-marker-locked {
+    background-color: var(--mud-palette-warning);
+}
+
 /* A report chart is drawn at a fixed pixel step per date, so a long period scrolls sideways rather than squeezing its labels together. */
 .standfast-chart-scroll {
     max-width: 100%;

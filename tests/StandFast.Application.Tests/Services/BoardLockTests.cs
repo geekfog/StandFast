@@ -111,6 +111,21 @@ public sealed class BoardLockTests
     }
 
     [Fact]
+    public async Task GetLockedDatesAsync_ReturnsOnlyTheLockedDatesInTheRange()
+    {
+        BoardTestContext context = new();
+        await context.AddMemberAsync("Ada", "Lovelace");
+
+        await context.Service.LockAsync(context.Standup.Id, BoardTestContext.Yesterday);
+        await context.Service.SetLeaderAsync(context.Standup.Id, BoardTestContext.Today, null);
+
+        IReadOnlyCollection<DateOnly> locked = await context.Service.GetLockedDatesAsync(
+            context.Standup.Id, BoardTestContext.Today.AddDays(-7), BoardTestContext.Today);
+
+        Assert.Equal([BoardTestContext.Yesterday], locked);
+    }
+
+    [Fact]
     public async Task UnlockAsync_ReopensTheDateForChanges()
     {
         BoardTestContext context = new();

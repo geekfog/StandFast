@@ -85,6 +85,16 @@ public sealed class InMemoryStandupRepository : IStandupRepository
         meetings[(meeting.StandupId, meeting.MeetingDate)] = meeting;
         return Task.CompletedTask;
     }
+
+    public Task<IReadOnlyCollection<DateOnly>> GetLockedDatesAsync(Guid standupId, DateOnly from, DateOnly to, CancellationToken cancellationToken = default)
+    {
+        IReadOnlyCollection<DateOnly> dates = meetings.Values
+            .Where(meeting => meeting.StandupId == standupId && meeting.IsLocked && meeting.MeetingDate >= from && meeting.MeetingDate <= to)
+            .Select(meeting => meeting.MeetingDate)
+            .ToHashSet();
+
+        return Task.FromResult(dates);
+    }
 }
 
 /// <summary>Mirrors the real repository's contract: the prior entry is the most recent one strictly before the requested date.</summary>

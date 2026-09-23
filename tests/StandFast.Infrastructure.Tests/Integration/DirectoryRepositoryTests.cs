@@ -109,6 +109,25 @@ public sealed class DirectoryRepositoryTests : IClassFixture<AzuriteTableFixture
     }
 
     [AzuriteFact]
+    public async Task GetLockedDatesAsync_ReturnsTheLockedDatesInsideTheRangeAndNothingElse()
+    {
+        DateOnly monday = new(2026, 9, 14);
+        Standup standup = new() { Name = "Locked week", CreatedUtc = DateTimeOffset.UtcNow };
+        await fixture.Standups.UpsertAsync(standup);
+
+        await UpsertMeetingAsync(standup.Id, monday, lockedUtc: DateTimeOffset.UtcNow);
+        await UpsertMeetingAsync(standup.Id, monday.AddDays(1), lockedUtc: null);
+        await UpsertMeetingAsync(standup.Id, monday.AddDays(9), lockedUtc: DateTimeOffset.UtcNow);
+
+        IReadOnlyCollection<DateOnly> locked = await fixture.Standups.GetLockedDatesAsync(standup.Id, monday, monday.AddDays(6));
+
+        Assert.Equal([monday], locked);
+    }
+
+    private Task UpsertMeetingAsync(Guid standupId, DateOnly meetingDate, DateTimeOffset? lockedUtc) =>
+        fixture.Standups.UpsertMeetingAsync(new StandupMeeting { StandupId = standupId, MeetingDate = meetingDate, LockedUtc = lockedUtc, CreatedUtc = DateTimeOffset.UtcNow });
+
+    [AzuriteFact]
     public async Task GetAllMembersAsync_CrossesEveryStandupPartition()
     {
         Standup first = new() { Name = "Scan first", CreatedUtc = DateTimeOffset.UtcNow };

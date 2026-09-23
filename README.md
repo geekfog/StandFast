@@ -57,11 +57,11 @@ The board has three columns and one tap moves a person rightwards through them.
 
 The Leader dropdown beside the standup picker records who ran the standup that day. It offers the standup's Leader Roster and nobody else, it is per date rather than per standup, and it can be left empty, so a standup nobody was picked for reads as exactly that.
 
-The Lock button beside the date closes that date once the standup is over, so a stray tap on a board someone left open cannot change what was recorded. A locked date still opens and still shows every update; what it withholds is the tapping, the undo arrows, the Leader dropdown and the Save button. Unlocking asks first, since that is the press that puts a finished standup back within reach.
+The Lock button beside the date closes that date once the standup is over, so a stray tap on a board someone left open cannot change what was recorded. It becomes available once at least one person has presented, since a date nobody has spoken on has nothing to close. A locked date still opens and still shows every update; what it withholds is the tapping, the undo arrows, the Leader dropdown and the Save button. Unlocking asks first, since that is the press that puts a finished standup back within reach.
 
 The time the lock carries is the time it was applied, as long as the standup is still recent. Lock the date hours later, or the next morning, and it is dated from the last person who presented instead, plus a few minutes, because a board closed the next day should not read as though the meeting ran that long. Both windows are settings; see [Everything you set](#everything-you-set). A date nobody presented on has no such anchor, so it takes the time it was locked whenever that was, and a date locked twice keeps the first time.
 
-A dot under a date in the week strip means someone presented on that date, so a week with a finished standup is recognisable without opening each day.
+A dot under a date in the week strip means someone presented on that date, so a week with a finished standup is recognisable without opening each day. The dot is green while the date is still open and orange once it is locked, matching the colour the Lock button and the locked banner carry.
 
 Your own card carries a dark yellow star after the name, in whichever column you are sitting in, so you can find yourself on a long roster without reading the names. It shows when the address you signed in with matches the one on your person record.
 
@@ -341,7 +341,7 @@ The presenting order report reads the same bounded range with a longer span and 
 
 Everything hanging off a standup uses that standup's id as its partition key, in `StandupMembers`, `StandupLeaders` and `StandupMeetings` alike. Deleting a standup therefore clears three named partitions and nothing has to be searched for.
 
-A date's lock is the timestamp on its meeting row and nothing else: there is no boolean beside it that could disagree, and when a standup closed is worth keeping on its own. The board disables its controls as soon as it knows about a lock, but `BoardService` is where the lock actually holds — every attendance tap, saved update and leader change reads the meeting row first and refuses a locked date, so a screen opened before somebody else locked it cannot write through. The board catches that refusal and reloads rather than dropping the circuit. What time the lock records is a rule of its own in `BoardLockPolicy`, in the Domain layer, with the two windows supplied from configuration.
+A date's lock is the timestamp on its meeting row and nothing else: there is no boolean beside it that could disagree, and when a standup closed is worth keeping on its own. The board disables its controls as soon as it knows about a lock, but `BoardService` is where the lock actually holds — every attendance tap, saved update and leader change reads the meeting row first and refuses a locked date, so a screen opened before somebody else locked it cannot write through. The board catches that refusal and reloads rather than dropping the circuit. What time the lock records is a rule of its own in `BoardLockPolicy`, in the Domain layer, with the two windows supplied from configuration. The week strip's orange dots come from a range query over the meetings partition bounded by the two date keys, which is the same shape as the query behind the green ones and reads one standup's week.
 
 ### Why Table Storage and not SQL
 
@@ -557,5 +557,7 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 - Gave each standup a second roster of the people who may run it, alongside the roster of the people who present. The Standups screen has a button for each, and someone can be on both.
 - Renamed the People table's Standups column to Presenters and added a Leaders column beside it, so each person's two kinds of involvement read separately.
 - Added a Leader dropdown to the board, beside the standup picker, for recording who ran the standup on the day being viewed. It offers that standup's Leader Roster, applies to that date alone, and can be left empty.
+- Turned the week strip's dot orange on a locked day, leaving it green on a day that is finished but still open, so a week shows at a glance which days are closed.
+- Greyed out the Lock button until somebody has presented on the date, since a day nobody has spoken on has nothing to close.
 - Changed the "can be called on" column to list people alphabetically, the same way the roster does, instead of by who arrived first, so a name sits in the same place in both columns.
 - Added a Lock button beside the date on the board, which closes that day's standup so nothing on it can be changed by accident. A locked day still reads in full; unlocking asks first. Locking during or shortly after the standup records the time you pressed it, while locking much later records the last person who presented plus a few minutes, so a day closed the next morning does not read as though the meeting ran that long. How long "shortly after" is, and how many minutes get added, are both settings each environment can change.

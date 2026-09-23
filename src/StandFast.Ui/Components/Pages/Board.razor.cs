@@ -20,6 +20,7 @@ public partial class Board
     private IReadOnlyList<StandupDto> standups = [];
     private StandupBoardDto? board;
     private IReadOnlyCollection<DateOnly> presentedDates = [];
+    private IReadOnlyCollection<DateOnly> lockedDates = [];
     private TimeZoneInfo timeZone = TimeZoneInfo.Local;
     private DateOnly today;
     private Guid? selectedPersonId;
@@ -72,9 +73,14 @@ public partial class Board
 
     private bool IsLocked => board?.IsLocked == true;
 
+    /// <summary>True once somebody has given their update on this date. Locking closes a standup that ran, so a date with no turn on it has nothing to close.</summary>
+    private bool HasPresented => board?.Participants.Any(participant => participant.State == AttendanceState.Presented) == true;
+
     private string LockedCaption => $"Locked {board?.LockedUtc.ToLocalDisplay(timeZone)}. Unlock to record anything further on this date.";
 
-    private string LockActionDescription => IsLocked ? LockedCaption : "Lock this date so nothing recorded on it can be changed by accident.";
+    private string LockActionDescription => IsLocked
+        ? LockedCaption
+        : HasPresented ? "Lock this date so nothing recorded on it can be changed by accident." : "Nobody has presented on this date yet, so there is nothing to lock.";
 
     private string UpdateHintText => IsLocked ? "Tap the notes icon beside a name to read their update." : "Tap the notes icon beside a name to record their update.";
 
@@ -102,9 +108,10 @@ public partial class Board
     private async Task LoadBoardAsync()
     {
         IReadOnlyList<DateOnly> week = MeetingCalendar.Week(SelectedDate);
-        (board, presentedDates) = (
+        (board, presentedDates, lockedDates) = (
             await BoardService.GetBoardAsync(SelectedStandupId, SelectedDate),
-            await BoardService.GetPresentedDatesAsync(SelectedStandupId, week[0], week[^1]));
+            await BoardService.GetPresentedDatesAsync(SelectedStandupId, week[0], week[^1]),
+            await BoardService.GetLockedDatesAsync(SelectedStandupId, week[0], week[^1]));
     }
 
     private IReadOnlyList<BoardParticipantDto> ParticipantsIn(AttendanceState state) =>
@@ -168,6 +175,7 @@ public partial class Board
         {
             DateTimeOffset? lockedUtc = await BoardService.LockAsync(SelectedStandupId, SelectedDate);
             board = board with { LockedUtc = lockedUtc };
+            lockedDates = WithMarker(lockedDates, marked: true);
             selectedPersonId = null;
             Snackbar.Add($"Standup locked as of {lockedUtc.ToLocalDisplay(timeZone)}.", Severity.Success);
 
@@ -187,6 +195,7 @@ public partial class Board
 
         await BoardService.UnlockAsync(SelectedStandupId, SelectedDate);
         board = board with { LockedUtc = null };
+        lockedDates = WithMarker(lockedDates, marked: false);
         Snackbar.Add("Standup unlocked.", Severity.Success);
     }
 
@@ -226,7 +235,7 @@ public partial class Board
         }
 
         board = board with { Participants = [.. board.Participants.Select(participant => participant.PersonId == updated.PersonId ? updated : participant)] };
-        SyncPresentedMarker();
+        presentedDates = WithMarker(presentedDates, HasPresented);
     }
 
     /// <summary>Brings a board that was open when somebody else locked the date back in step, so the screen matches what storage will accept.</summary>
@@ -237,17 +246,8 @@ public partial class Board
         Snackbar.Add("This standup has been locked, so the board has been reloaded.", Severity.Warning);
     }
 
-    /// <summary>Holds the week strip's marker for the selected date in step with the board after a tap, so the week does not have to be refetched.</summary>
-    private void SyncPresentedMarker()
-    {
-        bool hasPresented = board?.Participants.Any(participant => participant.State == AttendanceState.Presented) == true;
-        if (hasPresented == presentedDates.Contains(SelectedDate))
-        {
-            return;
-        }
-
-        presentedDates = hasPresented
-            ? [.. presentedDates, SelectedDate]
-            : [.. presentedDates.Where(date => date != SelectedDate)];
-    }
+    /// <summary>Holds one of the week strip's marker sets in step with the board after a change, so the week does not have to be refetched.</summary>
+    private IReadOnlyCollection<DateOnly> WithMarker(IReadOnlyCollection<DateOnly> dates, bool marked) => marked == dates.Contains(SelectedDate)
+        ? dates
+        : marked ? [.. dates, SelectedDate] : [.. dates.Where(date => date != SelectedDate)];
 }

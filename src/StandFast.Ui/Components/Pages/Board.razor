@@ -12,6 +12,7 @@
             <MudButton Variant="Variant.Outlined"
                        Color="@(IsLocked ? Color.Warning : Color.Default)"
                        StartIcon="@(IsLocked ? Icons.Material.Filled.Lock : Icons.Material.Filled.LockOpen)"
+                       Disabled="@(!IsLocked && !HasPresented)"
                        OnClick="ToggleLockAsync"
                        aria-label="@LockActionDescription">
                 @(IsLocked ? "Unlock" : "Lock")
@@ -39,7 +40,8 @@
         </MudSelect>
     </MudItem>
     <MudItem xs="12" md="8">
-        <WeekStrip SelectedDate="@SelectedDate" SelectedDateChanged="OnDateChangedAsync" Today="@today" ScheduledDays="@SelectedStandupDays" PresentedDates="@presentedDates" />
+        <WeekStrip SelectedDate="@SelectedDate" SelectedDateChanged="OnDateChangedAsync" Today="@today" ScheduledDays="@SelectedStandupDays"
+                   PresentedDates="@presentedDates" LockedDates="@lockedDates" />
     </MudItem>
 </MudGrid>
 

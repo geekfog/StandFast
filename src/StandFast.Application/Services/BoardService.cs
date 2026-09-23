@@ -149,6 +149,9 @@ public sealed class BoardService(
     public Task<IReadOnlyCollection<DateOnly>> GetPresentedDatesAsync(Guid standupId, DateOnly from, DateOnly to, CancellationToken cancellationToken = default) =>
         entries.GetPresentedDatesAsync(standupId, from, to, cancellationToken);
 
+    public Task<IReadOnlyCollection<DateOnly>> GetLockedDatesAsync(Guid standupId, DateOnly from, DateOnly to, CancellationToken cancellationToken = default) =>
+        standups.GetLockedDatesAsync(standupId, from, to, cancellationToken);
+
     private async Task<BoardParticipantDto?> ChangeStateAsync(Guid standupId, DateOnly meetingDate, Guid personId, Func<AttendanceState, AttendanceState> transition, CancellationToken cancellationToken)
     {
         await GuardUnlockedAsync(standupId, meetingDate, cancellationToken);

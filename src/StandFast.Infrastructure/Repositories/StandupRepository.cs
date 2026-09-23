@@ -1,6 +1,7 @@
 using Azure;
 using Azure.Data.Tables;
 using StandFast.Domain.Abstractions;
+using StandFast.Domain.Common;
 using StandFast.Domain.Entities;
 using StandFast.Domain.Enums;
 using StandFast.Infrastructure.Mapping;
@@ -105,6 +106,27 @@ public sealed class StandupRepository(ITableClientProvider tables) : IStandupRep
     {
         TableClient client = await tables.GetAsync(StorageNames.StandupMeetings, cancellationToken);
         await client.UpsertEntityAsync(meeting.ToTableEntity(), TableUpdateMode.Replace, cancellationToken);
+    }
+
+    public async Task<IReadOnlyCollection<DateOnly>> GetLockedDatesAsync(Guid standupId, DateOnly from, DateOnly to, CancellationToken cancellationToken = default)
+    {
+        TableClient client = await tables.GetAsync(StorageNames.StandupMeetings, cancellationToken);
+
+        // Row keys are plain dates, so the range reads one standup's slice of the period. Only the lock column comes back, since the date is the key.
+        string filter = TableClient.CreateQueryFilter(
+            $"PartitionKey eq {StorageKeys.StandupChildPartitionKey(standupId)} and RowKey ge {StorageKeys.MeetingRowKey(from)} and RowKey le {StorageKeys.MeetingRowKey(to)}");
+
+        HashSet<DateOnly> dates = [];
+        await foreach (StandupMeetingTableEntity entity in client.QueryAsync<StandupMeetingTableEntity>(
+            filter, select: [nameof(ITableEntity.RowKey), nameof(StandupMeetingTableEntity.LockedUtc)], cancellationToken: cancellationToken))
+        {
+            if (entity.LockedUtc is not null)
+            {
+                dates.Add(MeetingCalendar.FromDateKey(entity.RowKey));
+            }
+        }
+
+        return dates;
     }
 
     private async Task ClearPartitionAsync(string logicalTableName, string partitionKey, CancellationToken cancellationToken)

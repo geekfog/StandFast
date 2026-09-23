@@ -32,4 +32,7 @@ public interface IBoardService
 
     /// <summary>Dates in the inclusive range on which someone presented, which the week strip marks so a month of standups is scannable.</summary>
     Task<IReadOnlyCollection<DateOnly>> GetPresentedDatesAsync(Guid standupId, DateOnly from, DateOnly to, CancellationToken cancellationToken = default);
+
+    /// <summary>Dates in the inclusive range that have been locked, which the week strip marks apart from the days still open.</summary>
+    Task<IReadOnlyCollection<DateOnly>> GetLockedDatesAsync(Guid standupId, DateOnly from, DateOnly to, CancellationToken cancellationToken = default);
 }
