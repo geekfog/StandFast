@@ -6,11 +6,14 @@
             <MudText Typo="Typo.caption" Class="mud-text-secondary">@Participant.Email</MudText>
         </div>
         <MudButton Variant="Variant.Text" Color="Color.Default" StartIcon="@Icons.Material.Filled.Close" OnClick="CancelAsync" Class="mr-2">
-            Cancel
+            @(IsReadOnly ? "Close" : "Cancel")
         </MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" Disabled="@(!IsDirty || isSaving)" OnClick="SaveAsync">
-            @(isSaving ? "Saving..." : "Save update")
-        </MudButton>
+        @if (!IsReadOnly)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" Disabled="@(!IsDirty || isSaving)" OnClick="SaveAsync">
+                @(isSaving ? "Saving..." : "Save update")
+            </MudButton>
+        }
     </div>
 
     <MudGrid Spacing="3">
@@ -30,21 +33,24 @@
         </MudItem>
 
         <MudItem xs="12" md="4">
-            <MarkdownEditor Label="Current update" @bind-Value="currentUpdate" Placeholder="What did you do, what is next?">
+            <MarkdownEditor Label="Current update" @bind-Value="currentUpdate" ReadOnly="@IsReadOnly" Placeholder="What did you do, what is next?" EmptyText="Nothing recorded for this date.">
                 <ToolbarActions>
-                    <MudTooltip Text="Copy the prior update into this box">
-                        <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
-                                       Size="Size.Small"
-                                       Disabled="@(!Participant.HasPrior)"
-                                       OnClick="CopyPriorForward"
-                                       aria-label="Copy prior update forward" />
-                    </MudTooltip>
+                    @if (!IsReadOnly)
+                    {
+                        <MudTooltip Text="Copy the prior update into this box">
+                            <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                           Size="Size.Small"
+                                           Disabled="@(!Participant.HasPrior)"
+                                           OnClick="CopyPriorForward"
+                                           aria-label="Copy prior update forward" />
+                        </MudTooltip>
+                    }
                 </ToolbarActions>
             </MarkdownEditor>
         </MudItem>
 
         <MudItem xs="12" md="4">
-            <MarkdownEditor Label="Blockers" @bind-Value="blockers" Placeholder="Anything in the way?" EmptyText="No blockers recorded." />
+            <MarkdownEditor Label="Blockers" @bind-Value="blockers" ReadOnly="@IsReadOnly" Placeholder="Anything in the way?" EmptyText="No blockers recorded." />
         </MudItem>
     </MudGrid>
 
@@ -72,6 +78,10 @@
 
     [Parameter]
     public TimeZoneInfo TimeZone { get; set; } = TimeZoneInfo.Local;
+
+    /// <summary>Set once the date has been closed, which leaves the panel as a way of reading what was recorded.</summary>
+    [Parameter]
+    public bool IsReadOnly { get; set; }
 
     [Parameter]
     public EventCallback<ParticipantUpdateDto> OnSave { get; set; }

@@ -38,6 +38,12 @@ param p_OidcClientSecret string
 @description('Windows or IANA time zone the board treats as today, for example Central Standard Time.')
 param p_DisplayTimeZoneId string = 'Central Standard Time'
 
+@description('Minutes after a day\'s last turn within which locking its board records the moment it was locked. 0 keeps the value in appsettings.json.')
+param p_BoardLockGraceMinutes int = 0
+
+@description('Minutes added to a day\'s last turn to date a lock applied past the grace window. 0 keeps the value in appsettings.json.')
+param p_BoardLockMinutesAfterLastTurn int = 0
+
 @description('Custom domain the app answers on, for example standup.yourbusiness.com. Empty leaves the app reachable only on its generated Container Apps URL.')
 param p_CustomDomain string = ''
 
@@ -69,6 +75,12 @@ var v_CustomDomains = !v_BindCustomDomain ? [] : [
     ? { bindingType: 'SniEnabled', certificateId: v_CertificateId }
     : { bindingType: 'Disabled' })
 ]
+
+// The board lock windows ship in appsettings.json, so an environment that has nothing to say about them sets no environment variable and the shipped
+// value stands. Only a non-zero parameter reaches the container.
+var v_BoardLockEnvironment = concat(
+  p_BoardLockGraceMinutes > 0 ? [ { name: 'BoardLock__GraceMinutes', value: string(p_BoardLockGraceMinutes) } ] : [],
+  p_BoardLockMinutesAfterLastTurn > 0 ? [ { name: 'BoardLock__MinutesAfterLastTurn', value: string(p_BoardLockMinutesAfterLastTurn) } ] : [])
 
 // Built-in role definition ids. The container app holds one user assigned identity and is granted only the data-plane roles it needs.
 var v_Roles = {
@@ -286,7 +298,7 @@ resource containerApp 'Microsoft.App/containerApps@2025-07-01' = if (p_DeployApp
             cpu: json('0.5')
             memory: '1Gi'
           }
-          env: [
+          env: concat([
             { name: 'ASPNETCORE_ENVIRONMENT', value: 'Production' }
             // DefaultAzureCredential resolves the user assigned identity from this, so storage and Key Vault need no secret of their own.
             { name: 'AZURE_CLIENT_ID', value: identity.properties.clientId }
@@ -297,7 +309,7 @@ resource containerApp 'Microsoft.App/containerApps@2025-07-01' = if (p_DeployApp
             { name: 'AzureTableStorage__TablePrefix', value: '${p_AppBase}${p_Environment}' }
             { name: 'StandFastUi__DisplayTimeZoneId', value: p_DisplayTimeZoneId }
             { name: 'StandFastUi__DataProtectionBlobUri', value: '${storage.properties.primaryEndpoints.blob}${v_DataProtectionContainer}/${v_DataProtectionBlob}' }
-          ]
+          ], v_BoardLockEnvironment)
           probes: [
             {
               type: 'Liveness'

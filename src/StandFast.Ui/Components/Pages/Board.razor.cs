@@ -48,6 +48,9 @@ public partial class Board
     [Inject]
     private ISnackbar Snackbar { get; set; } = default!;
 
+    [Inject]
+    private IDialogService DialogService { get; set; } = default!;
+
     [SupplyParameterFromQuery(Name = UiRoutes.StandupQueryKey)]
     private Guid? StandupIdQuery { get; set; }
 
@@ -67,6 +70,14 @@ public partial class Board
     /// <summary>Says why the leader picker is empty, since an empty dropdown on its own reads as a standup with nobody available to lead.</summary>
     private string? LeaderHelperText => LeaderCandidates.Count == 0 ? $"Nobody is on the {RosterLabels.RosterTitle(RosterRole.Leader).ToLowerInvariant()} for this standup." : null;
 
+    private bool IsLocked => board?.IsLocked == true;
+
+    private string LockedCaption => $"Locked {board?.LockedUtc.ToLocalDisplay(timeZone)}. Unlock to record anything further on this date.";
+
+    private string LockActionDescription => IsLocked ? LockedCaption : "Lock this date so nothing recorded on it can be changed by accident.";
+
+    private string UpdateHintText => IsLocked ? "Tap the notes icon beside a name to read their update." : "Tap the notes icon beside a name to record their update.";
+
     protected override async Task OnInitializedAsync()
     {
         timeZone = UiOptions.Value.ResolveTimeZone();
@@ -85,6 +96,11 @@ public partial class Board
         loadedStandupId = SelectedStandupId;
         loadedDate = SelectedDate;
 
+        await LoadBoardAsync();
+    }
+
+    private async Task LoadBoardAsync()
+    {
         IReadOnlyList<DateOnly> week = MeetingCalendar.Week(SelectedDate);
         (board, presentedDates) = (
             await BoardService.GetBoardAsync(SelectedStandupId, SelectedDate),
@@ -119,12 +135,59 @@ public partial class Board
 
     private async Task OnLeaderChangedAsync(Guid? personId)
     {
-        if (board is null || !await BoardService.SetLeaderAsync(SelectedStandupId, SelectedDate, personId))
+        if (board is null)
         {
             return;
         }
 
+        try
+        {
+            if (!await BoardService.SetLeaderAsync(SelectedStandupId, SelectedDate, personId))
+            {
+                return;
+            }
+        }
+        catch (BoardLockedException)
+        {
+            await ReloadLockedBoardAsync();
+            return;
+        }
+
         board = board with { LeaderPersonId = personId };
+    }
+
+    /// <summary>Locks the date, or asks before reopening one, since unlocking is what puts a finished standup back within reach of a stray tap.</summary>
+    private async Task ToggleLockAsync()
+    {
+        if (board is null)
+        {
+            return;
+        }
+
+        if (!IsLocked)
+        {
+            DateTimeOffset? lockedUtc = await BoardService.LockAsync(SelectedStandupId, SelectedDate);
+            board = board with { LockedUtc = lockedUtc };
+            selectedPersonId = null;
+            Snackbar.Add($"Standup locked as of {lockedUtc.ToLocalDisplay(timeZone)}.", Severity.Success);
+
+            return;
+        }
+
+        bool? confirmed = await DialogService.ShowMessageBoxAsync(
+            "Unlock standup",
+            $"Unlock {board.StandupName} for {SelectedDate.ToDateTime(TimeOnly.MinValue).ToString(UiFormats.LongDate)}? Attendance and updates can be changed again.",
+            yesText: "Unlock",
+            cancelText: "Keep locked");
+
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        await BoardService.UnlockAsync(SelectedStandupId, SelectedDate);
+        board = board with { LockedUtc = null };
+        Snackbar.Add("Standup unlocked.", Severity.Success);
     }
 
     private void SelectParticipant(Guid personId) => selectedPersonId = selectedPersonId == personId ? null : personId;
@@ -145,7 +208,18 @@ public partial class Board
     /// <summary>Runs a board mutation and swaps the single changed participant into the loaded board, rather than refetching every roster entry.</summary>
     private async Task ApplyAsync(Func<Task<BoardParticipantDto?>> mutation)
     {
-        BoardParticipantDto? updated = await mutation();
+        BoardParticipantDto? updated;
+
+        try
+        {
+            updated = await mutation();
+        }
+        catch (BoardLockedException)
+        {
+            await ReloadLockedBoardAsync();
+            return;
+        }
+
         if (updated is null || board is null)
         {
             return;
@@ -153,6 +227,14 @@ public partial class Board
 
         board = board with { Participants = [.. board.Participants.Select(participant => participant.PersonId == updated.PersonId ? updated : participant)] };
         SyncPresentedMarker();
+    }
+
+    /// <summary>Brings a board that was open when somebody else locked the date back in step, so the screen matches what storage will accept.</summary>
+    private async Task ReloadLockedBoardAsync()
+    {
+        selectedPersonId = null;
+        await LoadBoardAsync();
+        Snackbar.Add("This standup has been locked, so the board has been reloaded.", Severity.Warning);
     }
 
     /// <summary>Holds the week strip's marker for the selected date in step with the board after a tap, so the week does not have to be refetched.</summary>

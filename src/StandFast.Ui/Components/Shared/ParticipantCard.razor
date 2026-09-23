@@ -1,5 +1,5 @@
 <MudPaper Outlined="true"
-          Class="@($"d-flex align-center pa-2 mb-2 standfast-participant {(IsSelected ? "standfast-participant-selected" : string.Empty)}")"
+          Class="@($"d-flex align-center pa-2 mb-2 {(IsLocked ? "standfast-participant-locked" : "standfast-participant")} {(IsSelected ? "standfast-participant-selected" : string.Empty)}")"
           @onclick="OnAdvanceAsync">
     @if (ShowPriorTurn)
     {
@@ -41,7 +41,7 @@
                            aria-label="@($"{UpdateActionDescription} for {Participant.DisplayName}")" />
         </MudTooltip>
 
-        @if (Participant.State != AttendanceState.Roster)
+        @if (Participant.State != AttendanceState.Roster && !IsLocked)
         {
             <MudTooltip Text="Move back">
                 <MudIconButton Icon="@Icons.Material.Filled.Undo"
@@ -67,6 +67,10 @@
     /// <summary>Marks the card belonging to whoever is signed in, so someone scanning a long roster finds themselves without reading the names.</summary>
     [Parameter]
     public bool IsSelf { get; set; }
+
+    /// <summary>Set once the date has been closed. The card still opens the update for reading, and every action that would change something is withheld.</summary>
+    [Parameter]
+    public bool IsLocked { get; set; }
 
     /// <summary>The turn this person took at the previous standup, or null when they were not there.</summary>
     [Parameter]
@@ -102,7 +106,7 @@
         _ => Participant.UpdateSavedUtc is null ? "Not yet marked present" : $"Update saved {Participant.UpdateSavedUtc.ToLocalDisplay(TimeZone)}",
     };
 
-    private Task OnAdvanceAsync() => OnAdvance.InvokeAsync(Participant.PersonId);
+    private Task OnAdvanceAsync() => IsLocked ? Task.CompletedTask : OnAdvance.InvokeAsync(Participant.PersonId);
 
     private Task OnRevertAsync() => OnRevert.InvokeAsync(Participant.PersonId);
 

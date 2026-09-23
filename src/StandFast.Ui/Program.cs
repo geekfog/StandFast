@@ -32,7 +32,7 @@ try
     builder.UseStandFastSerilog();
 
     builder.Services.AddStandFastInfrastructure(builder.Configuration);
-    builder.Services.AddStandFastApplication();
+    builder.Services.AddStandFastApplication(builder.Configuration);
 
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddScoped<ICurrentUser, CurrentUser>();

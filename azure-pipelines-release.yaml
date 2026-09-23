@@ -73,6 +73,20 @@ stages:
                           }}
                         }
                       }
+
+                      # The board lock windows ship with the application, so an environment overrides them only if it wants to. A variable its group
+                      # does not define arrives as its own unexpanded macro, which is what tells a genuine override from an absent one.
+                      function Add-OptionalMinutes([string] $p_Name, [string] $p_Value)
+                      {
+                        if ($p_Value -and $p_Value -notmatch '^\$\(.+\)$')
+                        {
+                          $deploymentParameters.parameters[$p_Name] = @{ value = [int]$p_Value }
+                        }
+                      }
+
+                      Add-OptionalMinutes 'p_BoardLockGraceMinutes' '$(a_BoardLockGraceMinutes)'
+                      Add-OptionalMinutes 'p_BoardLockMinutesAfterLastTurn' '$(a_BoardLockMinutesAfterLastTurn)'
+
                       $deploymentParameters.Add('$schema', 'https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#')
                       $deploymentParameters | ConvertTo-Json -Depth 6 | Set-Content '$(Pipeline.Workspace)/parameters.json'
 

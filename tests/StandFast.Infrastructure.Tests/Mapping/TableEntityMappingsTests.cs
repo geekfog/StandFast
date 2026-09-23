@@ -93,13 +93,14 @@ public sealed class TableEntityMappingsTests
     }
 
     [Fact]
-    public void StandupMeeting_RoundTripsTheDateAndTheLeader()
+    public void StandupMeeting_RoundTripsTheDateTheLeaderAndTheLock()
     {
         StandupMeeting meeting = new()
         {
             StandupId = Guid.CreateVersion7(),
             MeetingDate = new DateOnly(2026, 9, 15),
             LeaderPersonId = Guid.CreateVersion7(),
+            LockedUtc = DateTimeOffset.UnixEpoch.AddHours(9),
             CreatedUtc = DateTimeOffset.UnixEpoch,
         };
 
@@ -110,13 +111,18 @@ public sealed class TableEntityMappingsTests
         Assert.Equal(meeting.StandupId, restored.StandupId);
         Assert.Equal(meeting.MeetingDate, restored.MeetingDate);
         Assert.Equal(meeting.LeaderPersonId, restored.LeaderPersonId);
+        Assert.Equal(meeting.LockedUtc, restored.LockedUtc);
+        Assert.True(restored.IsLocked);
     }
 
     [Fact]
-    public void StandupMeeting_RoundTripsWithNobodyLeading()
+    public void StandupMeeting_RoundTripsWithNobodyLeadingAndTheDateOpen()
     {
         StandupMeeting meeting = new() { StandupId = Guid.CreateVersion7(), MeetingDate = new DateOnly(2026, 9, 15), CreatedUtc = DateTimeOffset.UnixEpoch };
 
-        Assert.Null(meeting.ToTableEntity().ToDomain().LeaderPersonId);
+        StandupMeeting restored = meeting.ToTableEntity().ToDomain();
+
+        Assert.Null(restored.LeaderPersonId);
+        Assert.False(restored.IsLocked);
     }
 }

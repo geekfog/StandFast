@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Options;
 using StandFast.Application.Auditing;
+using StandFast.Application.Configuration;
 using StandFast.Application.Services;
 using StandFast.Application.Validation;
 using StandFast.Domain.Entities;
@@ -16,8 +18,11 @@ public sealed class BoardTestContext
     public BoardTestContext()
     {
         Clock = new FixedClock(Now);
-        Service = new BoardService(Standups, People, Entries, Clock, new ParticipantUpdateDtoValidator(), Audit);
+        Service = new BoardService(Standups, People, Entries, Clock, new ParticipantUpdateDtoValidator(), Options.Create(LockOptions), Audit);
     }
+
+    /// <summary>The shipped lock windows. A test that cares about the boundary sets its own values before calling the service.</summary>
+    public BoardLockOptions LockOptions { get; } = new();
 
     public InMemoryPersonRepository People { get; } = new();
 

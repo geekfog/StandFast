@@ -13,9 +13,17 @@ public sealed class StandupMeeting
     /// <summary>The person running the standup that day, or null when nobody is picked. Leading is optional, so no leader is a normal state.</summary>
     public Guid? LeaderPersonId { get; set; }
 
+    /// <summary>
+    /// The moment this date's board was closed to changes, or null while it is open. The timestamp carries the flag on its own, so there is no
+    /// second boolean that can disagree with it, and when a standup was closed stays on the record.
+    /// </summary>
+    public DateTimeOffset? LockedUtc { get; set; }
+
     public DateTimeOffset CreatedUtc { get; set; }
 
     public DateTimeOffset? ModifiedUtc { get; set; }
 
     public string? ETag { get; set; }
+
+    public bool IsLocked => LockedUtc is not null;
 }

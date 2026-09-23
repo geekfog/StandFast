@@ -24,18 +24,18 @@ public sealed class BoardColumnOrderingTests
     }
 
     [Fact]
-    public void Available_IsOrderedByWhenEachPersonWasMarkedPresent()
+    public void Available_IsAlphabeticalLikeTheRosterRegardlessOfWhenEachPersonArrived()
     {
         BoardParticipantDto[] participants =
         [
-            Participant("Third", markedAvailableUtc: NineAm.AddMinutes(6)),
-            Participant("First", markedAvailableUtc: NineAm),
-            Participant("Second", markedAvailableUtc: NineAm.AddMinutes(2)),
+            Participant("Zoe Brown", markedAvailableUtc: NineAm),
+            Participant("adam smith", markedAvailableUtc: NineAm.AddMinutes(6)),
+            Participant("Mary Jones", markedAvailableUtc: NineAm.AddMinutes(2)),
         ];
 
         IReadOnlyList<BoardParticipantDto> ordered = participants.InColumnOrder(AttendanceState.Available);
 
-        Assert.Equal(["First", "Second", "Third"], ordered.Select(participant => participant.DisplayName));
+        Assert.Equal(["adam smith", "Mary Jones", "Zoe Brown"], ordered.Select(participant => participant.DisplayName));
     }
 
     [Fact]
@@ -54,15 +54,15 @@ public sealed class BoardColumnOrderingTests
     }
 
     [Fact]
-    public void Timestamped_ColumnsFallBackToNameWhenTwoEntriesShareATimestamp()
+    public void Presented_FallsBackToNameWhenTwoEntriesShareATimestamp()
     {
         BoardParticipantDto[] participants =
         [
-            Participant("Bob", markedAvailableUtc: NineAm),
-            Participant("Alice", markedAvailableUtc: NineAm),
+            Participant("Bob", presentedUtc: NineAm),
+            Participant("Alice", presentedUtc: NineAm),
         ];
 
-        IReadOnlyList<BoardParticipantDto> ordered = participants.InColumnOrder(AttendanceState.Available);
+        IReadOnlyList<BoardParticipantDto> ordered = participants.InColumnOrder(AttendanceState.Presented);
 
         Assert.Equal(["Alice", "Bob"], ordered.Select(participant => participant.DisplayName));
     }

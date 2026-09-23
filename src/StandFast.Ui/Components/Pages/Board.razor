@@ -4,7 +4,21 @@
 
 <PageTitle>@AppInfo.PageTitle("Board")</PageTitle>
 
-<h1 class="mud-typography mud-typography-h5 mb-4">@SelectedDate.ToDateTime(TimeOnly.MinValue).ToString(UiFormats.LongDate)</h1>
+<div class="d-flex align-center mb-4">
+    <h1 class="mud-typography mud-typography-h5 flex-grow-1">@SelectedDate.ToDateTime(TimeOnly.MinValue).ToString(UiFormats.LongDate)</h1>
+    @if (board is not null)
+    {
+        <MudTooltip Text="@LockActionDescription">
+            <MudButton Variant="Variant.Outlined"
+                       Color="@(IsLocked ? Color.Warning : Color.Default)"
+                       StartIcon="@(IsLocked ? Icons.Material.Filled.Lock : Icons.Material.Filled.LockOpen)"
+                       OnClick="ToggleLockAsync"
+                       aria-label="@LockActionDescription">
+                @(IsLocked ? "Unlock" : "Lock")
+            </MudButton>
+        </MudTooltip>
+    }
+</div>
 
 <MudGrid Spacing="3">
     <MudItem xs="12" sm="6" md="2">
@@ -17,7 +31,7 @@
     </MudItem>
     <MudItem xs="12" sm="6" md="2">
         <MudSelect T="Guid?" Value="@board?.LeaderPersonId" ValueChanged="OnLeaderChangedAsync" Label="@RosterLabels.Name(RosterRole.Leader)" Variant="Variant.Outlined" Dense="true" Clearable="true"
-                   Disabled="@(LeaderCandidates.Count == 0)" HelperText="@LeaderHelperText">
+                   Disabled="@(LeaderCandidates.Count == 0 || IsLocked)" HelperText="@LeaderHelperText">
             @foreach (StandupMemberDto leader in LeaderCandidates)
             {
                 <MudSelectItem T="Guid?" Value="@leader.PersonId">@leader.DisplayName</MudSelectItem>
@@ -46,6 +60,11 @@ else
         <MudAlert Severity="Severity.Normal" Dense="true" Class="mt-4">@board.StandupName does not normally run on this day.</MudAlert>
     }
 
+    @if (IsLocked)
+    {
+        <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-4">@LockedCaption</MudAlert>
+    }
+
     <MudGrid Spacing="3" Class="mt-1">
         @foreach (AttendanceState state in BoardColumns)
         {
@@ -65,6 +84,7 @@ else
                                          ShowPriorTurn="@(state == AttendanceState.Available)"
                                          IsSelected="@(participant.PersonId == selectedPersonId)"
                                          IsSelf="@Preferences.IsSelf(participant.Email)"
+                                         IsLocked="@IsLocked"
                                          OnAdvance="AdvanceAsync"
                                          OnRevert="RevertAsync"
                                          OnSelect="SelectParticipant" />
@@ -86,12 +106,13 @@ else
                                     StandupId="@SelectedStandupId"
                                     MeetingDate="@SelectedDate"
                                     TimeZone="@timeZone"
+                                    IsReadOnly="@IsLocked"
                                     OnSave="SaveUpdateAsync"
                                     OnClose="CloseUpdate" />
         </div>
     }
     else if (board.Participants.Count > 0)
     {
-        <MudAlert Severity="Severity.Normal" Dense="true" Class="mt-4">Tap the notes icon beside a name to record their update.</MudAlert>
+        <MudAlert Severity="Severity.Normal" Dense="true" Class="mt-4">@UpdateHintText</MudAlert>
     }
 }

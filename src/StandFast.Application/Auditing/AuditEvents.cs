@@ -13,6 +13,8 @@ public static class AuditEvents
     public const string MemberRemoved = "Standup.MemberRemoved";
     public const string AttendanceChanged = "Board.AttendanceChanged";
     public const string LeaderChanged = "Board.LeaderChanged";
+    public const string BoardLocked = "Board.Locked";
+    public const string BoardUnlocked = "Board.Unlocked";
     public const string UpdateSaved = "Board.UpdateSaved";
     public const string PriorUpdateCopied = "Board.PriorUpdateCopied";
     public const string BackupCreated = "Backup.Created";
