@@ -46,6 +46,7 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
 - **Reports** chart what a standup has recorded over a period. A dropdown picks the report, a second picks the standup, and quick-pick buttons set how far back it runs.
 - **Backup** downloads everything the app holds as one file and restores it again, replacing whatever is there at the time. The audit log and each user's own settings are excluded from both directions.
 - **Appearance** is light or dark, chosen from the toggle in the title bar and remembered for whoever is signed in. It follows that person to any browser or machine they sign in from, and a user who has never chosen gets light.
+- **About** summarizes what the app is for and links to its source repository.
 
 ## The daily flow
 
@@ -572,3 +573,4 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 - Greyed out the Lock button until somebody has presented on the date, since a day nobody has spoken on has nothing to close.
 - Changed the "can be called on" column to list people alphabetically, the same way the roster does, instead of by who arrived first, so a name sits in the same place in both columns.
 - Added a Lock button beside the date on the board, which closes that day's standup so nothing on it can be changed by accident. A locked day still reads in full; unlocking asks first. Locking during or shortly after the standup records the time you pressed it, while locking much later records the last person who presented plus a few minutes, so a day closed the next morning does not read as though the meeting ran that long. How long "shortly after" is, and how many minutes get added, are both settings each environment can change.
+- Added an About page to the menu, showing the app icon, a summary of what StandFast is for, and a link to its source repository.

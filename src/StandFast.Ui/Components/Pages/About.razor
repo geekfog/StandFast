@@ -1,0 +1,28 @@
+@page "/about"
+@attribute [Authorize]
+
+<PageTitle>@AppInfo.PageTitle("About")</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudPaper Class="pa-8" Elevation="1">
+        <div class="d-flex align-center gap-4 mb-4">
+            <img src="@Assets[AppInfo.IconAsset]" alt="" width="64" height="64" />
+            <div>
+                <h1 class="mud-typography mud-typography-h5">@AppInfo.Name</h1>
+                <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">@AppInfo.Tagline</MudText>
+            </div>
+        </div>
+
+        <MudText Typo="Typo.body1" Class="mb-3">
+            @AppInfo.Name is a board for running a daily standup. Pick a standup and a date, tap people as they join the call, tap them again once they have given their update, and record what they said in markdown beside what they said last time.
+        </MudText>
+        <MudText Typo="Typo.body1" Class="mb-3">
+            Each standup keeps a roster of who presents and who may lead. The board shows who is still waiting, who is present, and the order people presented in, along with the turn each person took at the previous standup so the order can be varied. Once a standup is over its date can be locked so the record stays as it was.
+        </MudText>
+        <MudText Typo="Typo.body1" Class="mb-6">
+            Reports chart what a standup has recorded over a period, and a backup captures everything as one file that can be restored later.
+        </MudText>
+
+        <MudButton Href="@AppInfo.RepositoryUrl" Target="_blank" rel="noopener" Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Custom.Brands.GitHub">Source on GitHub</MudButton>
+    </MudPaper>
+</MudContainer>
