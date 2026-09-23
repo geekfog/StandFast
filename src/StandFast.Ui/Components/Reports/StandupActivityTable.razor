@@ -1,0 +1,49 @@
+<MudSimpleTable Dense="true" Hover="true" Striped="true" Class="mt-3">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Day of Week</th>
+            <th class="text-center">Status</th>
+            <th class="text-right">Presenters</th>
+            <th class="text-right">Total Time (min)</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (StandupActivityDayDto day in Report.Days)
+        {
+            <tr>
+                <td>@day.MeetingDate.ToString(UiFormats.ShortDate)</td>
+                <td>@day.MeetingDate.ToDateTime(TimeOnly.MinValue).ToString(UiFormats.WeekdayName)</td>
+                <td class="text-center">
+                    <MudTooltip Text="@StatusDescription(day)">
+                        <MudIcon Icon="@StandFastTheme.LockIcon(day.IsLocked)" Color="@StandFastTheme.LockColor(day.IsLocked)" Size="Size.Small" aria-label="@StatusDescription(day)" />
+                    </MudTooltip>
+                </td>
+                <td class="text-right">@day.PresenterCount</td>
+                <td class="text-right">
+                    <MudTooltip Text="@DurationDescription(day)">
+                        <span>@(day.DurationMinutes?.ToString() ?? UiFormats.UnavailableSymbol)</span>
+                    </MudTooltip>
+                </td>
+            </tr>
+        }
+    </tbody>
+</MudSimpleTable>
+
+@code {
+    [Parameter]
+    [EditorRequired]
+    public StandupActivityDto Report { get; set; } = default!;
+
+    /// <summary>The app's display time zone, which the first-turn and lock times in the tooltips are rendered in.</summary>
+    [Parameter]
+    public TimeZoneInfo TimeZone { get; set; } = TimeZoneInfo.Local;
+
+    private string StatusDescription(StandupActivityDayDto day) => day.IsLocked
+        ? $"{StandFastTheme.LockTitle(isLocked: true)} {day.LockedUtc.ToLocalDisplay(TimeZone)}"
+        : $"{StandFastTheme.LockTitle(isLocked: false)}, so this day can still be changed";
+
+    private string DurationDescription(StandupActivityDayDto day) => day.DurationMinutes is null
+        ? "The day is still open, so the standup has no end time yet."
+        : $"First turn {UiFormats.ToLocalDisplay(day.FirstPresentedUtc, TimeZone, UiFormats.TimeOfDay)} to the lock at {day.LockedUtc.ToLocalDisplay(TimeZone, UiFormats.TimeOfDay)}.";
+}

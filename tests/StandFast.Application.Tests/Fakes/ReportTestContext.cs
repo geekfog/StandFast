@@ -44,6 +44,12 @@ public sealed class ReportTestContext
         PresentedUtc = NineAm.AddDays(meetingDate.DayNumber - Today.DayNumber).AddMinutes(minutesIntoMeeting),
     });
 
+    /// <summary>Closes a date at a given moment, which is what the activity report measures a standup's length against.</summary>
+    public Task LockedAsync(DateOnly meetingDate, DateTimeOffset lockedUtc) => UpsertMeetingAsync(meetingDate, meeting => meeting.LockedUtc = lockedUtc);
+
+    /// <summary>Records who ran a date, which annotates the date without making the standup have run.</summary>
+    public Task LedByAsync(DateOnly meetingDate, Person leader) => UpsertMeetingAsync(meetingDate, meeting => meeting.LeaderPersonId = leader.Id);
+
     /// <summary>Records attendance without a turn, which is what someone present but never called on looks like.</summary>
     public Task AttendedWithoutPresentingAsync(Person person, DateOnly meetingDate) => Entries.UpsertAsync(new StandupEntry
     {
@@ -53,4 +59,12 @@ public sealed class ReportTestContext
         State = AttendanceState.Available,
         MarkedAvailableUtc = NineAm,
     });
+
+    private Task UpsertMeetingAsync(DateOnly meetingDate, Action<StandupMeeting> change)
+    {
+        StandupMeeting meeting = new() { StandupId = Standup.Id, MeetingDate = meetingDate, CreatedUtc = NineAm };
+        change(meeting);
+
+        return Standups.UpsertMeetingAsync(meeting);
+    }
 }

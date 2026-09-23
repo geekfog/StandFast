@@ -91,6 +91,16 @@ The period runs back from today and is set by the quick-pick buttons: 30 days, 6
 
 Each person gets their own colour. Past the eighth person the colours start again as dashed lines, then as longer dashes, and so on through thirteen patterns, so two people never share both a colour and a line style until the 105th. The legend carries each person's line drawn in their own style, and the order numbers are also available as a plain table under the chart.
 
+**Standup Activity** is a table of the days the standup actually ran, newest first. A day appears once somebody has presented on it, so a date that was only annotated — a leader picked, people marked present — is not one of them.
+
+| Column | Holds |
+| ------ | ----- |
+| Date | The meeting date. |
+| Day of Week | Its weekday, so a standup that keeps slipping to Fridays is visible without reading the dates. |
+| Status | A padlock, orange and closed once the day is locked and open while it can still be changed. Hovering it gives the time it was locked. |
+| Presenters | How many people gave their update that day. |
+| Total Time (min) | Minutes from the day's first turn to the moment it was locked. A day still open has no end time, so it reads — instead of a number. |
+
 # 💻 Technical Overview
 
 | Element | Requirement |
@@ -341,7 +351,7 @@ The presenting order report reads the same bounded range with a longer span and 
 
 Everything hanging off a standup uses that standup's id as its partition key, in `StandupMembers`, `StandupLeaders` and `StandupMeetings` alike. Deleting a standup therefore clears three named partitions and nothing has to be searched for.
 
-A date's lock is the timestamp on its meeting row and nothing else: there is no boolean beside it that could disagree, and when a standup closed is worth keeping on its own. The board disables its controls as soon as it knows about a lock, but `BoardService` is where the lock actually holds — every attendance tap, saved update and leader change reads the meeting row first and refuses a locked date, so a screen opened before somebody else locked it cannot write through. The board catches that refusal and reloads rather than dropping the circuit. What time the lock records is a rule of its own in `BoardLockPolicy`, in the Domain layer, with the two windows supplied from configuration. The week strip's orange dots come from a range query over the meetings partition bounded by the two date keys, which is the same shape as the query behind the green ones and reads one standup's week.
+A date's lock is the timestamp on its meeting row and nothing else: there is no boolean beside it that could disagree, and when a standup closed is worth keeping on its own. The board disables its controls as soon as it knows about a lock, but `BoardService` is where the lock actually holds — every attendance tap, saved update and leader change reads the meeting row first and refuses a locked date, so a screen opened before somebody else locked it cannot write through. The board catches that refusal and reloads rather than dropping the circuit. What time the lock records is a rule of its own in `BoardLockPolicy`, in the Domain layer, with the two windows supplied from configuration. One range query over the meetings partition, bounded by the two date keys, serves both the week strip's orange dots and the activity report's Status column; it is the same shape as the query behind the green dots and reads one standup's slice of the period.
 
 ### Why Table Storage and not SQL
 
@@ -557,6 +567,7 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 - Gave each standup a second roster of the people who may run it, alongside the roster of the people who present. The Standups screen has a button for each, and someone can be on both.
 - Renamed the People table's Standups column to Presenters and added a Leaders column beside it, so each person's two kinds of involvement read separately.
 - Added a Leader dropdown to the board, beside the standup picker, for recording who ran the standup on the day being viewed. It offers that standup's Leader Roster, applies to that date alone, and can be left empty.
+- Added a second report, Standup Activity: a table of the days the standup actually ran, newest first, with the weekday, whether the day is locked or still open, how many people presented, and how many minutes ran from the first person's turn to the lock.
 - Turned the week strip's dot orange on a locked day, leaving it green on a day that is finished but still open, so a week shows at a glance which days are closed.
 - Greyed out the Lock button until somebody has presented on the date, since a day nobody has spoken on has nothing to close.
 - Changed the "can be called on" column to list people alphabetically, the same way the roster does, instead of by who arrived first, so a name sits in the same place in both columns.

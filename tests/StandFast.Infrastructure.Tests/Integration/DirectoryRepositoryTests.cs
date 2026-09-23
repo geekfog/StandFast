@@ -109,7 +109,7 @@ public sealed class DirectoryRepositoryTests : IClassFixture<AzuriteTableFixture
     }
 
     [AzuriteFact]
-    public async Task GetLockedDatesAsync_ReturnsTheLockedDatesInsideTheRangeAndNothingElse()
+    public async Task GetMeetingsAsync_ReturnsTheMeetingsInsideTheRangeWithTheirLockState()
     {
         DateOnly monday = new(2026, 9, 14);
         Standup standup = new() { Name = "Locked week", CreatedUtc = DateTimeOffset.UtcNow };
@@ -119,9 +119,10 @@ public sealed class DirectoryRepositoryTests : IClassFixture<AzuriteTableFixture
         await UpsertMeetingAsync(standup.Id, monday.AddDays(1), lockedUtc: null);
         await UpsertMeetingAsync(standup.Id, monday.AddDays(9), lockedUtc: DateTimeOffset.UtcNow);
 
-        IReadOnlyCollection<DateOnly> locked = await fixture.Standups.GetLockedDatesAsync(standup.Id, monday, monday.AddDays(6));
+        IReadOnlyList<StandupMeeting> meetings = await fixture.Standups.GetMeetingsAsync(standup.Id, monday, monday.AddDays(6));
 
-        Assert.Equal([monday], locked);
+        Assert.Equal([monday, monday.AddDays(1)], meetings.Select(meeting => meeting.MeetingDate).Order());
+        Assert.Equal([monday], meetings.Where(meeting => meeting.IsLocked).Select(meeting => meeting.MeetingDate));
     }
 
     private Task UpsertMeetingAsync(Guid standupId, DateOnly meetingDate, DateTimeOffset? lockedUtc) =>

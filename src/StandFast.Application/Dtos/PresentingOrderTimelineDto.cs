@@ -13,7 +13,7 @@ public sealed record PresentingOrderTimelineDto(
     DateOnly To,
     IReadOnlyList<DateOnly> MeetingDates,
     IReadOnlyList<PresenterTimelineDto> Presenters,
-    int HighestOrder)
+    int HighestOrder) : IReportHeader
 {
     public static PresentingOrderTimelineDto Empty(Guid standupId, string standupName, DateOnly from, DateOnly to) =>
         new(standupId, standupName, from, to, [], [], 0);

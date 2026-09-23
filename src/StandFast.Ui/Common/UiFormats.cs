@@ -6,6 +6,9 @@ namespace StandFast.Ui.Common;
 public static class UiFormats
 {
     public const string WeekdayAbbreviation = "ddd";
+
+    /// <summary>Weekday in full, for a table column that names the day beside its date.</summary>
+    public const string WeekdayName = "dddd";
     public const string LongDate = "dddd, d MMMM yyyy";
     public const string ShortDate = "d MMM yyyy";
 
@@ -19,6 +22,9 @@ public static class UiFormats
 
     /// <summary>Shown in place of a turn number for someone who was not at the previous standup, so they sort last in the reader's head.</summary>
     public const string NoPriorTurnSymbol = PresentationOrder.NoTurnSymbol;
+
+    /// <summary>Stands in for a figure that cannot be worked out yet, so a table cell reads as unanswerable rather than as zero.</summary>
+    public const string UnavailableSymbol = "—";
 
     /// <summary>Ordinal form of a turn number, for example 1st or 23rd. Used in the board's prior-turn tooltips.</summary>
     public static string ToOrdinal(this int value)

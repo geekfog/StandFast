@@ -28,8 +28,8 @@ public interface IStandupRepository
     Task UpsertMeetingAsync(StandupMeeting meeting, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Meeting dates within the inclusive range that have been locked. Answers "which days of this week are closed" for a whole standup in one
-    /// query, which is what the week strip marks.
+    /// Every meeting row of one standup within the inclusive date range. Answers "what was recorded across this period" in one query, which is
+    /// what the week strip's locked markers and the activity report both read.
     /// </summary>
-    Task<IReadOnlyCollection<DateOnly>> GetLockedDatesAsync(Guid standupId, DateOnly from, DateOnly to, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<StandupMeeting>> GetMeetingsAsync(Guid standupId, DateOnly from, DateOnly to, CancellationToken cancellationToken = default);
 }

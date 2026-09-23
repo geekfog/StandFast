@@ -86,14 +86,14 @@ public sealed class InMemoryStandupRepository : IStandupRepository
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyCollection<DateOnly>> GetLockedDatesAsync(Guid standupId, DateOnly from, DateOnly to, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<StandupMeeting>> GetMeetingsAsync(Guid standupId, DateOnly from, DateOnly to, CancellationToken cancellationToken = default)
     {
-        IReadOnlyCollection<DateOnly> dates = meetings.Values
-            .Where(meeting => meeting.StandupId == standupId && meeting.IsLocked && meeting.MeetingDate >= from && meeting.MeetingDate <= to)
-            .Select(meeting => meeting.MeetingDate)
-            .ToHashSet();
+        IReadOnlyList<StandupMeeting> found =
+        [
+            .. meetings.Values.Where(meeting => meeting.StandupId == standupId && meeting.MeetingDate >= from && meeting.MeetingDate <= to),
+        ];
 
-        return Task.FromResult(dates);
+        return Task.FromResult(found);
     }
 }
 

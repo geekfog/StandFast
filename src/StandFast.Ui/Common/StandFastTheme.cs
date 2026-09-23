@@ -46,6 +46,15 @@ public static class StandFastTheme
         _ => "Roster",
     };
 
+    /// <summary>Icon for a date's lock state, so the board's button and the activity report mark a closed day the same way.</summary>
+    public static string LockIcon(bool isLocked) => isLocked ? Icons.Material.Filled.Lock : Icons.Material.Filled.LockOpen;
+
+    /// <summary>Colour that goes with <see cref="LockIcon"/>. Orange marks a closed day wherever one appears, including the week strip's marker.</summary>
+    public static Color LockColor(bool isLocked) => isLocked ? Color.Warning : Color.Default;
+
+    /// <summary>Wording for a date's lock state, used on its own and inside the labels that describe the lock action.</summary>
+    public static string LockTitle(bool isLocked) => isLocked ? "Locked" : "Open";
+
     /// <summary>Icon shown on each board column header.</summary>
     public static string ColumnIcon(Domain.Enums.AttendanceState state) => state switch
     {

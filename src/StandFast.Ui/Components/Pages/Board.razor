@@ -10,8 +10,8 @@
     {
         <MudTooltip Text="@LockActionDescription">
             <MudButton Variant="Variant.Outlined"
-                       Color="@(IsLocked ? Color.Warning : Color.Default)"
-                       StartIcon="@(IsLocked ? Icons.Material.Filled.Lock : Icons.Material.Filled.LockOpen)"
+                       Color="@StandFastTheme.LockColor(IsLocked)"
+                       StartIcon="@StandFastTheme.LockIcon(IsLocked)"
                        Disabled="@(!IsLocked && !HasPresented)"
                        OnClick="ToggleLockAsync"
                        aria-label="@LockActionDescription">

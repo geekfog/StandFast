@@ -12,7 +12,9 @@ public partial class Reports
 {
     private IReadOnlyList<StandupDto> standups = [];
     private PresentingOrderTimelineDto? timeline;
+    private StandupActivityDto? activity;
     private TimeZoneInfo timeZone = TimeZoneInfo.Local;
+    private ReportKind loadedReport;
     private Guid loadedStandupId;
     private int loadedDays;
 
@@ -49,6 +51,9 @@ public partial class Reports
 
     private int SelectedDays => ReportWindow.ResolveDays(DaysQuery);
 
+    /// <summary>Whichever report is loaded, seen as the standup and period it covers. The page's heading and its "nothing to show" branch read only this, so a new report adds no markup to either.</summary>
+    private IReportHeader? Header => (IReportHeader?)activity ?? timeline;
+
     protected override async Task OnInitializedAsync()
     {
         timeZone = UiOptions.Value.ResolveTimeZone();
@@ -58,13 +63,22 @@ public partial class Reports
     // The whole selection lives in the query string, so a report is reloaded from the URL rather than from component state and any view is shareable.
     protected override async Task OnParametersSetAsync()
     {
-        if (SelectedStandupId == Guid.Empty || (SelectedStandupId == loadedStandupId && SelectedDays == loadedDays && timeline is not null))
+        if (SelectedStandupId == Guid.Empty || (SelectedReport == loadedReport && SelectedStandupId == loadedStandupId && SelectedDays == loadedDays && Header is not null))
         {
             return;
         }
 
-        loadedStandupId = SelectedStandupId;
-        loadedDays = SelectedDays;
+        (loadedReport, loadedStandupId, loadedDays) = (SelectedReport, SelectedStandupId, SelectedDays);
+
+        // Only the chosen report is held, so the page renders whichever one is loaded without having to be told which that is.
+        (timeline, activity) = (null, null);
+
+        if (SelectedReport == ReportKind.StandupActivity)
+        {
+            activity = await ReportService.GetStandupActivityAsync(SelectedStandupId, SelectedDays, timeZone);
+            return;
+        }
+
         timeline = await ReportService.GetPresentingOrderTimelineAsync(SelectedStandupId, SelectedDays, timeZone);
     }
 

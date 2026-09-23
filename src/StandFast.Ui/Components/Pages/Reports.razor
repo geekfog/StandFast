@@ -41,7 +41,7 @@
         No standups defined yet. <MudLink Href="@UiRoutes.Standups">Create one</MudLink> and add people to its roster.
     </MudAlert>
 }
-else if (timeline is null)
+else if (Header is not { } header)
 {
     <MudProgressLinear Indeterminate="true" Class="mt-4" />
 }
@@ -51,16 +51,20 @@ else
         <MudText Typo="Typo.h6">@SelectedReport.Title()</MudText>
         <MudText Typo="Typo.body2" Class="mud-text-secondary">@SelectedReport.Description()</MudText>
         <MudText Typo="Typo.caption" Class="mud-text-secondary">
-            @timeline.StandupName · @timeline.From.ToString(UiFormats.ShortDate) to @timeline.To.ToString(UiFormats.ShortDate)
+            @header.StandupName · @header.From.ToString(UiFormats.ShortDate) to @header.To.ToString(UiFormats.ShortDate)
         </MudText>
 
-        @if (timeline.HasData)
+        @if (!header.HasData)
+        {
+            <MudAlert Severity="Severity.Normal" Dense="true" Class="mt-3">@SelectedReport.EmptyText()</MudAlert>
+        }
+        else if (activity is not null)
+        {
+            <StandupActivityTable Report="@activity" TimeZone="@timeZone" />
+        }
+        else if (timeline is not null)
         {
             <PresentingOrderTimelineChart Report="@timeline" IsDarkMode="@Preferences.IsDarkMode" />
-        }
-        else
-        {
-            <MudAlert Severity="Severity.Normal" Dense="true" Class="mt-3">Nobody presented at this standup over the selected period.</MudAlert>
         }
     </MudPaper>
 }

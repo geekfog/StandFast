@@ -1,7 +1,6 @@
 using Azure;
 using Azure.Data.Tables;
 using StandFast.Domain.Abstractions;
-using StandFast.Domain.Common;
 using StandFast.Domain.Entities;
 using StandFast.Domain.Enums;
 using StandFast.Infrastructure.Mapping;
@@ -108,25 +107,21 @@ public sealed class StandupRepository(ITableClientProvider tables) : IStandupRep
         await client.UpsertEntityAsync(meeting.ToTableEntity(), TableUpdateMode.Replace, cancellationToken);
     }
 
-    public async Task<IReadOnlyCollection<DateOnly>> GetLockedDatesAsync(Guid standupId, DateOnly from, DateOnly to, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<StandupMeeting>> GetMeetingsAsync(Guid standupId, DateOnly from, DateOnly to, CancellationToken cancellationToken = default)
     {
         TableClient client = await tables.GetAsync(StorageNames.StandupMeetings, cancellationToken);
 
-        // Row keys are plain dates, so the range reads one standup's slice of the period. Only the lock column comes back, since the date is the key.
+        // Row keys are plain dates, so bounding them reads one standup's slice of the period rather than its whole partition.
         string filter = TableClient.CreateQueryFilter(
             $"PartitionKey eq {StorageKeys.StandupChildPartitionKey(standupId)} and RowKey ge {StorageKeys.MeetingRowKey(from)} and RowKey le {StorageKeys.MeetingRowKey(to)}");
 
-        HashSet<DateOnly> dates = [];
-        await foreach (StandupMeetingTableEntity entity in client.QueryAsync<StandupMeetingTableEntity>(
-            filter, select: [nameof(ITableEntity.RowKey), nameof(StandupMeetingTableEntity.LockedUtc)], cancellationToken: cancellationToken))
+        List<StandupMeeting> meetings = [];
+        await foreach (StandupMeetingTableEntity entity in client.QueryAsync<StandupMeetingTableEntity>(filter, cancellationToken: cancellationToken))
         {
-            if (entity.LockedUtc is not null)
-            {
-                dates.Add(MeetingCalendar.FromDateKey(entity.RowKey));
-            }
+            meetings.Add(entity.ToDomain());
         }
 
-        return dates;
+        return meetings;
     }
 
     private async Task ClearPartitionAsync(string logicalTableName, string partitionKey, CancellationToken cancellationToken)
