@@ -494,7 +494,7 @@ What you set up once in Azure DevOps is in [Configuration](#configuration).
 | `release/MM.mm` | One version, e.g. `release/01.00`, with `VersionPrefix` matching; each fix after release raises the patch | `main` | `main`, once released |
 | `main` | The newest release | | |
 
-`main` and `release/*` accept changes only by pull request and cannot be force-pushed or deleted, per `.github/rulesets/protected-branches.json`, imported once under **Settings → Rules → Rulesets → New ruleset → Import a ruleset**. Pull requests into either run build and test only.
+`main` and `release/*` accept changes only by pull request and cannot be force-pushed or deleted, per [.github/rulesets/protected-branches.json](.github/rulesets/protected-branches.json), imported once under **Settings → Rules → Rulesets → New ruleset → Import a ruleset**, then **Create** button.
 
 ### Branch filtering
 
