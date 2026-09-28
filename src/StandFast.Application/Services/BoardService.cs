@@ -121,6 +121,7 @@ public sealed class BoardService(
 
         entry.Update = Normalise(update.Update);
         entry.Blockers = Normalise(update.Blockers);
+        entry.ParkingLot = Normalise(update.ParkingLot);
         entry.UpdateSavedUtc = clock.UtcNow;
 
         await entries.UpsertAsync(entry, cancellationToken);

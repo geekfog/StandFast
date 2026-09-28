@@ -1,3 +1,15 @@
+@using Microsoft.Extensions.Options
+@inject IOptions<StandFastUiOptions> UiOptions
+@inject IHostEnvironment HostEnvironment
+
+@if (environmentLabel is not null)
+{
+    <div class="standfast-environment-tag" title="@environmentLabel">
+        <span class="standfast-environment-tag-full">@environmentLabel</span>
+        <span class="standfast-environment-tag-short">@ShortLabel</span>
+    </div>
+}
+
 <MudNavMenu>
     <MudNavLink Href="@UiRoutes.Board" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.ViewKanban">Board</MudNavLink>
     <MudNavLink Href="@UiRoutes.Standups" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Event">Standups</MudNavLink>
@@ -6,3 +18,14 @@
     <MudNavLink Href="@UiRoutes.Backup" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Backup">Backup</MudNavLink>
     <MudNavLink Href="@UiRoutes.About" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Info">About</MudNavLink>
 </MudNavMenu>
+
+@code {
+    /// <summary>Characters of the label that fit the collapsed menu, which matches the length of the deployed environment codes.</summary>
+    private const int ShortLabelLength = 3;
+
+    private string? environmentLabel;
+
+    private string? ShortLabel => environmentLabel is { Length: > ShortLabelLength } label ? label[..ShortLabelLength].ToUpperInvariant() : environmentLabel;
+
+    protected override void OnInitialized() => environmentLabel = UiOptions.Value.ResolveEnvironmentLabel(HostEnvironment);
+}

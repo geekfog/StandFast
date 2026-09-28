@@ -32,5 +32,7 @@ public sealed class StandupEntryTableEntity : ITableEntity
 
     public string? Blockers { get; set; }
 
+    public string? ParkingLot { get; set; }
+
     public DateTimeOffset? UpdateSavedUtc { get; set; }
 }

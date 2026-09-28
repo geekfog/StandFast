@@ -48,6 +48,7 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
 - **Backup** downloads everything the app holds as one file and restores it again, replacing whatever is there at the time. The audit log and each user's own settings are excluded from both directions.
 - **Appearance** is light or dark, chosen from the toggle in the title bar and remembered for whoever is signed in. It follows that person to any browser or machine they sign in from, and a user who has never chosen gets light.
 - **About** shows the version, summarizes what the app is for, and links to its source repository.
+- **Environment tag**: every environment other than production shows its name on a dark red tag at the top of the navigation menu (for example `Development` locally, `DEV` or `UAT` when deployed), shortened to three letters while the menu is collapsed. Production shows no tag.
 
 ## The daily flow
 
@@ -71,15 +72,18 @@ An undo arrow on each card moves someone back a column if you mis-tap.
 
 The notes icon on a card opens that person's update panel. The icon turns red once anything has been recorded for that person on that date, in all three columns, so you can see at a glance who still owes an update. The card of whoever's panel is open carries an outline.
 
-The panel has three boxes:
+The panel header shows the person's notes, rendered as markdown, to the right of their name, so anything worth knowing when running the standup is in view while their update is taken.
+
+The panel has four boxes:
 
 | Box | Behaviour |
 | --- | --------- |
 | Prior update | Read only, labelled with the date it came from. A copy button pushes its text into the current update so a "same as yesterday, plus…" update takes one tap. |
 | Current update | Markdown editor with a formatting toolbar and a preview toggle. |
 | Blockers | Same editor. A card showing blockers gets a warning icon on the board. |
+| Parking lot | Same editor, for topics to take offline after the standup. |
 
-Save writes both boxes. Cancel closes the panel, and asks first when there are edits that have not been saved.
+Save writes all three editable boxes. Cancel closes the panel, and asks first when there are edits that have not been saved.
 
 Everything is keyed by standup, person, and date, so navigating to last Tuesday shows exactly what was recorded on last Tuesday.
 
@@ -227,6 +231,7 @@ Nothing here is yours to fill in. It is listed so a value you find in the deploy
 | `AzureTableStorage:ServiceUri`        | Bicep, from the storage account it creates. The app then authenticates with `DefaultAzureCredential` and no key is involved. Empty locally, which is what makes the connection string take over. |
 | `AzureTableStorage:TablePrefix`       | Bicep, as `a_AppBase` + the environment code, so `standfastPRD`. Overrides the committed `appsettings.json` value in the cloud. |
 | `StandFastUi:DataProtectionBlobUri`   | Bicep, from the same storage account. Holds the shared Data Protection key ring, which more than one replica requires. |
+| `StandFastUi:EnvironmentLabel`       | Bicep, as the environment code for every environment except PRD, where it is empty. Drives the navigation menu's environment tag. Unset locally, where the tag falls back to the `ASPNETCORE_ENVIRONMENT` name. |
 | `ASPNETCORE_ENVIRONMENT`              | Bicep, always `Production`, in every cloud environment including DEV. `appsettings.Development.json` is therefore a local-only file and never applies to a deployed environment. |
 | Resource group, registry login server, image tag | The release stage, from `a_AppBase`, `a_RegionToken` and the build number. |
 | `p_MinReplicas`, `p_MaxReplicas`      | `infra/main.bicep` defaults of 1 and 3. No variable group feeds them; change the defaults to change the scale range, and read [What bites Blazor Server specifically](#what-bites-blazor-server-specifically) before dropping the minimum to zero. |
@@ -588,3 +593,8 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 - Set out how versions map to release branches, and made the main and release branches accept changes only through pull requests.
 - Pull requests into a release branch now get the same build and test check as pull requests into main, and pull request checks never deploy.
 - Allowed a folder such as `release/` in the list of branches that may deploy to an environment, so every release branch under it qualifies without being added one at a time.
+- Added a parking lot box to the update panel, after blockers, with the same markdown editing, for topics to take offline after the standup. The prior update also shows the previous parking lot when there was one.
+- Lined up the bottoms of the four boxes on the update panel, so they end level however their toolbars wrap.
+- Showed each person's notes to the right of their name on the update panel.
+- Indented bulleted and numbered lists in markdown, so they sit inside the text around them rather than hanging to its left.
+- Added a dark red tag at the top of the menu naming the environment, such as Development or DEV, on everything except production.

@@ -90,10 +90,12 @@ public sealed class BoardServiceTests
             MeetingDate = BoardTestContext.Today,
             Update = "  **Done** the migration.  ",
             Blockers = "   ",
+            ParkingLot = "  Talk about the _schema_  ",
         });
 
         Assert.Equal("**Done** the migration.", participant!.Update);
         Assert.Null(participant.Blockers);
+        Assert.Equal("Talk about the _schema_", participant.ParkingLot);
         Assert.Equal(BoardTestContext.Now, participant.UpdateSavedUtc);
     }
 

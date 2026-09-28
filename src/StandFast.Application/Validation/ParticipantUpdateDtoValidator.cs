@@ -12,5 +12,6 @@ public sealed class ParticipantUpdateDtoValidator : AbstractValidator<Participan
         RuleFor(update => update.PersonId).NotEmpty();
         RuleFor(update => update.Update).MaximumLength(DomainLimits.MarkdownMaxLength);
         RuleFor(update => update.Blockers).MaximumLength(DomainLimits.MarkdownMaxLength);
+        RuleFor(update => update.ParkingLot).MaximumLength(DomainLimits.MarkdownMaxLength);
     }
 }

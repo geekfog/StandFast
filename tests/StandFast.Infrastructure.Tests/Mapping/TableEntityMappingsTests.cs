@@ -64,6 +64,7 @@ public sealed class TableEntityMappingsTests
             State = AttendanceState.Presented,
             Update = "- Shipped **the** thing",
             Blockers = "Waiting on review",
+            ParkingLot = "Discuss the rollout",
             PresentedUtc = DateTimeOffset.UnixEpoch,
         };
 
@@ -75,6 +76,7 @@ public sealed class TableEntityMappingsTests
         Assert.Equal(AttendanceState.Presented, restored.State);
         Assert.Equal(entry.Update, restored.Update);
         Assert.Equal(entry.Blockers, restored.Blockers);
+        Assert.Equal(entry.ParkingLot, restored.ParkingLot);
     }
 
     [Theory]

@@ -17,15 +17,18 @@ public static class BoardMappings
             person.DisplayName,
             person.Initials,
             person.Email,
+            person.Notes,
             member.DisplayOrder,
             current?.State ?? AttendanceState.Roster,
             current?.MarkedAvailableUtc,
             current?.PresentedUtc,
             current?.Update,
             current?.Blockers,
+            current?.ParkingLot,
             current?.UpdateSavedUtc,
             prior?.Update,
             prior?.Blockers,
+            prior?.ParkingLot,
             prior?.MeetingDate,
             prior?.UpdateSavedUtc);
     }
