@@ -99,6 +99,64 @@
     min-height: 0;
 }
 
+/* Marks a non-production environment at the top of the navigation menu, abbreviated while the mini drawer is collapsed. */
+.standfast-environment-tag {
+    background-color: #8b1a1a;
+    border-radius: 4px;
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    margin: 8px;
+    overflow: hidden;
+    padding: 4px 8px;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.standfast-environment-tag-short {
+    display: none;
+}
+
+.mud-drawer--closed.mud-drawer-mini .standfast-environment-tag {
+    margin: 8px 4px;
+    padding: 4px 2px;
+}
+
+.mud-drawer--closed.mud-drawer-mini .standfast-environment-tag-full {
+    display: none;
+}
+
+.mud-drawer--closed.mud-drawer-mini .standfast-environment-tag-short {
+    display: inline;
+}
+
+/* Person notes share the update panel's header row, so a long note scrolls rather than pushing the editors down. */
+.standfast-person-notes {
+    border-left: 1px solid var(--mud-palette-lines-default);
+    max-height: 6rem;
+    min-width: 0;
+    overflow-y: auto;
+    padding-left: 1rem;
+}
+
+/* Editors side by side in a grid row stretch to the tallest column, so their bottom borders line up whatever their toolbars wrap to. */
+.standfast-markdown-column {
+    display: flex;
+    flex-direction: column;
+}
+
+.standfast-markdown-column > .standfast-markdown-editor {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+}
+
+.standfast-markdown-column > .standfast-markdown-editor > .standfast-markdown-body {
+    flex: 1 1 auto;
+}
+
 .standfast-markdown > :first-child {
     margin-top: 0;
 }
@@ -118,6 +176,25 @@
     background-color: var(--mud-palette-background-gray);
     border-radius: 3px;
     padding: 0.1rem 0.3rem;
+}
+
+/* MudBlazor's reset zeroes list padding, which leaves bullets and numbers hanging left of the surrounding paragraphs. */
+.standfast-markdown ul,
+.standfast-markdown ol {
+    margin: 0.25rem 0;
+    padding-left: 1.5rem;
+}
+
+.standfast-markdown ul {
+    list-style-type: disc;
+}
+
+.standfast-markdown ol {
+    list-style-type: decimal;
+}
+
+.standfast-markdown ul ul {
+    list-style-type: circle;
 }
 
 .standfast-markdown blockquote {

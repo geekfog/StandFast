@@ -3,7 +3,7 @@ using StandFast.Domain.Enums;
 
 namespace StandFast.Domain.Entities;
 
-/// <summary>One participant's record for one standup on one meeting date: their attendance state, their update, and their blockers.</summary>
+/// <summary>One participant's record for one standup on one meeting date: their attendance state, their update, their blockers, and their parking lot.</summary>
 public sealed class StandupEntry
 {
     public Guid StandupId { get; set; }
@@ -24,13 +24,16 @@ public sealed class StandupEntry
     /// <summary>Markdown source of the participant's blockers for this date.</summary>
     public string? Blockers { get; set; }
 
-    /// <summary>When the update/blockers text was last saved. Null while only attendance has been recorded.</summary>
+    /// <summary>Markdown source of the topics the participant wants to take offline after the standup.</summary>
+    public string? ParkingLot { get; set; }
+
+    /// <summary>When the update, blockers, and parking lot text was last saved. Null while only attendance has been recorded.</summary>
     public DateTimeOffset? UpdateSavedUtc { get; set; }
 
     public string? ETag { get; set; }
 
     /// <summary>True when the participant has typed anything worth carrying forward as a prior update.</summary>
-    public bool HasContent => !string.IsNullOrWhiteSpace(Update) || !string.IsNullOrWhiteSpace(Blockers);
+    public bool HasContent => !string.IsNullOrWhiteSpace(Update) || !string.IsNullOrWhiteSpace(Blockers) || !string.IsNullOrWhiteSpace(ParkingLot);
 
     /// <summary>The completed turn this entry records, or null while the participant has not presented. Ordering and reporting work from this projection.</summary>
     public Presentation? CompletedTurn => PresentedUtc is null ? null : new Presentation(PersonId, MeetingDate, PresentedUtc.Value);

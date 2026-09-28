@@ -65,6 +65,9 @@ var v_HealthPath = '/healthz'
 var v_DataProtectionContainer = 'dataprotection'
 var v_DataProtectionBlob = 'keys.xml'
 var v_ClientSecretName = 'oidc-client-secret'
+var v_ProductionEnvironment = 'PRD'
+// The app runs as Production everywhere, so every other environment names itself on the navigation menu from its code.
+var v_EnvironmentLabel = p_Environment == v_ProductionEnvironment ? '' : p_Environment
 var v_BindCustomDomain = p_DeployApp && !empty(p_CustomDomain)
 var v_IssueCertificate = v_BindCustomDomain && p_IssueCustomDomainCertificate
 var v_CertificateName = '${v_NameBase}mc'
@@ -309,6 +312,7 @@ resource containerApp 'Microsoft.App/containerApps@2025-07-01' = if (p_DeployApp
             { name: 'AzureTableStorage__TablePrefix', value: '${p_AppBase}${p_Environment}' }
             { name: 'StandFastUi__DisplayTimeZoneId', value: p_DisplayTimeZoneId }
             { name: 'StandFastUi__DataProtectionBlobUri', value: '${storage.properties.primaryEndpoints.blob}${v_DataProtectionContainer}/${v_DataProtectionBlob}' }
+            { name: 'StandFastUi__EnvironmentLabel', value: v_EnvironmentLabel }
           ], v_BoardLockEnvironment)
           probes: [
             {

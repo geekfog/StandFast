@@ -147,6 +147,7 @@ public static class TableEntityMappings
         PresentedUtc = entity.PresentedUtc,
         Update = entity.Update,
         Blockers = entity.Blockers,
+        ParkingLot = entity.ParkingLot,
         UpdateSavedUtc = entity.UpdateSavedUtc,
         ETag = entity.ETag.ToString(),
     };
@@ -163,6 +164,7 @@ public static class TableEntityMappings
         PresentedUtc = entry.PresentedUtc,
         Update = entry.Update,
         Blockers = entry.Blockers,
+        ParkingLot = entry.ParkingLot,
         UpdateSavedUtc = entry.UpdateSavedUtc,
         ETag = ToETag(entry.ETag),
     };

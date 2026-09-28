@@ -2,7 +2,7 @@ using StandFast.Domain.Common;
 
 namespace StandFast.Application.Dtos;
 
-/// <summary>Save input for the update/blockers editors. Deliberately narrower than <see cref="BoardParticipantDto"/>: attendance timestamps and the prior update are system-owned and not client settable.</summary>
+/// <summary>Save input for the update, blockers, and parking lot editors. Deliberately narrower than <see cref="BoardParticipantDto"/>: attendance timestamps and the prior update are system-owned and not client settable.</summary>
 public sealed class ParticipantUpdateDto
 {
     public Guid StandupId { get; set; }
@@ -16,4 +16,7 @@ public sealed class ParticipantUpdateDto
 
     /// <summary>Markdown source, up to <see cref="DomainLimits.MarkdownMaxLength"/> characters.</summary>
     public string? Blockers { get; set; }
+
+    /// <summary>Markdown source, up to <see cref="DomainLimits.MarkdownMaxLength"/> characters.</summary>
+    public string? ParkingLot { get; set; }
 }

@@ -19,7 +19,7 @@
         </MudTooltip>
     </MudToolBar>
 
-    <div id="@editorId" class="pa-3">
+    <div id="@editorId" class="pa-3 standfast-markdown-body">
         @if (showPreview || ReadOnly)
         {
             <MarkdownView Value="@Value" EmptyText="@EmptyText" />
