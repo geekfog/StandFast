@@ -9,6 +9,7 @@ namespace StandFast.Application.Tests.Fakes;
 public sealed class InMemoryPersonRepository : IPersonRepository
 {
     private readonly Dictionary<Guid, Person> people = [];
+    private readonly Dictionary<Guid, PersonPhoto> photos = [];
 
     public Task<IReadOnlyList<Person>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Person>>([.. people.Values]);
 
@@ -23,6 +24,21 @@ public sealed class InMemoryPersonRepository : IPersonRepository
     public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
         people.Remove(id);
+        photos.Remove(id);
+        return Task.CompletedTask;
+    }
+
+    public Task<PersonPhoto?> GetPhotoAsync(Guid personId, CancellationToken cancellationToken = default) => Task.FromResult(photos.GetValueOrDefault(personId));
+
+    public Task UpsertPhotoAsync(PersonPhoto photo, CancellationToken cancellationToken = default)
+    {
+        photos[photo.PersonId] = photo;
+        return Task.CompletedTask;
+    }
+
+    public Task DeletePhotoAsync(Guid personId, CancellationToken cancellationToken = default)
+    {
+        photos.Remove(personId);
         return Task.CompletedTask;
     }
 }

@@ -22,6 +22,9 @@ public static class TableEntityMappings
         DisplayAs = entity.DisplayAs,
         Notes = entity.Notes,
         Title = entity.Title,
+        Organization = entity.Organization,
+        Department = entity.Department,
+        PhotoSavedUtc = entity.PhotoSavedUtc,
         City = entity.City,
         StateOrRegion = entity.StateOrRegion,
         TimeZoneId = entity.TimeZoneId,
@@ -41,6 +44,9 @@ public static class TableEntityMappings
         DisplayAs = person.DisplayAs,
         Notes = person.Notes,
         Title = person.Title,
+        Organization = person.Organization,
+        Department = person.Department,
+        PhotoSavedUtc = person.PhotoSavedUtc,
         City = person.City,
         StateOrRegion = person.StateOrRegion,
         TimeZoneId = person.TimeZoneId,
@@ -48,6 +54,21 @@ public static class TableEntityMappings
         CreatedUtc = person.CreatedUtc,
         ModifiedUtc = person.ModifiedUtc,
         ETag = ToETag(person.ETag),
+    };
+
+    public static PersonPhoto ToDomain(this PersonPhotoTableEntity entity) => new()
+    {
+        PersonId = Guid.Parse(entity.RowKey),
+        ContentType = entity.ContentType,
+        Content = entity.Content,
+    };
+
+    public static PersonPhotoTableEntity ToTableEntity(this PersonPhoto photo) => new()
+    {
+        PartitionKey = StorageKeys.PersonPartition,
+        RowKey = StorageKeys.PersonRowKey(photo.PersonId),
+        ContentType = photo.ContentType,
+        Content = photo.Content,
     };
 
     public static UserPreferences ToDomain(this UserPreferencesTableEntity entity) => new()

@@ -54,13 +54,16 @@ public sealed class TableEntityMappingsTests
     }
 
     [Fact]
-    public void Person_RoundTripsTheTitleAndLocation()
+    public void Person_RoundTripsTheProfileAndLocation()
     {
-        Person person = new() { FirstName = "Ada", LastName = "Lovelace", Email = "ada@example.com", Title = "Analyst", City = "Austin", StateOrRegion = "TX", TimeZoneId = "America/Chicago" };
+        Person person = new() { FirstName = "Ada", LastName = "Lovelace", Email = "ada@example.com", Title = "Analyst", Organization = "Engines", Department = "Analysis", PhotoSavedUtc = new DateTimeOffset(2026, 9, 29, 15, 0, 0, TimeSpan.Zero), City = "Austin", StateOrRegion = "TX", TimeZoneId = "America/Chicago" };
 
         Person restored = person.ToTableEntity().ToDomain();
 
         Assert.Equal("Analyst", restored.Title);
+        Assert.Equal("Engines", restored.Organization);
+        Assert.Equal("Analysis", restored.Department);
+        Assert.Equal(person.PhotoSavedUtc, restored.PhotoSavedUtc);
         Assert.Equal("Austin", restored.City);
         Assert.Equal("TX", restored.StateOrRegion);
         Assert.Equal("America/Chicago", restored.TimeZoneId);

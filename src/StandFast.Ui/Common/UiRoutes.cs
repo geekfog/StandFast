@@ -13,6 +13,16 @@ public static class UiRoutes
     /// <summary>Endpoint that streams the backup file. Separate from the page because a download is a plain HTTP response with its own headers, not a Blazor navigation.</summary>
     public const string BackupDownload = "/backup/download";
 
+    /// <summary>Endpoint that serves one person's profile photo. <see cref="PersonPhoto"/> builds the address; the template is what the endpoint is mapped to.</summary>
+    public const string PersonPhotoTemplate = $"{People}/{{personId:guid}}/{PhotoSegment}";
+
+    public static string PersonPhoto(Guid personId) => $"{People}/{personId:D}/{PhotoSegment}";
+
+    private const string PhotoSegment = "photo";
+
+    /// <summary>Query-string key carrying the photo's save time, which changes the address whenever the photo is replaced.</summary>
+    public const string PhotoVersionQueryKey = "v";
+
     public const string StandupQueryKey = "standupId";
     public const string DateQueryKey = "date";
 

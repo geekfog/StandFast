@@ -21,6 +21,16 @@ public sealed class PersonEditDto
 
     public string? Title { get; set; }
 
+    public string? Organization { get; set; }
+
+    public string? Department { get; set; }
+
+    /// <summary>The photo as it should be after saving. Null means no photo. Only written when <see cref="IsPhotoChanged"/> is set.</summary>
+    public PersonPhotoDto? Photo { get; set; }
+
+    /// <summary>Set when the dialog uploaded or removed a photo, so a save that leaves the photo alone does not rewrite it.</summary>
+    public bool IsPhotoChanged { get; set; }
+
     public string? City { get; set; }
 
     public string? StateOrRegion { get; set; }

@@ -40,5 +40,27 @@ public sealed class PersonRepository(ITableClientProvider tables) : IPersonRepos
     {
         TableClient client = await tables.GetAsync(StorageNames.People, cancellationToken);
         await client.DeleteEntityAsync(StorageKeys.PersonPartition, StorageKeys.PersonRowKey(id), ETag.All, cancellationToken);
+        await DeletePhotoAsync(id, cancellationToken);
+    }
+
+    public async Task<PersonPhoto?> GetPhotoAsync(Guid personId, CancellationToken cancellationToken = default)
+    {
+        TableClient client = await tables.GetAsync(StorageNames.PersonPhotos, cancellationToken);
+        NullableResponse<PersonPhotoTableEntity> response =
+            await client.GetEntityIfExistsAsync<PersonPhotoTableEntity>(StorageKeys.PersonPartition, StorageKeys.PersonRowKey(personId), cancellationToken: cancellationToken);
+        return response.HasValue ? response.Value!.ToDomain() : null;
+    }
+
+    public async Task UpsertPhotoAsync(PersonPhoto photo, CancellationToken cancellationToken = default)
+    {
+        TableClient client = await tables.GetAsync(StorageNames.PersonPhotos, cancellationToken);
+        await client.UpsertEntityAsync(photo.ToTableEntity(), TableUpdateMode.Replace, cancellationToken);
+    }
+
+    /// <summary>Deleting a row that does not exist succeeds, so this is safe whether or not a photo was ever saved.</summary>
+    public async Task DeletePhotoAsync(Guid personId, CancellationToken cancellationToken = default)
+    {
+        TableClient client = await tables.GetAsync(StorageNames.PersonPhotos, cancellationToken);
+        await client.DeleteEntityAsync(StorageKeys.PersonPartition, StorageKeys.PersonRowKey(personId), ETag.All, cancellationToken);
     }
 }

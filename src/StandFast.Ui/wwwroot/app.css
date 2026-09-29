@@ -264,3 +264,19 @@
 .standfast-participant-locked {
     cursor: default;
 }
+
+/* A ringed photo lets the avatar's own background show around it, so the ring is always exactly the colour the initials would sit on. */
+.standfast-avatar-ringed {
+    padding: 2px;
+}
+
+.standfast-avatar-ringed > .mud-image {
+    border-radius: 50%;
+}
+
+/* The person dialog's photo spans the name row and the display-as row beside it. Two classes, to outrank MudBlazor's own avatar size rule. */
+.mud-avatar.standfast-profile-photo {
+    width: 128px;
+    height: 128px;
+    font-size: 4rem;
+}

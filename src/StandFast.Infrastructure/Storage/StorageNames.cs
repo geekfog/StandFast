@@ -6,6 +6,7 @@ namespace StandFast.Infrastructure.Storage;
 public static class StorageNames
 {
     public const string People = "People";
+    public const string PersonPhotos = "PersonPhotos";
     public const string Standups = "Standups";
     public const string StandupMembers = "StandupMembers";
     public const string StandupLeaders = "StandupLeaders";
@@ -20,7 +21,7 @@ public static class StorageNames
     /// explains the restore itself. <see cref="UserPreferences"/> is absent for a related reason: it belongs to the people using the app rather
     /// than to the board data, so restoring last month's copy of the board leaves everyone's own settings alone.
     /// </summary>
-    public static readonly IReadOnlyList<string> DataTables = [People, Standups, StandupMembers, StandupLeaders, StandupMeetings, StandupEntries];
+    public static readonly IReadOnlyList<string> DataTables = [People, PersonPhotos, Standups, StandupMembers, StandupLeaders, StandupMeetings, StandupEntries];
 
     /// <summary>Every table the app creates. Tests clean up from this list, so a table added above is never left behind.</summary>
     public static readonly IReadOnlyList<string> AllTables = [.. DataTables, UserPreferences, AuditLog];

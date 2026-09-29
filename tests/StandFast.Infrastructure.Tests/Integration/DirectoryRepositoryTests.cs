@@ -1,3 +1,4 @@
+using StandFast.Domain.Common;
 using StandFast.Domain.Entities;
 using StandFast.Domain.Enums;
 
@@ -24,6 +25,29 @@ public sealed class DirectoryRepositoryTests : IClassFixture<AzuriteTableFixture
 
         await fixture.People.DeleteAsync(person.Id);
         Assert.Null(await fixture.People.GetAsync(person.Id));
+    }
+
+    [AzuriteFact]
+    public async Task PersonPhotos_RoundTripAndAreRemovedWithThePerson()
+    {
+        Person person = new() { FirstName = "Ada", LastName = "Lovelace", Email = "ada.lovelace@example.com", CreatedUtc = DateTimeOffset.UtcNow };
+        byte[] content = [.. Enumerable.Range(0, 1024).Select(value => (byte)value)];
+
+        await fixture.People.UpsertAsync(person);
+        await fixture.People.UpsertPhotoAsync(new PersonPhoto { PersonId = person.Id, ContentType = PhotoFormat.ContentType, Content = content });
+
+        PersonPhoto? stored = await fixture.People.GetPhotoAsync(person.Id);
+        Assert.Equal(content, stored?.Content);
+        Assert.Equal(PhotoFormat.ContentType, stored?.ContentType);
+
+        await fixture.People.DeleteAsync(person.Id);
+        Assert.Null(await fixture.People.GetPhotoAsync(person.Id));
+    }
+
+    [AzuriteFact]
+    public async Task DeletingAPhotoThatWasNeverSaved_Succeeds()
+    {
+        await fixture.People.DeletePhotoAsync(Guid.CreateVersion7());
     }
 
     [AzuriteFact]

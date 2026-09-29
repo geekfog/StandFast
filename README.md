@@ -41,7 +41,7 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
 
 ## What it does
 
-- **People** are a flat directory: first name, last name, email, active flag, an optional "display as" override, an optional title or role, markdown notes, and an optional location: city, state or region, and the time zone they work in. When "display as" is set, that is how the person appears everywhere, including the roster and the board; otherwise they appear as first and last name. The People screen also shows each person's title or role in a Title/Role column, their location and time zone, and lists which standups each person presents at and which they can lead.
+- **People** are a flat directory: first name, last name, email, active flag, an optional "display as" override, an optional profile photo, an optional title or role, organization and department, markdown notes, and an optional location: city, state or region, and the time zone they work in. When "display as" is set, that is how the person appears everywhere, including the roster and the board; otherwise they appear as first and last name. The People screen shows each person's photo beside their name, or their initials when they have none, their title or role in a Title/Role column, their location and time zone, and lists which standups each person presents at and which they can lead.
 - **Standups** are recurring meeting definitions: name, the days they run on, start time, time zone, and two rosters. The Presenter Roster is who gives an update; the Leader Roster is who may run the meeting. The same person can be on both.
 - **The board** is one standup on one date. It opens on today with the current week across the top, a dropdown picks the standup independently of the date, and a second dropdown beside it records who is leading that day.
 - **Reports** chart what a standup has recorded over a period. A dropdown picks the report, a second picks the standup, and quick-pick buttons set how far back it runs.
@@ -52,7 +52,7 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
 
 ## The daily flow
 
-The board has three columns and one tap moves a person rightwards through them.
+The board has three columns and one tap moves a person rightwards through them. Each card shows the person's profile photo, ringed in the column's color, or their initials on that color when they have no photo.
 
 1. **Roster** holds everyone on the standup's Presenter Roster, always alphabetical by the name shown. Tap a name as you see them join.
 2. **Present, can be called on** holds the people who are actually there, in the same alphabetical order as the roster, so a name sits in the same place whichever of the two columns it is in. Tap a name when you call on them and they finish. Each card here carries the turn that person took at the previous standup, so someone who went late last time can be called early today. Anyone who was not at that standup shows ∞ instead of a number, and the card's caption says when they were marked present.
@@ -312,11 +312,12 @@ Ids are version 7 GUIDs. They sort by creation time, which keeps row keys from f
 
 ## Data model and Azure Table Storage
 
-Eight tables, all prefixed with `AzureTableStorage:TablePrefix`:
+Nine tables, all prefixed with `AzureTableStorage:TablePrefix`:
 
 | Table | Partition key | Row key | Holds |
 | ----- | ------------- | ------- | ----- |
 | `People` | `Person` | Person id | The directory. One partition because it is small and always listed whole. |
+| `PersonPhotos` | `Person` | Person id | Each person's profile photo, scaled in the browser to at most 256 pixels a side and stored as a JPEG under the 64 KiB a binary column may hold. Kept apart from `People` so listing the directory never reads the images; the photo endpoint reads one row at a time, and its address carries the save time so browsers cache it until the photo changes. |
 | `Standups` | `Standup` | Standup id | Meeting definitions. Same reasoning. |
 | `StandupMembers` | Standup id | Person id | The Presenter Roster. One partition per standup, which is exactly how the board reads it. The People screen's role columns are the one query that crosses partitions; see below. |
 | `StandupLeaders` | Standup id | Person id | The Leader Roster, in the same shape. A role gets its own table rather than a column on `StandupMembers`, so the person id stays the whole row key and one person can hold both roles on one standup. |
@@ -616,3 +617,5 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 - Time zones for standups and people are saved in the same form on every server, so a standup's time zone reads the same whichever machine last saved it.
 - Added an optional title or role to each person, entered below email in the person dialog and shown in a Title/Role column on the People screen.
 - Showed each person's title or role when hovering over their status on the board.
+- Added organization and department to each person, entered beside title or role in the person dialog.
+- Added a profile photo to each person, uploaded or removed in the person dialog beside their name and saved with the rest of the person. The People screen shows it beside the name and the board shows it in place of the initials, ringed in the color of the column the person is in. People with no photo keep their initials.

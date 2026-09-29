@@ -1,3 +1,4 @@
+@using StandFast.Application.Validation
 @inject IPersonService PersonService
 @inject FluentValidation.IValidator<PersonEditDto> Validator
 
@@ -7,25 +8,69 @@
     </TitleContent>
     <DialogContent>
         <MudForm @ref="form" Model="Person" Validation="@FluentValidationAdapter.ForField(Validator)">
-            <MudGrid Spacing="3">
-                <MudItem xs="12" sm="6">
-                    <MudTextField @bind-Value="Person.FirstName" For="@(() => Person.FirstName)" Label="First name" Variant="Variant.Outlined" />
-                </MudItem>
-                <MudItem xs="12" sm="6">
-                    <MudTextField @bind-Value="Person.LastName" For="@(() => Person.LastName)" Label="Last name" Variant="Variant.Outlined" />
-                </MudItem>
-            </MudGrid>
+            <div class="d-flex gap-4 mb-3">
+                <div class="d-flex flex-column align-center">
+                    <MudAvatar Class="standfast-profile-photo">
+                        @if (PhotoUrl is null)
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.Person" Style="font-size: inherit;" />
+                        }
+                        else
+                        {
+                            <MudImage Src="@PhotoUrl" Alt="Profile photo" />
+                        }
+                    </MudAvatar>
+                    <div class="d-flex">
+                        <MudFileUpload T="IBrowserFile" Accept="image/*" MaxFileSize="PhotoSourceMaxBytes" FilesChanged="OnPhotoSelectedAsync">
+                            <CustomContent Context="upload">
+                                <MudTooltip Text="Upload photo">
+                                    <MudIconButton Icon="@Icons.Material.Filled.PhotoCamera" Size="Size.Small" OnClick="@upload.OpenFilePickerAsync" aria-label="Upload photo" />
+                                </MudTooltip>
+                            </CustomContent>
+                        </MudFileUpload>
+                        <MudTooltip Text="Remove photo">
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Disabled="@(Person.Photo is null)" OnClick="RemovePhoto" aria-label="Remove photo" />
+                        </MudTooltip>
+                    </div>
+                </div>
 
-            <MudTextField @bind-Value="Person.DisplayAs"
-                          For="@(() => Person.DisplayAs)"
-                          Label="Display as"
-                          HelperText="Optional. Shown everywhere in place of the first and last name above."
-                          Variant="Variant.Outlined"
-                          Class="my-3" />
+                <div class="flex-grow-1">
+                    <MudGrid Spacing="3">
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="Person.FirstName" For="@(() => Person.FirstName)" Label="First name" Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="Person.LastName" For="@(() => Person.LastName)" Label="Last name" Variant="Variant.Outlined" />
+                        </MudItem>
+                    </MudGrid>
+
+                    <MudTextField @bind-Value="Person.DisplayAs"
+                                  For="@(() => Person.DisplayAs)"
+                                  Label="Display as"
+                                  HelperText="Optional. Shown everywhere in place of the first and last name above."
+                                  Variant="Variant.Outlined"
+                                  Class="mt-3" />
+                </div>
+            </div>
+
+            @if (photoError is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" Class="mb-3">@photoError</MudAlert>
+            }
 
             <MudTextField @bind-Value="Person.Email" For="@(() => Person.Email)" Label="Email address" InputType="InputType.Email" Variant="Variant.Outlined" Class="mb-3" />
 
-            <MudTextField @bind-Value="Person.Title" For="@(() => Person.Title)" Label="@PersonLabels.Title" Variant="Variant.Outlined" Class="mb-3" />
+            <MudGrid Spacing="3" Class="mb-3">
+                <MudItem xs="12" sm="4">
+                    <MudTextField @bind-Value="Person.Title" For="@(() => Person.Title)" Label="@PersonLabels.Title" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudTextField @bind-Value="Person.Organization" For="@(() => Person.Organization)" Label="Organization" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudTextField @bind-Value="Person.Department" For="@(() => Person.Department)" Label="Department" Variant="Variant.Outlined" />
+                </MudItem>
+            </MudGrid>
 
             <MudGrid Spacing="3" Class="mb-3">
                 <MudItem xs="12" sm="4">
@@ -61,7 +106,55 @@
     [EditorRequired]
     public PersonEditDto Person { get; set; } = default!;
 
+    /// <summary>Largest file the picker accepts. The browser scales it down before anything is sent, so this only turns away files that are not plausibly a photo.</summary>
+    private const long PhotoSourceMaxBytes = 50L * 1024 * 1024;
+
+    private const string PhotoUnreadable = "That file could not be read as an image.";
+
+    private string? photoError;
+
+    private string? PhotoUrl => PersonPhotoUrls.Inline(Person.Photo);
+
     private void Cancel() => Dialog.Cancel();
+
+    /// <summary>The browser scales the image to fit <see cref="DomainLimits.PhotoMaxDimension"/> and re-encodes it, so only the small stored copy crosses the circuit.</summary>
+    private async Task OnPhotoSelectedAsync(IBrowserFile? file)
+    {
+        if (file is null)
+        {
+            return;
+        }
+
+        photoError = null;
+
+        try
+        {
+            IBrowserFile scaled = await file.RequestImageFileAsync(PhotoFormat.ContentType, DomainLimits.PhotoMaxDimension, DomainLimits.PhotoMaxDimension);
+            if (scaled.Size > DomainLimits.PhotoMaxBytes)
+            {
+                photoError = ValidationMessages.PhotoTooLarge;
+                return;
+            }
+
+            await using Stream content = scaled.OpenReadStream(DomainLimits.PhotoMaxBytes);
+            using MemoryStream buffer = new();
+            await content.CopyToAsync(buffer);
+
+            Person.Photo = new PersonPhotoDto(PhotoFormat.ContentType, buffer.ToArray());
+            Person.IsPhotoChanged = true;
+        }
+        catch (JSException)
+        {
+            photoError = PhotoUnreadable;
+        }
+    }
+
+    private void RemovePhoto()
+    {
+        Person.Photo = null;
+        Person.IsPhotoChanged = true;
+        photoError = null;
+    }
 
     private async Task SaveAsync()
     {

@@ -1,0 +1,36 @@
+@* A person's profile photo when they have one, otherwise their initials on the avatar colour. *@
+<MudAvatar Color="@Color" Size="@Size" Class="@AvatarClass">
+    @if (PhotoUrl is null)
+    {
+        @Initials
+    }
+    else
+    {
+        <MudImage Src="@PhotoUrl" Alt="@Initials" />
+    }
+</MudAvatar>
+
+@code {
+    [Parameter]
+    [EditorRequired]
+    public string Initials { get; set; } = string.Empty;
+
+    /// <summary>Address of the photo, or null to show <see cref="Initials"/>.</summary>
+    [Parameter]
+    public string? PhotoUrl { get; set; }
+
+    [Parameter]
+    public Color Color { get; set; } = Color.Default;
+
+    [Parameter]
+    public Size Size { get; set; } = Size.Medium;
+
+    /// <summary>Rings a photo in <see cref="Color"/>, the same colour the initials would sit on.</summary>
+    [Parameter]
+    public bool IsRinged { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    private string AvatarClass => string.Join(' ', new[] { PhotoUrl is not null && IsRinged ? "standfast-avatar-ringed" : null, Class }.Where(part => part is not null));
+}

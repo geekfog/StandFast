@@ -26,6 +26,12 @@ public sealed class PersonTableEntity : ITableEntity
 
     public string? Title { get; set; }
 
+    public string? Organization { get; set; }
+
+    public string? Department { get; set; }
+
+    public DateTimeOffset? PhotoSavedUtc { get; set; }
+
     public string? City { get; set; }
 
     public string? StateOrRegion { get; set; }
