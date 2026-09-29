@@ -99,6 +99,11 @@
     min-height: 0;
 }
 
+/* Stands in for the buttons on a toolbar that has none, so a label-only header is as tall as its neighbors. */
+.standfast-toolbar-height-keeper {
+    visibility: hidden;
+}
+
 /* Marks a non-production environment at the top of the navigation menu, abbreviated while the mini drawer is collapsed. */
 .standfast-environment-tag {
     background-color: #8b1a1a;

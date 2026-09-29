@@ -16,4 +16,6 @@ public interface IUserPreferencesService
     Task<UserPreferencesDto> LoadAsync(string? userId, string? email, CancellationToken cancellationToken = default);
 
     Task SetDarkModeAsync(string? userId, bool isDarkMode, CancellationToken cancellationToken = default);
+
+    Task SetNavigationExpandedAsync(string? userId, bool isExpanded, CancellationToken cancellationToken = default);
 }

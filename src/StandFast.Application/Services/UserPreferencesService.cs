@@ -28,15 +28,21 @@ public sealed class UserPreferencesService(IUserPreferencesRepository preference
         return stored.ToDto();
     }
 
+    public Task SetDarkModeAsync(string? userId, bool isDarkMode, CancellationToken cancellationToken = default) =>
+        SaveAsync(userId, settings => settings.IsDarkMode = isDarkMode, cancellationToken);
+
+    public Task SetNavigationExpandedAsync(string? userId, bool isExpanded, CancellationToken cancellationToken = default) =>
+        SaveAsync(userId, settings => settings.IsNavigationExpanded = isExpanded, cancellationToken);
+
     /// <summary>An anonymous session has nowhere to save to, so its choice applies for as long as the session lasts and is then forgotten.</summary>
-    public async Task SetDarkModeAsync(string? userId, bool isDarkMode, CancellationToken cancellationToken = default)
+    private async Task SaveAsync(string? userId, Action<UserPreferences> change, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(userId))
         {
             return;
         }
 
-        UserPreferences stored = Apply(await preferences.GetAsync(userId, cancellationToken), userId, settings => settings.IsDarkMode = isDarkMode);
+        UserPreferences stored = Apply(await preferences.GetAsync(userId, cancellationToken), userId, change);
         await preferences.UpsertAsync(stored, cancellationToken);
     }
 

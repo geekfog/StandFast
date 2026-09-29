@@ -14,9 +14,22 @@
         }
         <MudSpacer />
         @ToolbarActions
-        <MudTooltip Text="@(showPreview ? "Edit" : "Preview")">
-            <MudIconButton Icon="@(showPreview ? Icons.Material.Filled.Edit : Icons.Material.Filled.Visibility)" Size="Size.Small" OnClick="TogglePreview" aria-label="@(showPreview ? "Edit" : "Preview")" />
-        </MudTooltip>
+        @if (!ReadOnly)
+        {
+            <MudTooltip Text="@(showPreview ? "Edit" : "Preview")">
+                <MudIconButton Icon="@(showPreview ? Icons.Material.Filled.Edit : Icons.Material.Filled.Visibility)" Size="Size.Small" OnClick="TogglePreview" aria-label="@(showPreview ? "Edit" : "Preview")" />
+            </MudTooltip>
+        }
+        @if (!HasToolbarButtons)
+        {
+            <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Disabled="true" Class="standfast-toolbar-height-keeper" tabindex="-1" aria-hidden="true" />
+        }
+        @if (ExpandedChanged.HasDelegate)
+        {
+            <MudTooltip Text="@ExpandTooltip">
+                <MudIconButton Icon="@(Expanded ? Icons.Material.Filled.Close : Icons.Material.Filled.OpenInFull)" Size="Size.Small" OnClick="ToggleExpandedAsync" aria-label="@ExpandTooltip" />
+            </MudTooltip>
+        }
     </MudToolBar>
 
     <div id="@editorId" class="pa-3 standfast-markdown-body">
@@ -56,8 +69,10 @@
     [Parameter]
     public bool ReadOnly { get; set; }
 
+    public const int DefaultLines = 6;
+
     [Parameter]
-    public int Lines { get; set; } = 6;
+    public int Lines { get; set; } = DefaultLines;
 
     [Parameter]
     public string Placeholder { get; set; } = "Markdown supported.";
@@ -68,6 +83,19 @@
     /// <summary>Extra buttons for this field, such as "copy the prior update forward".</summary>
     [Parameter]
     public RenderFragment? ToolbarActions { get; set; }
+
+    /// <summary>Whether the editor fills its container. The expand button, which becomes a close button while expanded, appears only when <see cref="ExpandedChanged"/> is bound.</summary>
+    [Parameter]
+    public bool Expanded { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> ExpandedChanged { get; set; }
+
+    private bool HasToolbarButtons => !ReadOnly || ToolbarActions is not null || ExpandedChanged.HasDelegate;
+
+    private string ExpandTooltip => Expanded ? "Close expanded view" : "Expand";
+
+    private Task ToggleExpandedAsync() => ExpandedChanged.InvokeAsync(!Expanded);
 
     private Task OnTextChangedAsync(string? value) => ValueChanged.InvokeAsync(value);
 

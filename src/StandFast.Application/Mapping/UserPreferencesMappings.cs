@@ -7,5 +7,5 @@ namespace StandFast.Application.Mapping;
 public static class UserPreferencesMappings
 {
     public static UserPreferencesDto ToDto(this UserPreferences? preferences) =>
-        preferences is null ? UserPreferencesDto.Default : new UserPreferencesDto(preferences.IsDarkMode, preferences.Email);
+        preferences is null ? UserPreferencesDto.Default : new UserPreferencesDto(preferences.IsDarkMode, preferences.IsNavigationExpanded, preferences.Email);
 }

@@ -57,7 +57,7 @@
     private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
 
     private UserPreferencesDto preferences = UserPreferencesDto.Default;
-    private bool drawerOpen = true;
+    private bool drawerOpen = UserPreferencesDto.Default.IsNavigationExpanded;
     private bool isDarkMode = UserPreferencesDto.Default.IsDarkMode;
     private string? userId;
 
@@ -78,9 +78,17 @@
 
         preferences = await PreferencesService.LoadAsync(userId, email);
         isDarkMode = preferences.IsDarkMode;
+        drawerOpen = preferences.IsNavigationExpanded;
     }
 
-    private void ToggleDrawer() => drawerOpen = !drawerOpen;
+    // Saved from the menu button only, so the drawer opening for a mouse hover over its mini rail is never recorded as the user's choice.
+    private async Task ToggleDrawer()
+    {
+        drawerOpen = !drawerOpen;
+        preferences = preferences with { IsNavigationExpanded = drawerOpen };
+
+        await PreferencesService.SetNavigationExpandedAsync(userId, drawerOpen);
+    }
 
     private async Task ToggleDarkMode()
     {

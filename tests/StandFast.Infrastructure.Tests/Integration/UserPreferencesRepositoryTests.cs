@@ -1,4 +1,6 @@
+using Azure.Data.Tables;
 using StandFast.Domain.Entities;
+using StandFast.Infrastructure.Storage;
 
 namespace StandFast.Infrastructure.Tests.Integration;
 
@@ -18,12 +20,34 @@ public sealed class UserPreferencesRepositoryTests : IClassFixture<AzuriteTableF
         Assert.True((await fixture.Preferences.GetAsync(preferences.UserId))?.IsDarkMode);
 
         preferences.IsDarkMode = false;
+        preferences.IsNavigationExpanded = false;
         await fixture.Preferences.UpsertAsync(preferences);
 
         UserPreferences? stored = await fixture.Preferences.GetAsync(preferences.UserId);
         Assert.False(stored?.IsDarkMode);
+        Assert.False(stored?.IsNavigationExpanded);
         Assert.Equal(preferences.UserId, stored?.UserId);
         Assert.Equal(preferences.Email, stored?.Email);
+    }
+
+    /// <summary>A row saved before the navigation column existed carries only the appearance, and reads back with the navigation menu expanded.</summary>
+    [AzuriteFact]
+    public async Task RowWithoutNavigationColumnReadsAsExpanded()
+    {
+        string userId = $"kp_{Guid.NewGuid():N}";
+        TableClient table = await fixture.Tables.GetAsync(StorageNames.UserPreferences);
+        TableEntity row = new(StorageKeys.UserPreferencesPartition, StorageKeys.UserPreferencesRowKey(userId))
+        {
+            [nameof(UserPreferences.UserId)] = userId,
+            [nameof(UserPreferences.IsDarkMode)] = true,
+            [nameof(UserPreferences.CreatedUtc)] = DateTimeOffset.UtcNow,
+        };
+
+        await table.AddEntityAsync(row);
+        UserPreferences? stored = await fixture.Preferences.GetAsync(userId);
+
+        Assert.Equal(UserPreferences.DefaultIsNavigationExpanded, stored?.IsNavigationExpanded);
+        Assert.True(stored?.IsDarkMode);
     }
 
     [AzuriteFact]

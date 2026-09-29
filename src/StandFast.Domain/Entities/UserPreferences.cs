@@ -9,6 +9,9 @@ public sealed class UserPreferences
     /// <summary>The appearance a user gets until they choose otherwise, and the value every unsaved or anonymous session falls back to.</summary>
     public const bool DefaultIsDarkMode = false;
 
+    /// <summary>Whether the navigation menu starts expanded for a user who has never collapsed it.</summary>
+    public const bool DefaultIsNavigationExpanded = true;
+
     public string UserId { get; set; } = string.Empty;
 
     /// <summary>
@@ -18,6 +21,8 @@ public sealed class UserPreferences
     public string? Email { get; set; }
 
     public bool IsDarkMode { get; set; } = DefaultIsDarkMode;
+
+    public bool IsNavigationExpanded { get; set; } = DefaultIsNavigationExpanded;
 
     public DateTimeOffset CreatedUtc { get; set; }
 
