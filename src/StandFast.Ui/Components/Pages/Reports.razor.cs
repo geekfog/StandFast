@@ -56,7 +56,6 @@ public partial class Reports
 
     protected override async Task OnInitializedAsync()
     {
-        timeZone = UiOptions.Value.ResolveTimeZone();
         standups = await StandupService.GetSelectableAsync();
     }
 
@@ -69,6 +68,7 @@ public partial class Reports
         }
 
         (loadedReport, loadedStandupId, loadedDays) = (SelectedReport, SelectedStandupId, SelectedDays);
+        timeZone = UiOptions.Value.ResolveTimeZone(standups.FirstOrDefault(standup => standup.Id == SelectedStandupId));
 
         // Only the chosen report is held, so the page renders whichever one is loaded without having to be told which that is.
         (timeline, activity) = (null, null);

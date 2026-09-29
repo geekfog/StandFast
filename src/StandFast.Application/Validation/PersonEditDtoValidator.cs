@@ -13,5 +13,11 @@ public sealed class PersonEditDtoValidator : AbstractValidator<PersonEditDto>
         RuleFor(person => person.Email).NotEmpty().MaximumLength(DomainLimits.EmailMaxLength).EmailAddress();
         RuleFor(person => person.DisplayAs).MaximumLength(DomainLimits.DisplayAsMaxLength);
         RuleFor(person => person.Notes).MaximumLength(DomainLimits.MarkdownMaxLength);
+        RuleFor(person => person.City).MaximumLength(DomainLimits.CityMaxLength);
+        RuleFor(person => person.StateOrRegion).MaximumLength(DomainLimits.StateOrRegionMaxLength);
+        RuleFor(person => person.TimeZoneId)
+            .MaximumLength(DomainLimits.TimeZoneIdMaxLength)
+            .Must(TimeZoneIds.IsKnown).WithMessage(ValidationMessages.UnknownTimeZone)
+            .When(person => !string.IsNullOrWhiteSpace(person.TimeZoneId));
     }
 }

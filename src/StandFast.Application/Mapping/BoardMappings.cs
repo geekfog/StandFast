@@ -18,6 +18,8 @@ public static class BoardMappings
             person.Initials,
             person.Email,
             person.Notes,
+            person.Location,
+            person.TimeZoneId,
             member.DisplayOrder,
             current?.State ?? AttendanceState.Roster,
             current?.MarkedAvailableUtc,

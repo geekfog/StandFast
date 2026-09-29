@@ -1,4 +1,5 @@
 using StandFast.Application.Dtos;
+using StandFast.Domain.Common;
 using StandFast.Domain.Entities;
 
 namespace StandFast.Application.Mapping;
@@ -15,7 +16,7 @@ public static class StandupMappings
         Description = standup.Description,
         RecurrenceDays = standup.RecurrenceDays,
         StartTimeLocal = standup.StartTimeLocal,
-        TimeZoneId = standup.TimeZoneId,
+        TimeZoneId = TimeZoneIds.ToStored(standup.TimeZoneId),
         IsActive = standup.IsActive,
     };
 
@@ -25,7 +26,7 @@ public static class StandupMappings
         standup.Description = string.IsNullOrWhiteSpace(dto.Description) ? null : dto.Description.Trim();
         standup.RecurrenceDays = dto.RecurrenceDays;
         standup.StartTimeLocal = dto.StartTimeLocal;
-        standup.TimeZoneId = dto.TimeZoneId;
+        standup.TimeZoneId = TimeZoneIds.ToStored(dto.TimeZoneId.Trim());
         standup.IsActive = dto.IsActive;
     }
 

@@ -40,6 +40,24 @@ public static class UiFormats
         return string.Concat(value.ToString(), suffix);
     }
 
+    /// <summary>Signed hours with any fraction a half- or quarter-hour zone needs, for example +1, -2, +5.5, or ±0.</summary>
+    public const string SignedHours = "+0.##;-0.##;±0";
+
+    /// <summary>A time zone offset as a short signed label, for example "+1h" or "-2.5h".</summary>
+    public static string ToOffsetLabel(this TimeSpan offset) => $"{offset.TotalHours.ToString(SignedHours)}h";
+
+    /// <summary>A time zone offset as a phrase, for example "1 hour ahead of the standup" or "Same time as the standup".</summary>
+    public static string ToOffsetDescription(this TimeSpan offset)
+    {
+        if (offset == TimeSpan.Zero)
+        {
+            return "Same time as the standup";
+        }
+
+        double hours = Math.Abs(offset.TotalHours);
+        return $"{hours:0.##} {(hours == 1 ? "hour" : "hours")} {(offset > TimeSpan.Zero ? "ahead of" : "behind")} the standup";
+    }
+
     /// <summary>Renders a UTC timestamp in the app's display time zone, for "saved at" style labels.</summary>
     public static string ToLocalDisplay(this DateTimeOffset? timestamp, TimeZoneInfo timeZone, string format = DateAndTime) =>
         timestamp is null ? string.Empty : TimeZoneInfo.ConvertTime(timestamp.Value, timeZone).ToString(format);

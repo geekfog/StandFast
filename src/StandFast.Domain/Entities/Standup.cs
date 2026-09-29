@@ -1,3 +1,4 @@
+using StandFast.Domain.Common;
 using StandFast.Domain.Enums;
 
 namespace StandFast.Domain.Entities;
@@ -15,8 +16,8 @@ public sealed class Standup
 
     public TimeOnly StartTimeLocal { get; set; } = new(9, 0);
 
-    /// <summary>IANA or Windows time zone id the start time is expressed in.</summary>
-    public string TimeZoneId { get; set; } = TimeZoneInfo.Local.Id;
+    /// <summary>Time zone id the start time is expressed in, in the form <see cref="TimeZoneIds"/> stores.</summary>
+    public string TimeZoneId { get; set; } = TimeZoneIds.Local;
 
     public bool IsActive { get; set; } = true;
 

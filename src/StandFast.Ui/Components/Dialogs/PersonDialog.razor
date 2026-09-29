@@ -7,16 +7,35 @@
     </TitleContent>
     <DialogContent>
         <MudForm @ref="form" Model="Person" Validation="@FluentValidationAdapter.ForField(Validator)">
-            <MudTextField @bind-Value="Person.FirstName" For="@(() => Person.FirstName)" Label="First name" Variant="Variant.Outlined" Class="mb-3" />
-            <MudTextField @bind-Value="Person.LastName" For="@(() => Person.LastName)" Label="Last name" Variant="Variant.Outlined" Class="mb-3" />
-            <MudTextField @bind-Value="Person.Email" For="@(() => Person.Email)" Label="Email address" InputType="InputType.Email" Variant="Variant.Outlined" Class="mb-3" />
+            <MudGrid Spacing="3">
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="Person.FirstName" For="@(() => Person.FirstName)" Label="First name" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="Person.LastName" For="@(() => Person.LastName)" Label="Last name" Variant="Variant.Outlined" />
+                </MudItem>
+            </MudGrid>
 
             <MudTextField @bind-Value="Person.DisplayAs"
                           For="@(() => Person.DisplayAs)"
                           Label="Display as"
                           HelperText="Optional. Shown everywhere in place of the first and last name above."
                           Variant="Variant.Outlined"
-                          Class="mb-3" />
+                          Class="my-3" />
+
+            <MudTextField @bind-Value="Person.Email" For="@(() => Person.Email)" Label="Email address" InputType="InputType.Email" Variant="Variant.Outlined" Class="mb-3" />
+
+            <MudGrid Spacing="3" Class="mb-3">
+                <MudItem xs="12" sm="4">
+                    <MudTextField @bind-Value="Person.City" For="@(() => Person.City)" Label="City" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="3">
+                    <MudTextField @bind-Value="Person.StateOrRegion" For="@(() => Person.StateOrRegion)" Label="State or region" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="5">
+                    <TimeZoneSelect @bind-Value="Person.TimeZoneId" For="@(() => Person.TimeZoneId!)" Clearable="true" Class="" />
+                </MudItem>
+            </MudGrid>
 
             <MarkdownEditor Label="Notes" @bind-Value="Person.Notes" Lines="4" Placeholder="Anything worth knowing when running the standup." EmptyText="No notes." />
 

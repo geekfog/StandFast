@@ -1,3 +1,5 @@
+using StandFast.Domain.Common;
+
 namespace StandFast.Domain.Entities;
 
 /// <summary>A person who can be added to one or more standups.</summary>
@@ -17,6 +19,14 @@ public sealed class Person
     /// <summary>Free-form markdown about the person, such as working hours or a standing note for whoever is running the standup.</summary>
     public string? Notes { get; set; }
 
+    public string? City { get; set; }
+
+    /// <summary>State, province, or region. Free text, so locations outside the US read naturally.</summary>
+    public string? StateOrRegion { get; set; }
+
+    /// <summary>Time zone the person works in, in the form <see cref="TimeZoneIds"/> stores. Null when not recorded.</summary>
+    public string? TimeZoneId { get; set; }
+
     public bool IsActive { get; set; } = true;
 
     public DateTimeOffset CreatedUtc { get; set; }
@@ -31,6 +41,9 @@ public sealed class Person
 
     /// <summary>First and last name as recorded, regardless of any display override. Used where the real name is what matters.</summary>
     public string FullName => string.Join(' ', new[] { FirstName, LastName }.Where(part => !string.IsNullOrWhiteSpace(part)));
+
+    /// <summary>City and state as one label, for example "Austin, TX". Empty when neither is recorded.</summary>
+    public string Location => string.Join(", ", new[] { City, StateOrRegion }.Where(part => !string.IsNullOrWhiteSpace(part)));
 
     /// <summary>Initials used by avatars and compact board tiles. Derived from <see cref="DisplayName"/> so the avatar always matches the name beside it.</summary>
     public string Initials => string.Concat(DisplayName

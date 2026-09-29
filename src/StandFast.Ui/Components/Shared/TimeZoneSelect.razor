@@ -1,0 +1,49 @@
+@using System.Linq.Expressions
+
+@* The one time zone picker. Every option's value is the stored id form from TimeZoneIds, so a pick saves the same way on any host. *@
+<MudSelect T="string"
+           Value="@Value"
+           ValueChanged="@ValueChanged"
+           For="@For"
+           ToStringFunc="@DisplayName"
+           Label="@Label"
+           HelperText="@HelperText"
+           Clearable="@Clearable"
+           Variant="Variant.Outlined"
+           Class="@Class">
+    @foreach (TimeZoneOption zone in Zones)
+    {
+        <MudSelectItem T="string" Value="@zone.Id">@zone.DisplayName</MudSelectItem>
+    }
+</MudSelect>
+
+@code {
+    private sealed record TimeZoneOption(string Id, string DisplayName);
+
+    private static readonly IReadOnlyList<TimeZoneOption> Zones = [.. TimeZoneInfo.GetSystemTimeZones()
+        .Select(zone => new TimeZoneOption(TimeZoneIds.ToStored(zone.Id), zone.DisplayName))
+        .DistinctBy(zone => zone.Id)];
+
+    private static readonly Func<string?, string?> DisplayName = id => id is null ? null : TimeZoneIds.DisplayName(id);
+
+    [Parameter]
+    public string? Value { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> ValueChanged { get; set; }
+
+    [Parameter]
+    public Expression<Func<string>>? For { get; set; }
+
+    [Parameter]
+    public string Label { get; set; } = "Time zone";
+
+    [Parameter]
+    public string? HelperText { get; set; }
+
+    [Parameter]
+    public bool Clearable { get; set; }
+
+    [Parameter]
+    public string Class { get; set; } = "mb-3";
+}

@@ -15,6 +15,7 @@
     <HeaderContent>
         <MudTh>Name</MudTh>
         <MudTh>Email</MudTh>
+        <MudTh>Location</MudTh>
         @foreach (RosterRole role in RosterRoleExtensions.InDisplayOrder)
         {
             <MudTh>@RosterLabels.Plural(role)</MudTh>
@@ -37,6 +38,13 @@
             }
         </MudTd>
         <MudTd DataLabel="Email">@context.Email</MudTd>
+        <MudTd DataLabel="Location">
+            @context.Location
+            @if (context.TimeZoneId is not null)
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">@TimeZoneIds.DisplayName(context.TimeZoneId)</MudText>
+            }
+        </MudTd>
         @foreach (RosterRole role in RosterRoleExtensions.InDisplayOrder)
         {
             <MudTd DataLabel="@RosterLabels.Plural(role)">
