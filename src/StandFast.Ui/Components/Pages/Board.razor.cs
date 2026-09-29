@@ -67,7 +67,12 @@ public partial class Board
 
     private DateOnly SelectedDate => MeetingCalendar.ParseRouteValue(DateQuery) ?? today;
 
-    private MeetingDays SelectedStandupDays => standups.FirstOrDefault(standup => standup.Id == SelectedStandupId)?.RecurrenceDays ?? MeetingDays.EveryDay;
+    private StandupDto? SelectedStandup => standups.FirstOrDefault(standup => standup.Id == SelectedStandupId);
+
+    private MeetingDays SelectedStandupDays => SelectedStandup?.RecurrenceDays ?? MeetingDays.EveryDay;
+
+    /// <summary>When the selected standup starts on the selected date. Each card's time zone offset is measured at this instant, so daylight saving on that date counts.</summary>
+    private DateTimeOffset MeetingStart => TimeZoneIds.ToInstant(SelectedDate, SelectedStandup?.StartTimeLocal ?? TimeOnly.MinValue, timeZone);
 
     private BoardParticipantDto? SelectedParticipant => board?.Participants.FirstOrDefault(participant => participant.PersonId == selectedPersonId);
 
@@ -100,6 +105,10 @@ public partial class Board
     protected override async Task OnParametersSetAsync()
     {
         standupPickerValue = SelectedStandupId;
+
+        // Times on the board, and which date is "today", are in the selected standup's own time zone.
+        timeZone = UiOptions.Value.ResolveTimeZone(SelectedStandup);
+        today = Clock.Today(timeZone);
 
         if (SelectedStandupId == Guid.Empty || (SelectedStandupId == loadedStandupId && SelectedDate == loadedDate && board is not null))
         {

@@ -25,12 +25,7 @@
 
             <MudTimePicker @bind-Time="startTime" Label="Start time" Variant="Variant.Outlined" Class="mb-3" />
 
-            <MudSelect T="string" @bind-Value="Standup.TimeZoneId" Label="Time zone" Variant="Variant.Outlined" Class="mb-3">
-                @foreach (TimeZoneInfo zone in TimeZones)
-                {
-                    <MudSelectItem T="string" Value="@zone.Id">@zone.DisplayName</MudSelectItem>
-                }
-            </MudSelect>
+            <TimeZoneSelect @bind-Value="Standup.TimeZoneId" For="@(() => Standup.TimeZoneId)" />
 
             <MudSwitch @bind-Value="Standup.IsActive" Color="Color.Primary" Label="Active" />
         </MudForm>
@@ -42,8 +37,6 @@
 </MudDialog>
 
 @code {
-    private static readonly IReadOnlyList<TimeZoneInfo> TimeZones = [.. TimeZoneInfo.GetSystemTimeZones()];
-
     private MudForm form = default!;
     private bool isSaving;
     private TimeSpan? startTime;

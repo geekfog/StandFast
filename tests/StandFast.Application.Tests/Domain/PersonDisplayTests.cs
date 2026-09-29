@@ -71,4 +71,33 @@ public sealed class PersonDisplayTests
         Assert.Equal("Ada", dto.DisplayName);
         Assert.Equal("Augusta King", dto.FullName);
     }
+
+    [Theory]
+    [InlineData("Austin", "TX", "Austin, TX")]
+    [InlineData("Austin", null, "Austin")]
+    [InlineData(null, "TX", "TX")]
+    [InlineData(null, null, "")]
+    public void Location_JoinsWhicheverPartsAreRecorded(string? city, string? stateOrRegion, string expected)
+    {
+        Person person = new() { City = city, StateOrRegion = stateOrRegion };
+
+        Assert.Equal(expected, person.Location);
+        Assert.Equal(expected.Length > 0, person.ToDto().HasLocation);
+    }
+
+    [Theory]
+    [InlineData("Central Standard Time", "America/Chicago")]
+    [InlineData("America/Chicago", "America/Chicago")]
+    [InlineData("   ", null)]
+    public void ApplyTo_StoresTheTimeZoneInIanaForm(string timeZoneId, string? expected)
+    {
+        Person person = new();
+        PersonEditDto edit = new() { FirstName = "Ada", LastName = "Lovelace", Email = "ada@example.com", City = " Austin ", StateOrRegion = " ", TimeZoneId = timeZoneId };
+
+        edit.ApplyTo(person);
+
+        Assert.Equal(expected, person.TimeZoneId);
+        Assert.Equal("Austin", person.City);
+        Assert.Null(person.StateOrRegion);
+    }
 }

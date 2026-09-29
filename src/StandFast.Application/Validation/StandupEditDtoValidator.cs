@@ -12,6 +12,6 @@ public sealed class StandupEditDtoValidator : AbstractValidator<StandupEditDto>
         RuleFor(standup => standup.Name).NotEmpty().MaximumLength(DomainLimits.StandupNameMaxLength);
         RuleFor(standup => standup.Description).MaximumLength(DomainLimits.DescriptionMaxLength);
         RuleFor(standup => standup.RecurrenceDays).NotEqual(MeetingDays.None).WithMessage("Select at least one day the standup runs on.");
-        RuleFor(standup => standup.TimeZoneId).NotEmpty().MaximumLength(DomainLimits.TimeZoneIdMaxLength);
+        RuleFor(standup => standup.TimeZoneId).NotEmpty().MaximumLength(DomainLimits.TimeZoneIdMaxLength).Must(TimeZoneIds.IsKnown).WithMessage(ValidationMessages.UnknownTimeZone);
     }
 }

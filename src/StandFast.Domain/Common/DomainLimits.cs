@@ -11,6 +11,8 @@ public static class DomainLimits
     public const int StandupNameMaxLength = 120;
     public const int DescriptionMaxLength = 1000;
     public const int TimeZoneIdMaxLength = 100;
+    public const int CityMaxLength = 100;
+    public const int StateOrRegionMaxLength = 100;
 
     /// <summary>Max characters for a markdown field. Azure Table Storage caps a single string property at 32,768 characters; this leaves headroom for several markdown fields plus metadata inside the 1 MB entity limit.</summary>
     public const int MarkdownMaxLength = 16000;

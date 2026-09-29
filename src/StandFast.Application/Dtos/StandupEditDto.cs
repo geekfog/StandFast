@@ -1,3 +1,4 @@
+using StandFast.Domain.Common;
 using StandFast.Domain.Enums;
 
 namespace StandFast.Application.Dtos;
@@ -14,7 +15,7 @@ public sealed class StandupEditDto
 
     public TimeOnly StartTimeLocal { get; set; } = new(9, 0);
 
-    public string TimeZoneId { get; set; } = TimeZoneInfo.Local.Id;
+    public string TimeZoneId { get; set; } = TimeZoneIds.Local;
 
     public bool IsActive { get; set; } = true;
 }

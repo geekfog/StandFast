@@ -20,7 +20,15 @@
                 </MudTooltip>
             }
         </div>
-        <MudText Typo="Typo.caption" Class="mud-text-secondary">@StatusCaption</MudText>
+        <MudText Typo="Typo.caption" Class="mud-text-secondary">
+            @StatusCaption
+            @if (OffsetFromStandup is { } offset)
+            {
+                <MudTooltip Text="@OffsetTooltip(offset)">
+                    <span class="ml-1">| @offset.ToOffsetLabel()</span>
+                </MudTooltip>
+            }
+        </MudText>
     </div>
 
     @if (Participant.Blockers is not null)
@@ -60,6 +68,10 @@
 
     [Parameter]
     public TimeZoneInfo TimeZone { get; set; } = TimeZoneInfo.Local;
+
+    /// <summary>When the standup starts on the date shown. The participant's offset from <see cref="TimeZone"/> is measured at this instant.</summary>
+    [Parameter]
+    public DateTimeOffset MeetingStart { get; set; }
 
     [Parameter]
     public bool IsSelected { get; set; }
@@ -105,6 +117,13 @@
         AttendanceState.Available => $"Available since {Participant.MarkedAvailableUtc.ToLocalDisplay(TimeZone)}",
         _ => Participant.UpdateSavedUtc is null ? "Not yet marked present" : $"Update saved {Participant.UpdateSavedUtc.ToLocalDisplay(TimeZone)}",
     };
+
+    /// <summary>How far the participant's clock is from the standup's, or null when their time zone is not recorded.</summary>
+    private TimeSpan? OffsetFromStandup => TimeZoneIds.Resolve(Participant.TimeZoneId) is { } zone ? TimeZoneIds.OffsetFrom(zone, TimeZone, MeetingStart) : null;
+
+    private string OffsetTooltip(TimeSpan offset) => string.IsNullOrEmpty(Participant.Location)
+        ? offset.ToOffsetDescription()
+        : $"{Participant.Location} · {offset.ToOffsetDescription()}";
 
     private Task OnAdvanceAsync() => IsLocked ? Task.CompletedTask : OnAdvance.InvokeAsync(Participant.PersonId);
 
