@@ -19,6 +19,8 @@ public sealed class PersonEditDto
     /// <summary>Markdown source, up to <see cref="DomainLimits.MarkdownMaxLength"/> characters.</summary>
     public string? Notes { get; set; }
 
+    public string? Title { get; set; }
+
     public string? City { get; set; }
 
     public string? StateOrRegion { get; set; }

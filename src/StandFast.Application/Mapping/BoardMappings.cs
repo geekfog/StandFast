@@ -18,6 +18,7 @@ public static class BoardMappings
             person.Initials,
             person.Email,
             person.Notes,
+            person.Title,
             person.Location,
             person.TimeZoneId,
             member.DisplayOrder,

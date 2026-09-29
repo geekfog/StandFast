@@ -21,7 +21,16 @@
             }
         </div>
         <MudText Typo="Typo.caption" Class="mud-text-secondary">
-            @StatusCaption
+            @if (string.IsNullOrWhiteSpace(Participant.Title))
+            {
+                @StatusCaption
+            }
+            else
+            {
+                <MudTooltip Text="@($"{PersonLabels.Title}: {Participant.Title}")">
+                    <span>@StatusCaption</span>
+                </MudTooltip>
+            }
             @if (OffsetFromStandup is { } offset)
             {
                 <MudTooltip Text="@OffsetTooltip(offset)">

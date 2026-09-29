@@ -11,6 +11,7 @@ public static class DomainLimits
     public const int StandupNameMaxLength = 120;
     public const int DescriptionMaxLength = 1000;
     public const int TimeZoneIdMaxLength = 100;
+    public const int TitleMaxLength = 100;
     public const int CityMaxLength = 100;
     public const int StateOrRegionMaxLength = 100;
 

@@ -24,6 +24,8 @@ public sealed class PersonTableEntity : ITableEntity
 
     public string? Notes { get; set; }
 
+    public string? Title { get; set; }
+
     public string? City { get; set; }
 
     public string? StateOrRegion { get; set; }

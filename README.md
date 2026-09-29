@@ -41,7 +41,7 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
 
 ## What it does
 
-- **People** are a flat directory: first name, last name, email, active flag, an optional "display as" override, markdown notes, and an optional location: city, state or region, and the time zone they work in. When "display as" is set, that is how the person appears everywhere, including the roster and the board; otherwise they appear as first and last name. The People screen also shows each person's location and time zone, and lists which standups each person presents at and which they can lead.
+- **People** are a flat directory: first name, last name, email, active flag, an optional "display as" override, an optional title or role, markdown notes, and an optional location: city, state or region, and the time zone they work in. When "display as" is set, that is how the person appears everywhere, including the roster and the board; otherwise they appear as first and last name. The People screen also shows each person's title or role in a Title/Role column, their location and time zone, and lists which standups each person presents at and which they can lead.
 - **Standups** are recurring meeting definitions: name, the days they run on, start time, time zone, and two rosters. The Presenter Roster is who gives an update; the Leader Roster is who may run the meeting. The same person can be on both.
 - **The board** is one standup on one date. It opens on today with the current week across the top, a dropdown picks the standup independently of the date, and a second dropdown beside it records who is leading that day.
 - **Reports** chart what a standup has recorded over a period. A dropdown picks the report, a second picks the standup, and quick-pick buttons set how far back it runs.
@@ -58,7 +58,7 @@ The board has three columns and one tap moves a person rightwards through them.
 2. **Present, can be called on** holds the people who are actually there, in the same alphabetical order as the roster, so a name sits in the same place whichever of the two columns it is in. Tap a name when you call on them and they finish. Each card here carries the turn that person took at the previous standup, so someone who went late last time can be called early today. Anyone who was not at that standup shows ∞ instead of a number, and the card's caption says when they were marked present.
 3. **Presented** holds everyone who has given their update, in the order they gave it.
 
-Every time on the board, and which date counts as today, is in the standup's own time zone. Each card's caption ends with how many hours the person's time zone is ahead of (+) or behind (-) the standup's at the standup's start time on that date, for example "| +1h". Hovering over it shows their location. A person with no time zone recorded shows no offset.
+Every time on the board, and which date counts as today, is in the standup's own time zone. Each card's caption ends with how many hours the person's time zone is ahead of (+) or behind (-) the standup's at the standup's start time on that date, for example "| +1h". Hovering over it shows their location. A person with no time zone recorded shows no offset. Hovering over the rest of the caption shows the person's title or role, when one is recorded.
 
 The Leader dropdown beside the standup picker records who ran the standup that day. It offers the standup's Leader Roster and nobody else, it is per date rather than per standup, and it can be left empty, so a standup nobody was picked for reads as exactly that.
 
@@ -614,3 +614,5 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 - Showed, after each person's status on the board, how many hours their time zone is ahead of or behind the standup's, with their location on hover.
 - Showed the board and reports in the standup's own time zone, so changing a standup's time zone changes the times shown for it.
 - Time zones for standups and people are saved in the same form on every server, so a standup's time zone reads the same whichever machine last saved it.
+- Added an optional title or role to each person, entered below email in the person dialog and shown in a Title/Role column on the People screen.
+- Showed each person's title or role when hovering over their status on the board.

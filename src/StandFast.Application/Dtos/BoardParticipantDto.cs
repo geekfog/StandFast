@@ -9,6 +9,7 @@ public sealed record BoardParticipantDto(
     string Initials,
     string Email,
     string? Notes,
+    string? Title,
     string Location,
     string? TimeZoneId,
     int DisplayOrder,
