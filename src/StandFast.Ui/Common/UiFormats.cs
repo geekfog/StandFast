@@ -12,6 +12,9 @@ public static class UiFormats
     public const string LongDate = "dddd, d MMMM yyyy";
     public const string ShortDate = "d MMM yyyy";
 
+    /// <summary>Short date followed by its abbreviated weekday, for labels that date a prior standup.</summary>
+    public const string ShortDateWithWeekday = $"{ShortDate} {WeekdayAbbreviation}";
+
     /// <summary>Date without its year, for axis ticks and table headings where the year is already given by the range.</summary>
     public const string DayAndMonth = "d MMM";
     public const string TimeOfDay = "t";

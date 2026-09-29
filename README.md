@@ -78,12 +78,12 @@ The panel has four boxes:
 
 | Box | Behaviour |
 | --- | --------- |
-| Prior update | Read only, labelled with the date it came from. A copy button pushes its text into the current update so a "same as yesterday, plus…" update takes one tap. |
+| Prior update | Read only, labelled with the date and abbreviated weekday it came from. A copy button pushes its text into the current update so a "same as yesterday, plus…" update takes one tap. |
 | Current update | Markdown editor with a formatting toolbar and a preview toggle. |
 | Blockers | Same editor. A card showing blockers gets a warning icon on the board. |
 | Parking lot | Same editor, for topics to take offline after the standup. |
 
-Save writes all three editable boxes. Cancel closes the panel, and asks first when there are edits that have not been saved.
+Save writes all three editable boxes. Cancel closes the panel, and opening another person's update, another date or another standup replaces it; each asks first when there are edits that have not been saved.
 
 Everything is keyed by standup, person, and date, so navigating to last Tuesday shows exactly what was recorded on last Tuesday.
 
@@ -598,3 +598,5 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 - Showed each person's notes to the right of their name on the update panel.
 - Indented bulleted and numbered lists in markdown, so they sit inside the text around them rather than hanging to its left.
 - Added a dark red tag at the top of the menu naming the environment, such as Development or DEV, on everything except production.
+- Added the abbreviated weekday after the date on the update panel's prior update label, for example (21 Sep 2026 Mon).
+- Asked before unsaved edits on the update panel are lost when opening another person's update or switching to another date or standup.
