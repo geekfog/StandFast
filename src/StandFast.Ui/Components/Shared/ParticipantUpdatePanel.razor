@@ -119,7 +119,7 @@
     private bool IsDirty => currentUpdate != Participant.Update || blockers != Participant.Blockers || parkingLot != Participant.ParkingLot;
 
     private string PriorLabel => Participant.PriorMeetingDate is { } date
-        ? $"Prior update ({date.ToDateTime(TimeOnly.MinValue).ToString(UiFormats.ShortDate)})"
+        ? $"Prior update ({date.ToDateTime(TimeOnly.MinValue).ToString(UiFormats.ShortDateWithWeekday)})"
         : "Prior update";
 
     // Editing state is local so typing does not round-trip to storage, and is re-seeded whenever the panel switches person or date.
@@ -139,21 +139,29 @@
 
     private void CopyPriorForward() => currentUpdate = Participant.PriorUpdate;
 
+    /// <summary>Asks before edits that have not been saved are lost. True when there is nothing unsaved or the reader agreed to discard it.</summary>
+    public async Task<bool> ConfirmDiscardAsync()
+    {
+        if (!IsDirty)
+        {
+            return true;
+        }
+
+        bool? confirmed = await DialogService.ShowMessageBoxAsync(
+            "Discard changes",
+            $"Leave the update for {Participant.DisplayName} without saving? The changes typed here are lost.",
+            yesText: "Discard",
+            cancelText: "Keep editing");
+
+        return confirmed == true;
+    }
+
     /// <summary>Closes the panel, asking first when there are edits that have not been saved. Unsaved text is discarded, so the boxes re-seed from storage when the panel is next opened.</summary>
     private async Task CancelAsync()
     {
-        if (IsDirty)
+        if (!await ConfirmDiscardAsync())
         {
-            bool? confirmed = await DialogService.ShowMessageBoxAsync(
-                "Discard changes",
-                $"Close the update for {Participant.DisplayName} without saving? The changes typed here are lost.",
-                yesText: "Discard",
-                cancelText: "Keep editing");
-
-            if (confirmed != true)
-            {
-                return;
-            }
+            return;
         }
 
         currentUpdate = Participant.Update;

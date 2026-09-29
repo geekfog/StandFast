@@ -8,6 +8,7 @@ using StandFast.Domain.Abstractions;
 using StandFast.Domain.Common;
 using StandFast.Domain.Enums;
 using StandFast.Ui.Common;
+using StandFast.Ui.Components.Shared;
 using StandFast.Ui.Configuration;
 
 namespace StandFast.Ui.Components.Pages;
@@ -24,6 +25,10 @@ public partial class Board
     private TimeZoneInfo timeZone = TimeZoneInfo.Local;
     private DateOnly today;
     private Guid? selectedPersonId;
+    private ParticipantUpdatePanel? updatePanel;
+
+    /// <summary>What the standup picker shows. It follows the URL, and holds a new choice only while unsaved edits are confirmed, so a declined switch puts the picker back.</summary>
+    private Guid standupPickerValue;
     private Guid loadedStandupId;
     private DateOnly loadedDate;
 
@@ -94,6 +99,8 @@ public partial class Board
     // The standup and date live in the query string, so the board is reloaded from the URL rather than from component state. That makes any board view shareable.
     protected override async Task OnParametersSetAsync()
     {
+        standupPickerValue = SelectedStandupId;
+
         if (SelectedStandupId == Guid.Empty || (SelectedStandupId == loadedStandupId && SelectedDate == loadedDate && board is not null))
         {
             return;
@@ -124,12 +131,26 @@ public partial class Board
         _ => "Everyone has been marked present.",
     };
 
-    private Task OnStandupChangedAsync(Guid standupId) => NavigateAsync(standupId, SelectedDate);
+    private async Task OnStandupChangedAsync(Guid standupId)
+    {
+        standupPickerValue = standupId;
+
+        if (!await NavigateAsync(standupId, SelectedDate))
+        {
+            standupPickerValue = SelectedStandupId;
+        }
+    }
 
     private Task OnDateChangedAsync(DateOnly date) => NavigateAsync(SelectedStandupId, date);
 
-    private Task NavigateAsync(Guid standupId, DateOnly date)
+    /// <summary>Moves the board to another standup or date, once any unsaved edits in the open update have been confirmed as expendable. False when the reader chose to keep editing.</summary>
+    private async Task<bool> NavigateAsync(Guid standupId, DateOnly date)
     {
+        if (!await ConfirmLeaveUpdateAsync())
+        {
+            return false;
+        }
+
         selectedPersonId = null;
         Navigation.NavigateTo(Navigation.GetUriWithQueryParameters(new Dictionary<string, object?>
         {
@@ -137,8 +158,13 @@ public partial class Board
             [UiRoutes.DateQueryKey] = MeetingCalendar.ToRouteValue(date),
         }));
 
-        return Task.CompletedTask;
+        return true;
     }
+
+    /// <summary>True when no update is open, or the open one has nothing unsaved or the reader agreed to discard it.</summary>
+    private Task<bool> ConfirmLeaveUpdateAsync() => SelectedParticipant is not null && updatePanel is not null
+        ? updatePanel.ConfirmDiscardAsync()
+        : Task.FromResult(true);
 
     private async Task OnLeaderChangedAsync(Guid? personId)
     {
@@ -199,7 +225,13 @@ public partial class Board
         Snackbar.Add("Standup unlocked.", Severity.Success);
     }
 
-    private void SelectParticipant(Guid personId) => selectedPersonId = selectedPersonId == personId ? null : personId;
+    private async Task SelectParticipantAsync(Guid personId)
+    {
+        if (await ConfirmLeaveUpdateAsync())
+        {
+            selectedPersonId = selectedPersonId == personId ? null : personId;
+        }
+    }
 
     private void CloseUpdate() => selectedPersonId = null;
 

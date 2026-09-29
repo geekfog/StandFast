@@ -23,7 +23,7 @@
 
 <MudGrid Spacing="3">
     <MudItem xs="12" sm="6" md="2">
-        <MudSelect T="Guid" Value="@SelectedStandupId" ValueChanged="OnStandupChangedAsync" Label="Standup" Variant="Variant.Outlined" Dense="true" Disabled="@(standups.Count == 0)">
+        <MudSelect T="Guid" Value="@standupPickerValue" ValueChanged="OnStandupChangedAsync" Label="Standup" Variant="Variant.Outlined" Dense="true" Disabled="@(standups.Count == 0)">
             @foreach (StandupDto standup in standups)
             {
                 <MudSelectItem T="Guid" Value="@standup.Id">@standup.Name</MudSelectItem>
@@ -89,7 +89,7 @@ else
                                          IsLocked="@IsLocked"
                                          OnAdvance="AdvanceAsync"
                                          OnRevert="RevertAsync"
-                                         OnSelect="SelectParticipant" />
+                                         OnSelect="SelectParticipantAsync" />
                     }
 
                     @if (ParticipantsIn(state).Count == 0)
@@ -104,7 +104,8 @@ else
     @if (SelectedParticipant is { } participant)
     {
         <div class="mt-4">
-            <ParticipantUpdatePanel Participant="@participant"
+            <ParticipantUpdatePanel @ref="updatePanel"
+                                    Participant="@participant"
                                     StandupId="@SelectedStandupId"
                                     MeetingDate="@SelectedDate"
                                     TimeZone="@timeZone"
