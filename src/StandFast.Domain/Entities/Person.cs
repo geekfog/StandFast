@@ -19,6 +19,9 @@ public sealed class Person
     /// <summary>Free-form markdown about the person, such as working hours or a standing note for whoever is running the standup.</summary>
     public string? Notes { get; set; }
 
+    /// <summary>Job title or role on the team, shown as Title/Role.</summary>
+    public string? Title { get; set; }
+
     public string? City { get; set; }
 
     /// <summary>State, province, or region. Free text, so locations outside the US read naturally.</summary>

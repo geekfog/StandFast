@@ -92,11 +92,12 @@ public sealed class PersonDisplayTests
     public void ApplyTo_StoresTheTimeZoneInIanaForm(string timeZoneId, string? expected)
     {
         Person person = new();
-        PersonEditDto edit = new() { FirstName = "Ada", LastName = "Lovelace", Email = "ada@example.com", City = " Austin ", StateOrRegion = " ", TimeZoneId = timeZoneId };
+        PersonEditDto edit = new() { FirstName = "Ada", LastName = "Lovelace", Email = "ada@example.com", Title = " Engineer ", City = " Austin ", StateOrRegion = " ", TimeZoneId = timeZoneId };
 
         edit.ApplyTo(person);
 
         Assert.Equal(expected, person.TimeZoneId);
+        Assert.Equal("Engineer", person.Title);
         Assert.Equal("Austin", person.City);
         Assert.Null(person.StateOrRegion);
     }

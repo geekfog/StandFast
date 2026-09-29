@@ -25,6 +25,8 @@
 
             <MudTextField @bind-Value="Person.Email" For="@(() => Person.Email)" Label="Email address" InputType="InputType.Email" Variant="Variant.Outlined" Class="mb-3" />
 
+            <MudTextField @bind-Value="Person.Title" For="@(() => Person.Title)" Label="@PersonLabels.Title" Variant="Variant.Outlined" Class="mb-3" />
+
             <MudGrid Spacing="3" Class="mb-3">
                 <MudItem xs="12" sm="4">
                     <MudTextField @bind-Value="Person.City" For="@(() => Person.City)" Label="City" Variant="Variant.Outlined" />

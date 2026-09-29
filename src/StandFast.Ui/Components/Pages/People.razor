@@ -14,6 +14,7 @@
 <MudTable Items="people" Hover="true" Dense="true" Loading="isLoading" Elevation="1">
     <HeaderContent>
         <MudTh>Name</MudTh>
+        <MudTh>@PersonLabels.Title</MudTh>
         <MudTh>Email</MudTh>
         <MudTh>Location</MudTh>
         @foreach (RosterRole role in RosterRoleExtensions.InDisplayOrder)
@@ -37,6 +38,7 @@
                 </MudTooltip>
             }
         </MudTd>
+        <MudTd DataLabel="@PersonLabels.Title">@context.Title</MudTd>
         <MudTd DataLabel="Email">@context.Email</MudTd>
         <MudTd DataLabel="Location">
             @context.Location
