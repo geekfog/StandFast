@@ -8,6 +8,9 @@ public interface IPersonService
 
     Task<PersonEditDto?> GetForEditAsync(Guid id, CancellationToken cancellationToken = default);
 
+    /// <summary>The person's profile photo, or null when they have none.</summary>
+    Task<PersonPhotoDto?> GetPhotoAsync(Guid id, CancellationToken cancellationToken = default);
+
     Task<Guid> SaveAsync(PersonEditDto person, CancellationToken cancellationToken = default);
 
     Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);

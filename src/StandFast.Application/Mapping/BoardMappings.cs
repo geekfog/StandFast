@@ -21,6 +21,7 @@ public static class BoardMappings
             person.Title,
             person.Location,
             person.TimeZoneId,
+            person.PhotoSavedUtc,
             member.DisplayOrder,
             current?.State ?? AttendanceState.Roster,
             current?.MarkedAvailableUtc,

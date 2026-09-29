@@ -26,17 +26,20 @@
     </HeaderContent>
     <RowTemplate>
         <MudTd DataLabel="Name">
-            @context.DisplayName
-            @if (context.HasDisplayOverride)
-            {
-                <MudText Typo="Typo.caption" Class="mud-text-secondary ml-1">(@context.FullName)</MudText>
-            }
-            @if (context.HasNotes)
-            {
-                <MudTooltip Text="Has notes">
-                    <MudIcon Icon="@Icons.Material.Filled.StickyNote2" Size="Size.Small" Class="ml-1" />
-                </MudTooltip>
-            }
+            <div class="d-flex align-center">
+                <PersonAvatar Initials="@context.Initials" PhotoUrl="@PersonPhotoUrls.Saved(context.Id, context.PhotoSavedUtc)" Class="mr-3" />
+                @context.DisplayName
+                @if (context.HasDisplayOverride)
+                {
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary ml-1">(@context.FullName)</MudText>
+                }
+                @if (context.HasNotes)
+                {
+                    <MudTooltip Text="Has notes">
+                        <MudIcon Icon="@Icons.Material.Filled.StickyNote2" Size="Size.Small" Class="ml-1" />
+                    </MudTooltip>
+                }
+            </div>
         </MudTd>
         <MudTd DataLabel="@PersonLabels.Title">@context.Title</MudTd>
         <MudTd DataLabel="Email">@context.Email</MudTd>

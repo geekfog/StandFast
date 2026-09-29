@@ -22,6 +22,13 @@ public sealed class Person
     /// <summary>Job title or role on the team, shown as Title/Role.</summary>
     public string? Title { get; set; }
 
+    public string? Organization { get; set; }
+
+    public string? Department { get; set; }
+
+    /// <summary>When the profile photo was last saved. Null when the person has no photo; the photo itself is stored apart from the person, as <see cref="PersonPhoto"/>.</summary>
+    public DateTimeOffset? PhotoSavedUtc { get; set; }
+
     public string? City { get; set; }
 
     /// <summary>State, province, or region. Free text, so locations outside the US read naturally.</summary>
