@@ -20,6 +20,9 @@ public sealed class UserPreferencesTableEntity : ITableEntity
 
     public bool IsDarkMode { get; set; }
 
+    /// <summary>Null on rows written before the column existed, which read as the default.</summary>
+    public bool? IsNavigationExpanded { get; set; }
+
     public DateTimeOffset CreatedUtc { get; set; }
 
     public DateTimeOffset? ModifiedUtc { get; set; }

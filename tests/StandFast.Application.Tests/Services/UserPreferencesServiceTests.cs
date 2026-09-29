@@ -17,9 +17,10 @@ public sealed class UserPreferencesServiceTests
     public UserPreferencesServiceTests() => service = new UserPreferencesService(repository, new FixedClock(new DateTimeOffset(2026, 9, 21, 8, 0, 0, TimeSpan.Zero)));
 
     [Fact]
-    public void DefaultIsLightModeAndMatchesNobody()
+    public void DefaultIsLightModeWithExpandedNavigationAndMatchesNobody()
     {
         Assert.False(UserPreferencesDto.Default.IsDarkMode);
+        Assert.True(UserPreferencesDto.Default.IsNavigationExpanded);
         Assert.False(UserPreferencesDto.Default.IsSelf(Email));
     }
 
@@ -81,6 +82,19 @@ public sealed class UserPreferencesServiceTests
 
         Assert.Equal(Email, loaded.Email);
         Assert.True(loaded.IsDarkMode);
+    }
+
+    [Fact]
+    public async Task CollapsedNavigationIsSavedWithoutDisturbingTheAppearance()
+    {
+        await service.SetDarkModeAsync(UserId, isDarkMode: true);
+        await service.SetNavigationExpandedAsync(UserId, isExpanded: false);
+
+        UserPreferencesDto loaded = await service.LoadAsync(UserId, Email);
+
+        Assert.False(loaded.IsNavigationExpanded);
+        Assert.True(loaded.IsDarkMode);
+        Assert.True((await service.LoadAsync(OtherUserId, Email)).IsNavigationExpanded);
     }
 
     /// <summary>An anonymous session has no key to save under, so it neither reads nor writes anything and marks nobody on the board.</summary>

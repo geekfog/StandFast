@@ -1,87 +1,138 @@
 <MudPaper Outlined="true" Class="pa-4">
-    <div class="d-flex align-center mb-3">
-        <MudAvatar Color="@StandFastTheme.ColumnColor(Participant.State)" Class="mr-3">@Participant.Initials</MudAvatar>
-        <div>
-            <MudText Typo="Typo.h6">@Participant.DisplayName</MudText>
-            <MudText Typo="Typo.caption" Class="mud-text-secondary">@Participant.Email</MudText>
-        </div>
-        @if (string.IsNullOrWhiteSpace(Participant.Notes))
-        {
-            <MudSpacer />
-        }
-        else
-        {
-            <div class="flex-grow-1 mx-4 standfast-person-notes">
-                <MarkdownView Value="@Participant.Notes" />
+    @if (expandedField is null)
+    {
+        <div class="d-flex align-center mb-3">
+            <MudAvatar Color="@StandFastTheme.ColumnColor(Participant.State)" Class="mr-3">@Participant.Initials</MudAvatar>
+            <div>
+                <MudText Typo="Typo.h6">@Participant.DisplayName</MudText>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">@Participant.Email</MudText>
             </div>
-        }
-        <MudButton Variant="Variant.Text" Color="Color.Default" StartIcon="@Icons.Material.Filled.Close" OnClick="CancelAsync" Class="mr-2">
-            @(IsReadOnly ? "Close" : "Cancel")
-        </MudButton>
-        @if (!IsReadOnly)
-        {
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" Disabled="@(!IsDirty || isSaving)" OnClick="SaveAsync">
-                @(isSaving ? "Saving..." : "Save update")
+            @if (string.IsNullOrWhiteSpace(Participant.Notes))
+            {
+                <MudSpacer />
+            }
+            else
+            {
+                <div class="flex-grow-1 mx-4 standfast-person-notes">
+                    <MarkdownView Value="@Participant.Notes" />
+                </div>
+            }
+            <MudButton Variant="Variant.Text" Color="Color.Default" StartIcon="@Icons.Material.Filled.Close" OnClick="CancelAsync" Class="mr-2">
+                @(IsReadOnly ? "Close" : "Cancel")
             </MudButton>
-        }
-    </div>
+            @if (!IsReadOnly)
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" Disabled="@(!IsDirty || isSaving)" OnClick="SaveAsync">
+                    @(isSaving ? "Saving..." : "Save update")
+                </MudButton>
+            }
+        </div>
+    }
 
     <MudGrid Spacing="3">
-        <MudItem xs="12" md="3" Class="standfast-markdown-column">
-            <MarkdownEditor Label="@PriorLabel"
-                            Value="@Participant.PriorUpdate"
-                            ReadOnly="true"
-                            EmptyText="No earlier update recorded for this standup." />
-            @if (!string.IsNullOrWhiteSpace(Participant.PriorBlockers))
-            {
-                <MudExpansionPanels Elevation="0" Class="mt-2">
-                    <MudExpansionPanel Text="Prior blockers" Dense="true">
-                        <MarkdownView Value="@Participant.PriorBlockers" />
-                    </MudExpansionPanel>
-                </MudExpansionPanels>
-            }
-            @if (!string.IsNullOrWhiteSpace(Participant.PriorParkingLot))
-            {
-                <MudExpansionPanels Elevation="0" Class="mt-2">
-                    <MudExpansionPanel Text="Prior parking lot" Dense="true">
-                        <MarkdownView Value="@Participant.PriorParkingLot" />
-                    </MudExpansionPanel>
-                </MudExpansionPanels>
-            }
-        </MudItem>
+        @if (expandedField is null)
+        {
+            <MudItem xs="12" md="@ColumnWidth" Class="standfast-markdown-column">
+                <MarkdownEditor Label="@PriorLabel"
+                                Value="@Participant.PriorUpdate"
+                                ReadOnly="true"
+                                EmptyText="No earlier update recorded for this standup." />
+                @if (!string.IsNullOrWhiteSpace(Participant.PriorBlockers))
+                {
+                    <MudExpansionPanels Elevation="0" Class="mt-2">
+                        <MudExpansionPanel Text="Prior blockers" Dense="true">
+                            <MarkdownView Value="@Participant.PriorBlockers" />
+                        </MudExpansionPanel>
+                    </MudExpansionPanels>
+                }
+                @if (!string.IsNullOrWhiteSpace(Participant.PriorParkingLot))
+                {
+                    <MudExpansionPanels Elevation="0" Class="mt-2">
+                        <MudExpansionPanel Text="Prior parking lot" Dense="true">
+                            <MarkdownView Value="@Participant.PriorParkingLot" />
+                        </MudExpansionPanel>
+                    </MudExpansionPanels>
+                }
+            </MudItem>
+        }
 
-        <MudItem xs="12" md="3" Class="standfast-markdown-column">
-            <MarkdownEditor Label="Current update" @bind-Value="currentUpdate" ReadOnly="@IsReadOnly" Placeholder="What did you do, what is next?" EmptyText="Nothing recorded for this date.">
-                <ToolbarActions>
-                    @if (!IsReadOnly)
-                    {
-                        <MudTooltip Text="Copy the prior update into this box">
-                            <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
-                                           Size="Size.Small"
-                                           Disabled="@(!Participant.HasPrior)"
-                                           OnClick="CopyPriorForward"
-                                           aria-label="Copy prior update forward" />
-                        </MudTooltip>
-                    }
-                </ToolbarActions>
-            </MarkdownEditor>
-        </MudItem>
+        @if (IsShown(EditorField.Update))
+        {
+            <MudItem xs="12" md="@ColumnWidth" Class="standfast-markdown-column">
+                <MarkdownEditor Label="@LabelFor(EditorField.Update, "Current")"
+                                @bind-Value="currentUpdate"
+                                ReadOnly="@IsReadOnly"
+                                Lines="@LinesFor(EditorField.Update)"
+                                Expanded="@IsExpanded(EditorField.Update)"
+                                ExpandedChanged="@(expanded => SetExpanded(EditorField.Update, expanded))"
+                                Placeholder="What did you do, what is next?"
+                                EmptyText="Nothing recorded for this date.">
+                    <ToolbarActions>
+                        @if (!IsReadOnly)
+                        {
+                            <MudTooltip Text="Copy the prior update into this box">
+                                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                               Size="Size.Small"
+                                               Disabled="@(!CanCopyPriorForward)"
+                                               OnClick="CopyPriorForward"
+                                               aria-label="Copy prior update forward" />
+                            </MudTooltip>
+                        }
+                    </ToolbarActions>
+                </MarkdownEditor>
+            </MudItem>
+        }
 
-        <MudItem xs="12" md="3" Class="standfast-markdown-column">
-            <MarkdownEditor Label="Blockers" @bind-Value="blockers" ReadOnly="@IsReadOnly" Placeholder="Anything in the way?" EmptyText="No blockers recorded." />
-        </MudItem>
+        @if (IsShown(EditorField.Blockers))
+        {
+            <MudItem xs="12" md="@ColumnWidth" Class="standfast-markdown-column">
+                <MarkdownEditor Label="@LabelFor(EditorField.Blockers, "Blockers")"
+                                @bind-Value="blockers"
+                                ReadOnly="@IsReadOnly"
+                                Lines="@LinesFor(EditorField.Blockers)"
+                                Expanded="@IsExpanded(EditorField.Blockers)"
+                                ExpandedChanged="@(expanded => SetExpanded(EditorField.Blockers, expanded))"
+                                Placeholder="Anything in the way?"
+                                EmptyText="No blockers recorded." />
+            </MudItem>
+        }
 
-        <MudItem xs="12" md="3" Class="standfast-markdown-column">
-            <MarkdownEditor Label="Parking lot" @bind-Value="parkingLot" ReadOnly="@IsReadOnly" Placeholder="Anything to take offline after the standup?" EmptyText="Nothing parked." />
-        </MudItem>
+        @if (IsShown(EditorField.ParkingLot))
+        {
+            <MudItem xs="12" md="@ColumnWidth" Class="standfast-markdown-column">
+                <MarkdownEditor Label="@LabelFor(EditorField.ParkingLot, "Parking lot")"
+                                @bind-Value="parkingLot"
+                                ReadOnly="@IsReadOnly"
+                                Lines="@LinesFor(EditorField.ParkingLot)"
+                                Expanded="@IsExpanded(EditorField.ParkingLot)"
+                                ExpandedChanged="@(expanded => SetExpanded(EditorField.ParkingLot, expanded))"
+                                Placeholder="Anything to take offline after the standup?"
+                                EmptyText="Nothing parked." />
+            </MudItem>
+        }
     </MudGrid>
 
-    <MudText Typo="Typo.caption" Class="mud-text-secondary mt-2">
-        @(Participant.UpdateSavedUtc is null ? "Not saved yet." : $"Last saved {Participant.UpdateSavedUtc.ToLocalDisplay(TimeZone)}.")
-    </MudText>
+    @if (expandedField is null)
+    {
+        <MudText Typo="Typo.caption" Class="mud-text-secondary mt-2">
+            @(Participant.UpdateSavedUtc is null ? "Not saved yet." : $"Last saved {Participant.UpdateSavedUtc.ToLocalDisplay(TimeZone)}.")
+        </MudText>
+    }
 </MudPaper>
 
 @code {
+    private const int ExpandedLines = 24;
+    private const int GridColumns = 12;
+    private const int SideBySideColumns = 4;
+
+    private enum EditorField
+    {
+        Update,
+        Blockers,
+        ParkingLot,
+    }
+
+    private EditorField? expandedField;
     private string? currentUpdate;
     private string? blockers;
     private string? parkingLot;
@@ -119,8 +170,21 @@
     private bool IsDirty => currentUpdate != Participant.Update || blockers != Participant.Blockers || parkingLot != Participant.ParkingLot;
 
     private string PriorLabel => Participant.PriorMeetingDate is { } date
-        ? $"Prior update ({date.ToDateTime(TimeOnly.MinValue).ToString(UiFormats.ShortDateWithWeekday)})"
-        : "Prior update";
+        ? $"Prior ({date.ToDateTime(TimeOnly.MinValue).ToString(UiFormats.ShortDateWithWeekday)})"
+        : "Prior";
+
+    private int ColumnWidth => expandedField is null ? GridColumns / SideBySideColumns : GridColumns;
+
+    private bool IsExpanded(EditorField field) => expandedField == field;
+
+    private bool IsShown(EditorField field) => expandedField is null || IsExpanded(field);
+
+    private int LinesFor(EditorField field) => IsExpanded(field) ? ExpandedLines : MarkdownEditor.DefaultLines;
+
+    // An expanded editor replaces the panel's header row, so its label carries the person's name.
+    private string LabelFor(EditorField field, string label) => IsExpanded(field) ? $"{Participant.DisplayName} · {label}" : label;
+
+    private void SetExpanded(EditorField field, bool expanded) => expandedField = expanded ? field : null;
 
     // Editing state is local so typing does not round-trip to storage, and is re-seeded whenever the panel switches person or date.
     protected override void OnParametersSet()
@@ -132,10 +196,14 @@
 
         loadedPersonId = Participant.PersonId;
         loadedDate = MeetingDate;
+        expandedField = null;
         currentUpdate = Participant.Update;
         blockers = Participant.Blockers;
         parkingLot = Participant.ParkingLot;
     }
+
+    // Copying replaces the box's text, so it is offered only while the box is empty and nothing typed can be overwritten.
+    private bool CanCopyPriorForward => Participant.HasPrior && string.IsNullOrWhiteSpace(currentUpdate);
 
     private void CopyPriorForward() => currentUpdate = Participant.PriorUpdate;
 

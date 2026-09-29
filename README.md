@@ -78,10 +78,10 @@ The panel has four boxes:
 
 | Box | Behaviour |
 | --- | --------- |
-| Prior update | Read only, labelled with the date and abbreviated weekday it came from. A copy button pushes its text into the current update so a "same as yesterday, plus…" update takes one tap. |
-| Current update | Markdown editor with a formatting toolbar and a preview toggle. |
-| Blockers | Same editor. A card showing blockers gets a warning icon on the board. |
-| Parking lot | Same editor, for topics to take offline after the standup. |
+| Prior update | Read only, labelled with the date and abbreviated weekday it came from. A copy button pushes its text into the current update so a "same as yesterday, plus…" update takes one tap. The button is available only while the current update is empty, so it never overwrites anything typed. |
+| Current update | Markdown editor with a formatting toolbar, a preview toggle, and an expand button that fills the panel with this one box. While expanded, the person's name, the toolbar, and an X that returns to all four boxes share one line. On a locked day the box shows rendered text only, with no preview toggle. |
+| Blockers | Same editor, including the expand button. A card showing blockers gets a warning icon on the board. |
+| Parking lot | Same editor, including the expand button, for topics to take offline after the standup. |
 
 Save writes all three editable boxes. Cancel closes the panel, and opening another person's update, another date or another standup replaces it; each asks first when there are edits that have not been saved.
 
@@ -318,7 +318,7 @@ Eight tables, all prefixed with `AzureTableStorage:TablePrefix`:
 | `StandupLeaders` | Standup id | Person id | The Leader Roster, in the same shape. A role gets its own table rather than a column on `StandupMembers`, so the person id stays the whole row key and one person can hold both roles on one standup. |
 | `StandupMeetings` | Standup id | Meeting date | What is recorded about a standup on one date apart from any participant: who led it, and when the date was locked. A row exists only once something has been set, so a date with no row is a meeting nobody annotated. |
 | `StandupEntries` | Standup id + person id | Inverted meeting date | Attendance state, the update, and the blockers. |
-| `UserPreferences` | `UserPreferences` | OpenID Connect subject | One row per signed-in user, holding their chosen appearance and the address the provider reports for them. Always read one user at a time, so one partition and a point read. Outside backup and restore; see [Backup and restore](#backup-and-restore). |
+| `UserPreferences` | `UserPreferences` | OpenID Connect subject | One row per signed-in user, holding their chosen appearance, whether they left the navigation menu expanded or collapsed, and the address the provider reports for them. Always read one user at a time, so one partition and a point read. Outside backup and restore; see [Backup and restore](#backup-and-restore). |
 | `AuditLog` | Date bucket | Timestamp | Written by Serilog, not by the repositories. Outside backup and restore; see [Backup and restore](#backup-and-restore). |
 
 Settings are keyed by the provider's subject identifier rather than by a person record, because signing in and being on a roster are independent: anyone who can sign in gets settings, whether or not they appear on a board. That identifier comes from outside the app, so `StorageKeys` folds the characters Azure Table keys reject onto the separator and the row keeps the original value in its own column.
@@ -600,3 +600,8 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 - Added a dark red tag at the top of the menu naming the environment, such as Development or DEV, on everything except production.
 - Added the abbreviated weekday after the date on the update panel's prior update label, for example (21 Sep 2026 Mon).
 - Asked before unsaved edits on the update panel are lost when opening another person's update or switching to another date or standup.
+- Added an expand button to the current update, blockers, and parking lot boxes, which fills the update panel with that one box. The person's name, the formatting toolbar, and an X to return to all four boxes sit on a single line above it.
+- Showed the prior update, and every box on a locked day, as rendered text only, without the edit and preview toggle.
+- Made the navigation menu remember whether each person left it expanded or collapsed, so it comes back that way the next time they sign in on any browser or machine. Anyone who has never collapsed it gets it expanded.
+- Made the prior update's heading on the update panel the same height as the headings of the boxes beside it.
+- Made the copy prior update button available only while the current update is empty, so it cannot overwrite text already typed.
