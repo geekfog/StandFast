@@ -1,0 +1,26 @@
+# Keeps only the newest release branch open: creating release/01.02 locks release/01.01, and creating release/02.00 locks release/01.25.
+#
+# Managing rulesets needs repository administration rights, which the workflow's own GITHUB_TOKEN never has, so the call uses the
+# RULESET_ADMIN_TOKEN secret: a fine-grained token scoped to this repository with Administration read and write.
+name: Lock older releases
+
+on:
+  create:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lock:
+    # The create event has no branch filter of its own, so tag creations and other branches are screened out here.
+    if: github.event_name == 'workflow_dispatch' || (github.ref_type == 'branch' && startsWith(github.ref_name, 'release/'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lock every release branch but the newest
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.RULESET_ADMIN_TOKEN }}
+        run: ./.github/scripts/Lock-OlderReleases.ps1 -p_Repository '${{ github.repository }}'

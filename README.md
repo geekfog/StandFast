@@ -502,10 +502,12 @@ What you set up once in Azure DevOps is in [Configuration](#configuration).
 | Branch | Holds | Created from | Merges into by pull request |
 | ------ | ----- | ------------ | --------------------------- |
 | `feature/*` | One change | The release branch it targets | `release/MM.mm` |
-| `release/MM.mm` | One version, e.g. `release/01.00`, with `VersionPrefix` matching; each fix after release raises the patch | `main` | `main`, once released |
-| `main` | The newest release | | |
+| `release/MM.mm` | One version, e.g. `release/01.00`, with `VersionPrefix` matching; each fix after release raises the patch | The previous release branch | `main`, once released |
+| `main` | The newest released version | | |
 
 `main` and `release/*` accept changes only by pull request and cannot be force-pushed or deleted, per [.github/rulesets/protected-branches.json](.github/rulesets/protected-branches.json), imported once under **Settings → Rules → Rulesets → New ruleset → Import a ruleset**, then **Create** button.
+
+Only the newest release branch stays open. Creating a release branch runs [.github/workflows/lock-older-releases.yml](.github/workflows/lock-older-releases.yml), which makes every older versioned release branch read-only through the "Locked releases" ruleset defined in [.github/rulesets/locked-releases.json](.github/rulesets/locked-releases.json): no one can push to, merge into, or delete them. Branches are ordered by version number, so `release/02.00` locks `release/01.25`, and a `release/*` branch whose name is not a version is left alone. The workflow needs one repository secret, `RULESET_ADMIN_TOKEN`: a fine-grained personal access token for this repository with **Administration: Read and write**. GitHub runs the workflow from the new branch's own commit, so it is in effect for the next release as soon as it is on the release branch that release is cut from. It can also be run by hand from the Actions tab, and it adopts a "Locked releases" ruleset that already exists under that name. Changing a locked release means disabling that ruleset for the duration.
 
 ### Branch filtering
 
@@ -621,3 +623,4 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 - Added organization and department to each person, entered beside title or role in the person dialog.
 - Added a profile photo to each person, uploaded or removed in the person dialog beside their name and saved with the rest of the person. The People screen shows it beside the name and the board shows it in place of the initials, ringed in the color of the column the person is in. People with no photo keep their initials.
 - Kept you signed in across browser restarts and shutdowns: a sign-in now lasts until the app goes unused for a number of days, 7 unless an environment sets its own, and every visit restarts that count, so regular use including weekends never asks you to sign in again.
+- Locked every release branch except the newest automatically: creating a new release branch makes the older ones read-only, ordered by version number so a new major version locks the last minor one before it.
