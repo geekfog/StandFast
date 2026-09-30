@@ -44,6 +44,9 @@ param p_BoardLockGraceMinutes int = 0
 @description('Minutes added to a day\'s last turn to date a lock applied past the grace window. 0 keeps the value in appsettings.json.')
 param p_BoardLockMinutesAfterLastTurn int = 0
 
+@description('Days a signed-in session survives without the app being opened. 0 keeps the value in appsettings.json.')
+param p_SignInIdleDays int = 0
+
 @description('Custom domain the app answers on, for example standup.yourbusiness.com. Empty leaves the app reachable only on its generated Container Apps URL.')
 param p_CustomDomain string = ''
 
@@ -79,11 +82,12 @@ var v_CustomDomains = !v_BindCustomDomain ? [] : [
     : { bindingType: 'Disabled' })
 ]
 
-// The board lock windows ship in appsettings.json, so an environment that has nothing to say about them sets no environment variable and the shipped
-// value stands. Only a non-zero parameter reaches the container.
-var v_BoardLockEnvironment = concat(
+// The board lock windows and the sign-in idle days ship in appsettings.json, so an environment that has nothing to say about them sets no environment
+// variable and the shipped value stands. Only a non-zero parameter reaches the container.
+var v_OptionalEnvironment = concat(
   p_BoardLockGraceMinutes > 0 ? [ { name: 'BoardLock__GraceMinutes', value: string(p_BoardLockGraceMinutes) } ] : [],
-  p_BoardLockMinutesAfterLastTurn > 0 ? [ { name: 'BoardLock__MinutesAfterLastTurn', value: string(p_BoardLockMinutesAfterLastTurn) } ] : [])
+  p_BoardLockMinutesAfterLastTurn > 0 ? [ { name: 'BoardLock__MinutesAfterLastTurn', value: string(p_BoardLockMinutesAfterLastTurn) } ] : [],
+  p_SignInIdleDays > 0 ? [ { name: 'SignInSession__IdleDays', value: string(p_SignInIdleDays) } ] : [])
 
 // Built-in role definition ids. The container app holds one user assigned identity and is granted only the data-plane roles it needs.
 var v_Roles = {
@@ -313,7 +317,7 @@ resource containerApp 'Microsoft.App/containerApps@2025-07-01' = if (p_DeployApp
             { name: 'StandFastUi__DisplayTimeZoneId', value: p_DisplayTimeZoneId }
             { name: 'StandFastUi__DataProtectionBlobUri', value: '${storage.properties.primaryEndpoints.blob}${v_DataProtectionContainer}/${v_DataProtectionBlob}' }
             { name: 'StandFastUi__EnvironmentLabel', value: v_EnvironmentLabel }
-          ], v_BoardLockEnvironment)
+          ], v_OptionalEnvironment)
           probes: [
             {
               type: 'Liveness'
