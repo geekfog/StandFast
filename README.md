@@ -66,7 +66,7 @@ The Lock button beside the date closes that date once the standup is over, so a 
 
 The time the lock carries is the time it was applied, as long as the standup is still recent. Lock the date hours later, or the next morning, and it is dated from the last person who presented instead, plus a few minutes, because a board closed the next day should not read as though the meeting ran that long. Both windows are settings; see [Everything you set](#everything-you-set). A date nobody presented on has no such anchor, so it takes the time it was locked whenever that was, and a date locked twice keeps the first time.
 
-A dot under a date in the week strip means someone presented on that date, so a week with a finished standup is recognisable without opening each day. The dot is green while the date is still open and orange once it is locked, matching the colour the Lock button and the locked banner carry.
+A dot under a date in the week strip means someone presented on that date, so a week with a finished standup is recognisable without opening each day. The dot is blue while the date is still open and orange once it is locked, matching the colour the Lock button and the locked banner carry. On the selected date the dot is ringed in the button's text color so it stands out from the green fill.
 
 Your own card carries a dark yellow star after the name, in whichever column you are sitting in, so you can find yourself on a long roster without reading the names. It shows when the address you signed in with matches the one on your person record.
 
@@ -622,3 +622,4 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 - Added organization and department to each person, entered beside title or role in the person dialog.
 - Added a profile photo to each person, uploaded or removed in the person dialog beside their name and saved with the rest of the person. The People screen shows it beside the name and the board shows it in place of the initials, ringed in the color of the column the person is in. People with no photo keep their initials.
 - Made the update panel's text boxes fill their column to the bottom and grow with what is typed, so the four boxes use the full height the longest one needs instead of scrolling inside a short box.
+- Changed the week strip's dot for a day someone presented on from green to blue, and ringed the dot on the selected day, so it no longer disappears into the green highlight.
