@@ -28,7 +28,13 @@ public static class AuthenticationSetup
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        builder.Services.AddOptions<SignInSessionOptions>()
+            .Bind(builder.Configuration.GetSection(SignInSessionOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
         OidcOptions oidc = builder.Configuration.GetSection(OidcOptions.SectionName).Get<OidcOptions>() ?? new OidcOptions();
+        SignInSessionOptions session = builder.Configuration.GetSection(SignInSessionOptions.SectionName).Get<SignInSessionOptions>() ?? new SignInSessionOptions();
         bool isDevelopment = builder.Environment.IsDevelopment();
 
         builder.Services.AddAuthentication(options =>
@@ -47,7 +53,20 @@ public static class AuthenticationSetup
 
             // The http launch profile exists for local work; every deployed environment is HTTPS only.
             options.Cookie.SecurePolicy = isDevelopment ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
+
+            // A persistent cookie survives the browser closing, and renewing it on every request makes its expiry a count of idle days since the last visit.
+            options.ExpireTimeSpan = session.IdleTimeout;
             options.SlidingExpiration = true;
+            options.Events.OnSigningIn = context =>
+            {
+                context.Properties.IsPersistent = true;
+                return Task.CompletedTask;
+            };
+            options.Events.OnCheckSlidingExpiration = context =>
+            {
+                context.ShouldRenew = true;
+                return Task.CompletedTask;
+            };
         })
         .AddOpenIdConnect(options =>
         {
