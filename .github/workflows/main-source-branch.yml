@@ -1,0 +1,27 @@
+# Only a release branch may merge into main. The "Main from releases" ruleset requires this job's check, so a pull request from any other branch
+# can be opened but never merged. The edited type is included so a pull request retargeted to main is checked too.
+name: Main source branch
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, edited]
+
+permissions: {}
+
+jobs:
+  # The job id is the check name the ruleset requires, so the two must be renamed together.
+  release-source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require a release branch as the source
+        shell: pwsh
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          if (-not $env:HEAD_REF.StartsWith('release/')) {
+            Write-Host "::error::Pull requests into main must come from a release/* branch, not $env:HEAD_REF."
+            exit 1
+          }
+
+          Write-Host "Source branch $env:HEAD_REF is a release branch."
