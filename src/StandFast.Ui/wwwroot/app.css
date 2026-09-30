@@ -208,10 +208,16 @@
     padding: 0.1rem 0.3rem;
 }
 
+/* Blocks carry no vertical margin: each blank line in the source renders as one spacer line, so the preview spacing matches the editor. */
+.standfast-markdown p,
+.standfast-markdown ul,
+.standfast-markdown ol {
+    margin: 0;
+}
+
 /* MudBlazor's reset zeroes list padding, which leaves bullets and numbers hanging left of the surrounding paragraphs. */
 .standfast-markdown ul,
 .standfast-markdown ol {
-    margin: 0.25rem 0;
     padding-left: 1.5rem;
 }
 
