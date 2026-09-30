@@ -507,9 +507,16 @@ What you set up once in Azure DevOps is in [Configuration](#configuration).
 | `release/MM.mm` | One version, e.g. `release/01.00`, with `VersionPrefix` matching; each fix after release raises the patch | The previous release branch | `main`, once released |
 | `main` | The newest released version | | |
 
-`main` and `release/*` accept changes only by pull request and cannot be force-pushed or deleted, per [.github/rulesets/protected-branches.json](.github/rulesets/protected-branches.json), imported once under **Settings → Rules → Rulesets → New ruleset → Import a ruleset**, then **Create** button.
+Branch policy lives in the repository as GitHub rulesets under [.github/rulesets](.github/rulesets), applied by the [Branch policy](.github/workflows/branch-policy.yml) workflow:
 
-Only the newest release branch stays open. Creating a release branch runs [.github/workflows/lock-older-releases.yml](.github/workflows/lock-older-releases.yml), which makes every older versioned release branch read-only through the "Locked releases" ruleset defined in [.github/rulesets/locked-releases.json](.github/rulesets/locked-releases.json): no one can push to, merge into, or delete them. Branches are ordered by version number, so `release/02.00` locks `release/01.25`, and a `release/*` branch whose name is not a version is left alone. The workflow needs one repository secret, `RULESET_ADMIN_TOKEN`: a fine-grained personal access token for this repository with **Administration: Read and write**. GitHub runs the workflow from the new branch's own commit, so it is in effect for the next release as soon as it is on the release branch that release is cut from. It can also be run by hand from the Actions tab, and it adopts a "Locked releases" ruleset that already exists under that name. Changing a locked release means disabling that ruleset for the duration.
+| Ruleset | Applies to | Effect |
+| ------- | ---------- | ------ |
+| [Protected branches](.github/rulesets/protected-branches.json) | `main` and every `release/*` | Changes only by pull request; no force-push or deletion. |
+| [Main from releases](.github/rulesets/main-from-releases.json) | `main` | A pull request merges only once the `release-source` check from [main-source-branch.yml](.github/workflows/main-source-branch.yml) passes, which it does only when the source is a `release/*` branch. |
+| [Locked releases](.github/rulesets/locked-releases.json) | Every versioned release branch but the newest, filled in by the workflow | Read-only: no push, merge or deletion. Branches are ordered by version number, so `release/02.00` locks `release/01.25`; a `release/*` branch whose name is not a version is left alone. Changing a locked release means disabling this ruleset for the duration. |
+
+The workflow also makes the newest release branch the repository's default, so a new pull request targets it rather than `main`. It runs when a release branch is created, when a change to a ruleset file or its script is pushed to a release branch, and by hand from the Actions tab. Each ruleset is matched by name, so one that already exists is updated rather than duplicated. GitHub runs it from the triggering branch's own commit, so a policy change is in effect once it is on the release branch the next release is cut from. It needs one repository secret, `RULESET_ADMIN_TOKEN`: a fine-grained personal access token for this repository with **Administration: Read and write**.
+
 
 ### Branch filtering
 
@@ -627,3 +634,5 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 - Kept you signed in across browser restarts and shutdowns: a sign-in now lasts until the app goes unused for a number of days, 7 unless an environment sets its own, and every visit restarts that count, so regular use including weekends never asks you to sign in again.
 - Made the update panel's text boxes fill their column to the bottom and grow with what is typed, so the four boxes use the full height the longest one needs instead of scrolling inside a short box.
 - Changed the week strip's dot for a day someone presented on from green to blue, and ringed the dot on the selected day, so it no longer disappears into the green highlight.
+- Locked every release branch except the newest automatically: creating a new release branch makes the older ones read-only, ordered by version number so a new major version locks the last minor one before it, and makes the new release the default branch so pull requests target it.
+- Allowed pull requests into main only from a release branch.

@@ -1,26 +1,30 @@
-# Keeps only the newest release branch open: creating release/01.02 locks release/01.01, and creating release/02.00 locks release/01.25.
+# Applies every ruleset in .github/rulesets and keeps only the newest release branch open and set as the default branch: creating release/01.02
+# locks release/01.01, and creating release/02.00 locks release/01.25. A merged change to a ruleset file is applied by the push that lands it.
 #
-# Managing rulesets needs repository administration rights, which the workflow's own GITHUB_TOKEN never has, so the call uses the
-# RULESET_ADMIN_TOKEN secret: a fine-grained token scoped to this repository with Administration read and write.
-name: Lock older releases
+# Managing rulesets and the default branch needs repository administration rights, which the workflow's own GITHUB_TOKEN never has, so the calls
+# use the RULESET_ADMIN_TOKEN secret: a fine-grained token scoped to this repository with Administration read and write.
+name: Branch policy
 
 on:
   create:
+  push:
+    branches: ['release/**']
+    paths: ['.github/rulesets/**', '.github/scripts/Sync-BranchPolicy.ps1']
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  lock:
+  sync:
     # The create event has no branch filter of its own, so tag creations and other branches are screened out here.
-    if: github.event_name == 'workflow_dispatch' || (github.ref_type == 'branch' && startsWith(github.ref_name, 'release/'))
+    if: github.event_name != 'create' || (github.ref_type == 'branch' && startsWith(github.ref_name, 'release/'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Lock every release branch but the newest
+      - name: Apply rulesets and default branch
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.RULESET_ADMIN_TOKEN }}
-        run: ./.github/scripts/Lock-OlderReleases.ps1 -p_Repository '${{ github.repository }}'
+        run: ./.github/scripts/Sync-BranchPolicy.ps1 -p_Repository '${{ github.repository }}'
