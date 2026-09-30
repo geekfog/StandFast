@@ -35,13 +35,20 @@
     width: 0.35rem;
 }
 
+/* Blue rather than green, so the dot stays distinct from the green fill of the selected day. */
 .standfast-day-marker-presented {
-    background-color: var(--mud-palette-success);
+    background-color: var(--mud-palette-secondary);
 }
 
 /* The same orange the Lock button and the locked banner carry, so one colour means "closed" wherever it appears. */
 .standfast-day-marker-locked {
     background-color: var(--mud-palette-warning);
+}
+
+/* On the selected day the dot sits on the button's filled background, so it is ringed in the button's text color to stand out from that fill. */
+.mud-button-filled .standfast-day-marker-presented,
+.mud-button-filled .standfast-day-marker-locked {
+    box-shadow: 0 0 0 1.5px currentColor;
 }
 
 /* A report chart is drawn at a fixed pixel step per date, so a long period scrolls sideways rather than squeezing its labels together. */
@@ -159,7 +166,25 @@
 }
 
 .standfast-markdown-column > .standfast-markdown-editor > .standfast-markdown-body {
+    display: flex;
     flex: 1 1 auto;
+    flex-direction: column;
+}
+
+/* A text box fills its column down to the bottom border, and grows with its text so the row is as tall as the longest box, never scrolling inside it. */
+.standfast-markdown-column .standfast-markdown-body .mud-input-control,
+.standfast-markdown-column .standfast-markdown-body .mud-input-control-input-container,
+.standfast-markdown-column .standfast-markdown-body .mud-input {
+    flex: 1 1 auto;
+}
+
+.standfast-markdown-column .standfast-markdown-body .mud-input {
+    align-items: stretch;
+}
+
+.standfast-markdown-column .standfast-markdown-body textarea.mud-input-root {
+    field-sizing: content;
+    min-height: calc(var(--standfast-markdown-lines) * 1lh);
 }
 
 .standfast-markdown > :first-child {
