@@ -85,6 +85,8 @@ The panel has four boxes:
 | Blockers | Same editor, including the expand button. A card showing blockers gets a warning icon on the board. |
 | Parking lot | Same editor, including the expand button, for topics to take offline after the standup. |
 
+The four boxes share one height: the tallest content among them sets it, and each editing box grows with its text and fills to the bottom, so nothing scrolls inside a box.
+
 Save writes all three editable boxes. Cancel closes the panel, and opening another person's update, another date or another standup replaces it; each asks first when there are edits that have not been saved.
 
 Everything is keyed by standup, person, and date, so navigating to last Tuesday shows exactly what was recorded on last Tuesday.
@@ -619,3 +621,4 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 - Showed each person's title or role when hovering over their status on the board.
 - Added organization and department to each person, entered beside title or role in the person dialog.
 - Added a profile photo to each person, uploaded or removed in the person dialog beside their name and saved with the rest of the person. The People screen shows it beside the name and the board shows it in place of the initials, ringed in the color of the column the person is in. People with no photo keep their initials.
+- Made the update panel's text boxes fill their column to the bottom and grow with what is typed, so the four boxes use the full height the longest one needs instead of scrolling inside a short box.

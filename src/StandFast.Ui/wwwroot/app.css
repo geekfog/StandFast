@@ -159,7 +159,25 @@
 }
 
 .standfast-markdown-column > .standfast-markdown-editor > .standfast-markdown-body {
+    display: flex;
     flex: 1 1 auto;
+    flex-direction: column;
+}
+
+/* A text box fills its column down to the bottom border, and grows with its text so the row is as tall as the longest box, never scrolling inside it. */
+.standfast-markdown-column .standfast-markdown-body .mud-input-control,
+.standfast-markdown-column .standfast-markdown-body .mud-input-control-input-container,
+.standfast-markdown-column .standfast-markdown-body .mud-input {
+    flex: 1 1 auto;
+}
+
+.standfast-markdown-column .standfast-markdown-body .mud-input {
+    align-items: stretch;
+}
+
+.standfast-markdown-column .standfast-markdown-body textarea.mud-input-root {
+    field-sizing: content;
+    min-height: calc(var(--standfast-markdown-lines) * 1lh);
 }
 
 .standfast-markdown > :first-child {
