@@ -8,8 +8,8 @@
     release/02.00 is newer than release/01.25 however the parts are padded. A release branch whose name is not a version is left alone.
 
     Each ruleset file is created the first time and updated in place after that, matched by its name, so the files are the one definition of every
-    ruleset. The locked releases file carries no branches of its own; this script fills in every release branch but the newest. Calls go through the
-    GitHub CLI, which reads its token from GH_TOKEN.
+    ruleset; a ruleset on the repository that no file defines is deleted. The locked releases file carries no branches of its own; this script fills
+    in every release branch but the newest. Calls go through the GitHub CLI, which reads its token from GH_TOKEN.
 #>
 [CmdletBinding()]
 param(
@@ -45,6 +45,8 @@ gh api "repos/$p_Repository/rulesets" --paginate --jq '.[] | "\(.id)\t\(.name)"'
 
 foreach ($file in Get-ChildItem $rulesetDirectory -Filter '*.json' | Sort-Object Name) {
     $ruleset = Get-Content $file.FullName -Raw | ConvertFrom-Json
+    $existingId = $existingIds[$ruleset.name]
+    $existingIds.Remove($ruleset.name)
 
     if ($file.Name -eq $lockedReleasesFile) {
         if ($older.Count -eq 0) {
@@ -56,7 +58,6 @@ foreach ($file in Get-ChildItem $rulesetDirectory -Filter '*.json' | Sort-Object
     }
 
     $body = $ruleset | ConvertTo-Json -Depth 10
-    $existingId = $existingIds[$ruleset.name]
 
     if ($existingId) {
         $body | gh api --method PUT "repos/$p_Repository/rulesets/$existingId" --input - --silent
@@ -66,6 +67,11 @@ foreach ($file in Get-ChildItem $rulesetDirectory -Filter '*.json' | Sort-Object
         $body | gh api --method POST "repos/$p_Repository/rulesets" --input - --silent
         Write-Host "Created ruleset '$($ruleset.name)'."
     }
+}
+
+foreach ($name in $existingIds.Keys) {
+    gh api --method DELETE "repos/$p_Repository/rulesets/$($existingIds[$name])" --silent
+    Write-Host "Deleted ruleset '$name' ($($existingIds[$name])): no file defines it."
 }
 
 if ($newest) {

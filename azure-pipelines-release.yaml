@@ -18,7 +18,7 @@ stages:
     displayName: Release ${{ parameters.p_publishEnvironment }}
     dependsOn: ${{ parameters.p_dependsOn }}
     # a_AllowedBranches is a pipe-delimited list of the branches that may release here, written without the refs/heads/ prefix, for
-    # example "main|release/". An entry is a whole branch name, or a top-level folder ending in "/" that matches every branch under it.
+    # example "release/01.02|release/01.03" or "release/". An entry is a whole branch name, or a top-level folder ending in "/" that matches every branch under it.
     # An undefined or empty variable reads as an empty string, which allows every branch.
     condition: >-
       and(succeeded(),

@@ -135,7 +135,7 @@ Each person gets their own colour. Past the eighth person the colours start agai
 
 ```text
 StandFast.slnx
-├── .github/rulesets/              Branch protection ruleset for main and release branches, imported into GitHub
+├── .github/rulesets/              Branch protection rulesets for the release branches, applied by a workflow
 ├── .vscode/                       F5 launch configuration and build/test tasks
 ├── Directory.Build.props          Shared build settings and the single version number
 ├── Directory.Packages.props       Central package version management
@@ -216,7 +216,7 @@ Local development on the left, a deployed environment on the right. `<env>` is t
 | `secrets.json`                     | `Oidc:ClientSecret`                                          | (Client Secret)                          | `standfast-<env>-vars` group                       | `a_OidcClientSecret`                                         | (Client Secret)             | Client secret from the provider. Mark the group variable as secret. Bicep always stores it in Key Vault as `oidc-client-secret` and gives the container app a Key Vault reference, so the value never becomes a plain environment variable. |
 | `secrets.json`, optional           | `StandFastUi:DisplayTimeZoneId`                              | (e.g., `Central Standard Time`)          | `standfast-<env>-vars` group                       | `a_DisplayTimeZoneId`                                        | (e.g., `Central Standard Time`) | The [time zone id](#time-zones) for times that belong to no standup, such as on the Backup screen, and for a standup whose own time zone the server cannot resolve. The board and reports use the standup's own time zone. The group variable must exist, because the pipeline passes it on every run; leave its value empty and the app falls back to the server time zone, which in the container is UTC. Locally, omitting it falls back to your machine's zone. |
 | (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-<env>-vars` group                       | `a_CustomDomain`                                             | (e.g., `standup.yourbusiness.com`) | The [custom domain](#custom-domain) the app answers on. The group variable must exist, because the pipeline passes it on every run; leave its value empty and the app is reachable only on its generated Container Apps URL. |
-| (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-<env>-vars` group                       | `a_AllowedBranches`                                          | (e.g., `main\|release/`) | Pipe-delimited list of the branches that may release to this environment; see [Branch filtering](#branch-filtering). Leave it unset and every branch that triggers the pipeline releases here, which for a production environment is rarely what you want. |
+| (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-<env>-vars` group                       | `a_AllowedBranches`                                          | (e.g., `release/`)|release/`) | Pipe-delimited list of the branches that may release to this environment; see [Branch filtering](#branch-filtering). Leave it unset and every branch that triggers the pipeline releases here, which for a production environment is rarely what you want. |
 | (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-<env>-vars` group                       | `a_RegionToken`                                              | (e.g., `usnorth`)           | Region segment of every resource name                        |
 | (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-<env>-vars` group                       | `a_Location`                                                 | (e.g., `northcentralus`)    | Azure region everything is created in                        |
 | (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-vars` group                             | `a_AppBase`                                                  | `standfast`                 | First segment of every resource name and the `Product` tag. Identical across environments |
@@ -508,18 +508,16 @@ What you set up once in Azure DevOps is in [Configuration](#configuration).
 | Branch | Holds | Created from | Merges into by pull request |
 | ------ | ----- | ------------ | --------------------------- |
 | `feature/*` | One change | The release branch it targets | `release/MM.mm` |
-| `release/MM.mm` | One version, e.g. `release/01.00`, with `VersionPrefix` matching; each fix after release raises the patch | The previous release branch | `main`, once released |
-| `main` | The newest released version | | |
+| `release/MM.mm` | One version, e.g. `release/01.00`, with `VersionPrefix` matching; each fix after release raises the patch. Every merge into it deploys, and the newest is the default branch | The previous release branch | (none) |
 
 Branch policy lives in the repository as GitHub rulesets under [.github/rulesets](.github/rulesets), applied by the [Branch policy](.github/workflows/branch-policy.yml) workflow:
 
 | Ruleset | Applies to | Effect |
 | ------- | ---------- | ------ |
-| [Protected branches](.github/rulesets/protected-branches.json) | `main` and every `release/*` | Changes only by pull request; no force-push or deletion. |
-| [Main from releases](.github/rulesets/main-from-releases.json) | `main` | A pull request merges only once the `release-source` check from [main-source-branch.yml](.github/workflows/main-source-branch.yml) passes, which it does only when the source is a `release/*` branch. |
+| [Protected branches](.github/rulesets/protected-branches.json) | Every `release/*` | Changes only by pull request; no force-push or deletion. |
 | [Locked releases](.github/rulesets/locked-releases.json) | Every versioned release branch but the newest, filled in by the workflow | Read-only: no push, merge or deletion. Branches are ordered by version number, so `release/02.00` locks `release/01.25`; a `release/*` branch whose name is not a version is left alone. Changing a locked release means disabling this ruleset for the duration. |
 
-The workflow also makes the newest release branch the repository's default, so a new pull request targets it rather than `main`. It runs when a release branch is created, when a change to a ruleset file or its script is pushed to a release branch, and by hand from the Actions tab. Each ruleset is matched by name, so one that already exists is updated rather than duplicated. GitHub runs it from the triggering branch's own commit, so a policy change is in effect once it is on the release branch the next release is cut from. It needs one repository secret, `RULESET_ADMIN_TOKEN`: a fine-grained personal access token for this repository with **Administration: Read and write**.
+The workflow also makes the newest release branch the repository's default, so a new pull request targets it. It runs when a release branch is created, when a change to a ruleset file or its script is pushed to a release branch, and by hand from the Actions tab. Each ruleset is matched by name, so one that already exists is updated rather than duplicated, and one on the repository that no file defines is deleted. GitHub runs it from the triggering branch's own commit, so a policy change is in effect once it is on the release branch the next release is cut from. It needs one repository secret, `RULESET_ADMIN_TOKEN`: a fine-grained personal access token for this repository with **Administration: Read and write**.
 
 
 ### Branch filtering
@@ -530,8 +528,8 @@ Write the branches as a pipe-delimited list, without the `refs/heads/` prefix:
 
 | You write | It matches |
 | --------- | ---------- |
-| `main` | That branch. |
-| `main\|release/` | `main`, and every branch under `release/`, such as `release/01.00`. Matching ignores case. |
+| `release/01.02\|release/01.03` | Those two branches. |
+| `release/` | Every branch under `release/`, such as `release/01.00`. Matching ignores case. |
 | (unset or empty) | Every branch that triggers the pipeline. |
 
 ### Custom domain
@@ -556,6 +554,11 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 # 🚧 Change Summary
 
 *Each entry is a specific version (release/\* branch), in descending order (newest version up top), with a plain bullet list summarizing each change without technical jargon.*
+
+### v01.02.00 — 2026-10-01
+
+- Made release branches the only long-lived branches: each release is cut from the one before it, every merge into a release deploys it, and the newest release is the default branch.
+- Made the branch rules kept in the repository the complete set, so a rule removed from the repository is removed from GitHub too.
 
 ### v01.00 — 2026-09-15
 
