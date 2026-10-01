@@ -1,7 +1,7 @@
 <MudPaper Outlined="true" Class="pa-4">
     @if (expandedField is null)
     {
-        <div class="d-flex align-center mb-3">
+        <div class="d-flex align-center mb-3 standfast-update-panel-header">
             <MudAvatar Color="@StandFastTheme.ColumnColor(Participant.State)" Class="mr-3">@Participant.Initials</MudAvatar>
             <div>
                 <MudText Typo="Typo.h6">@Participant.DisplayName</MudText>
