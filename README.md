@@ -74,6 +74,8 @@ An undo arrow on each card moves someone back a column if you mis-tap.
 
 The notes icon on a card opens that person's update panel. The icon turns red once anything has been recorded for that person on that date, in all three columns, so you can see at a glance who still owes an update. The card of whoever's panel is open carries an outline.
 
+On a wide window the board fits the screen without the page scrolling. The date, Lock button, messages, week strip and dropdowns stay at the top, an open update panel docks at the bottom, and the three columns scroll between them. The panel takes the room its content needs, at least 20rem and at most half the board, with the minimum winning on a short window; past that it scrolls inside itself while the person's name and the Save button stay in view. On a narrow window the board and panel stack and the page scrolls as usual.
+
 The panel header shows the person's notes, rendered as markdown, to the right of their name, so anything worth knowing when running the standup is in view while their update is taken.
 
 The panel has four boxes:
@@ -85,7 +87,7 @@ The panel has four boxes:
 | Blockers | Same editor, including the expand button. A card showing blockers gets a warning icon on the board. |
 | Parking lot | Same editor, including the expand button, for topics to take offline after the standup. |
 
-The four boxes share one height: the tallest content among them sets it, and each editing box grows with its text and fills to the bottom, so nothing scrolls inside a box.
+The four boxes share one height: the tallest content among them sets it, and each editing box grows with its text and fills to the bottom, so nothing scrolls inside a box; a panel taller than the dock allows scrolls as a whole.
 
 Save writes all three editable boxes. Cancel closes the panel, and opening another person's update, another date or another standup replaces it; each asks first when there are edits that have not been saved.
 
@@ -386,6 +388,8 @@ Formatting runs through a small JavaScript helper, because wrapping a selection 
 
 Rendering uses a single pre-built Markdig pipeline with advanced extensions on and raw HTML disabled. Update text is user-supplied and rendered into the page, so HTML is escaped rather than executed.
 
+Markdown collapses any run of blank lines into one paragraph break, so before rendering, `MarkdownRenderer` turns each blank line between content into its own `&nbsp;` paragraph, leaving fenced code blocks as typed. Rendered paragraphs and lists carry no vertical margin, so each blank line in the editor is exactly one empty line in the preview.
+
 ## Charting
 
 Report charts are SVG written by the component rather than a charting package. The presenting order chart needs an axis whose last tick is a symbol instead of a number, and a separate dash pattern per series; both are a few lines of geometry to draw and a fight to configure. `ChartGeometry` holds every pixel position and nothing else, so the markup reads positions rather than computing them and the layout can be checked on its own.
@@ -636,3 +640,6 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 - Changed the week strip's dot for a day someone presented on from green to blue, and ringed the dot on the selected day, so it no longer disappears into the green highlight.
 - Locked every release branch except the newest automatically: creating a new release branch makes the older ones read-only, ordered by version number so a new major version locks the last minor one before it, and makes the new release the default branch so pull requests target it.
 - Allowed pull requests into main only from a release branch.
+- Moved the board's date and its Lock button above the Standup and Leader dropdowns, so the week strip sits beside them at the top and the board starts higher on the screen. The week strip's bottom edge lines up with the dropdowns, and messages about the selected date, such as the locked notice, appear above the week strip.
+- Made the markdown preview keep the blank lines typed in the editor, one empty line for each, so the spacing matches between editing and preview.
+- Kept the top of the board and an open update panel on screen at all times on a wide window, with the roster, present, and presented columns scrolling between them, so running a standup with a long roster no longer means scrolling the page up and down.

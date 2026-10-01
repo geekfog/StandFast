@@ -4,119 +4,137 @@
 
 <PageTitle>@AppInfo.PageTitle("Board")</PageTitle>
 
-<div class="d-flex align-center mb-4">
-    <h1 class="mud-typography mud-typography-h5 flex-grow-1">@SelectedDate.ToDateTime(TimeOnly.MinValue).ToString(UiFormats.LongDate)</h1>
-    @if (board is not null)
+<div class="standfast-board">
+    <div class="standfast-board-header">
+        <MudGrid Spacing="3">
+            @* Both header columns stack from the top and push their last block to the bottom, so the dropdowns and the week strip share a bottom edge; mb-0 clears the dense dropdowns' own bottom margin so that edge is exact. *@
+            <MudItem xs="12" md="4" Class="d-flex flex-column">
+                <div class="d-flex align-center gap-4 mb-1">
+                    <h1 class="mud-typography mud-typography-h5 flex-grow-1">@SelectedDate.ToDateTime(TimeOnly.MinValue).ToString(UiFormats.LongDate)</h1>
+                    @if (board is not null)
+                    {
+                        <MudTooltip Text="@LockActionDescription">
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="@StandFastTheme.LockColor(IsLocked)"
+                                       StartIcon="@StandFastTheme.LockIcon(IsLocked)"
+                                       Disabled="@(!IsLocked && !HasPresented)"
+                                       OnClick="ToggleLockAsync"
+                                       aria-label="@LockActionDescription">
+                                @(IsLocked ? "Unlock" : "Lock")
+                            </MudButton>
+                        </MudTooltip>
+                    }
+                </div>
+                <div class="mt-auto">
+                    <MudGrid Spacing="3">
+                        <MudItem xs="12" sm="6">
+                            <MudSelect T="Guid" Value="@standupPickerValue" ValueChanged="OnStandupChangedAsync" Label="Standup" Variant="Variant.Outlined" Dense="true" Class="mb-0" Disabled="@(standups.Count == 0)">
+                                @foreach (StandupDto standup in standups)
+                                {
+                                    <MudSelectItem T="Guid" Value="@standup.Id">@standup.Name</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudSelect T="Guid?" Value="@board?.LeaderPersonId" ValueChanged="OnLeaderChangedAsync" Label="@RosterLabels.Name(RosterRole.Leader)" Variant="Variant.Outlined" Dense="true" Class="mb-0" Clearable="true"
+                                       Disabled="@(LeaderCandidates.Count == 0 || IsLocked)" HelperText="@LeaderHelperText">
+                                @foreach (StandupMemberDto leader in LeaderCandidates)
+                                {
+                                    <MudSelectItem T="Guid?" Value="@leader.PersonId">@leader.DisplayName</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                    </MudGrid>
+                </div>
+            </MudItem>
+            <MudItem xs="12" md="8" Class="d-flex flex-column">
+                @if (standups.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">
+                        No standups defined yet. <MudLink Href="@UiRoutes.Standups">Create one</MudLink> and add people to its roster.
+                    </MudAlert>
+                }
+                else if (board is null)
+                {
+                    <MudProgressLinear Indeterminate="true" Class="mb-2" />
+                }
+                else
+                {
+                    @if (!board.IsScheduledDay)
+                    {
+                        <MudAlert Severity="Severity.Normal" Dense="true" Class="mb-2">@board.StandupName does not normally run on this day.</MudAlert>
+                    }
+
+                    @if (IsLocked)
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-2">@LockedCaption</MudAlert>
+                    }
+                }
+                <div class="mt-auto">
+                    <WeekStrip SelectedDate="@SelectedDate" SelectedDateChanged="OnDateChangedAsync" Today="@today" ScheduledDays="@SelectedStandupDays"
+                               PresentedDates="@presentedDates" LockedDates="@lockedDates" />
+                </div>
+            </MudItem>
+        </MudGrid>
+    </div>
+
+    @if (standups.Count > 0 && board is not null)
     {
-        <MudTooltip Text="@LockActionDescription">
-            <MudButton Variant="Variant.Outlined"
-                       Color="@StandFastTheme.LockColor(IsLocked)"
-                       StartIcon="@StandFastTheme.LockIcon(IsLocked)"
-                       Disabled="@(!IsLocked && !HasPresented)"
-                       OnClick="ToggleLockAsync"
-                       aria-label="@LockActionDescription">
-                @(IsLocked ? "Unlock" : "Lock")
-            </MudButton>
-        </MudTooltip>
+        <div class="standfast-board-body">
+            <MudGrid Spacing="3" Class="mt-1">
+                @foreach (AttendanceState state in BoardColumns)
+                {
+                    <MudItem xs="12" md="4">
+                        <MudPaper Outlined="true" Class="pa-3 standfast-column">
+                            <div class="d-flex align-center mb-2">
+                                <MudIcon Icon="@StandFastTheme.ColumnIcon(state)" Color="@StandFastTheme.ColumnColor(state)" Class="mr-2" />
+                                <MudText Typo="Typo.subtitle1" Class="flex-grow-1">@StandFastTheme.ColumnTitle(state)</MudText>
+                                <MudChip T="string" Size="Size.Small" Color="@StandFastTheme.ColumnColor(state)">@ParticipantsIn(state).Count</MudChip>
+                            </div>
+        
+                            @foreach (BoardParticipantDto participant in ParticipantsIn(state))
+                            {
+                                <ParticipantCard Participant="@participant"
+                                                 TimeZone="@timeZone"
+                                                 MeetingStart="@MeetingStart"
+                                                 PriorTurn="@board.PriorTurnFor(participant.PersonId)"
+                                                 ShowPriorTurn="@(state == AttendanceState.Available)"
+                                                 IsSelected="@(participant.PersonId == selectedPersonId)"
+                                                 IsSelf="@Preferences.IsSelf(participant.Email)"
+                                                 IsLocked="@IsLocked"
+                                                 OnAdvance="AdvanceAsync"
+                                                 OnRevert="RevertAsync"
+                                                 OnSelect="SelectParticipantAsync" />
+                            }
+        
+                            @if (ParticipantsIn(state).Count == 0)
+                            {
+                                <MudText Typo="Typo.body2" Class="mud-text-secondary">@EmptyColumnText(state)</MudText>
+                            }
+                        </MudPaper>
+                    </MudItem>
+                }
+            </MudGrid>
+        </div>
+
+        @if (SelectedParticipant is { } participant)
+        {
+            <div class="standfast-board-footer standfast-update-dock">
+                <ParticipantUpdatePanel @ref="updatePanel"
+                                        Participant="@participant"
+                                        StandupId="@SelectedStandupId"
+                                        MeetingDate="@SelectedDate"
+                                        TimeZone="@timeZone"
+                                        IsReadOnly="@IsLocked"
+                                        OnSave="SaveUpdateAsync"
+                                        OnClose="CloseUpdate" />
+            </div>
+        }
+        else if (board.Participants.Count > 0)
+        {
+            <div class="standfast-board-footer">
+                <MudAlert Severity="Severity.Normal" Dense="true">@UpdateHintText</MudAlert>
+            </div>
+        }
     }
 </div>
-
-<MudGrid Spacing="3">
-    <MudItem xs="12" sm="6" md="2">
-        <MudSelect T="Guid" Value="@standupPickerValue" ValueChanged="OnStandupChangedAsync" Label="Standup" Variant="Variant.Outlined" Dense="true" Disabled="@(standups.Count == 0)">
-            @foreach (StandupDto standup in standups)
-            {
-                <MudSelectItem T="Guid" Value="@standup.Id">@standup.Name</MudSelectItem>
-            }
-        </MudSelect>
-    </MudItem>
-    <MudItem xs="12" sm="6" md="2">
-        <MudSelect T="Guid?" Value="@board?.LeaderPersonId" ValueChanged="OnLeaderChangedAsync" Label="@RosterLabels.Name(RosterRole.Leader)" Variant="Variant.Outlined" Dense="true" Clearable="true"
-                   Disabled="@(LeaderCandidates.Count == 0 || IsLocked)" HelperText="@LeaderHelperText">
-            @foreach (StandupMemberDto leader in LeaderCandidates)
-            {
-                <MudSelectItem T="Guid?" Value="@leader.PersonId">@leader.DisplayName</MudSelectItem>
-            }
-        </MudSelect>
-    </MudItem>
-    <MudItem xs="12" md="8">
-        <WeekStrip SelectedDate="@SelectedDate" SelectedDateChanged="OnDateChangedAsync" Today="@today" ScheduledDays="@SelectedStandupDays"
-                   PresentedDates="@presentedDates" LockedDates="@lockedDates" />
-    </MudItem>
-</MudGrid>
-
-@if (standups.Count == 0)
-{
-    <MudAlert Severity="Severity.Info" Class="mt-4">
-        No standups defined yet. <MudLink Href="@UiRoutes.Standups">Create one</MudLink> and add people to its roster.
-    </MudAlert>
-}
-else if (board is null)
-{
-    <MudProgressLinear Indeterminate="true" Class="mt-4" />
-}
-else
-{
-    @if (!board.IsScheduledDay)
-    {
-        <MudAlert Severity="Severity.Normal" Dense="true" Class="mt-4">@board.StandupName does not normally run on this day.</MudAlert>
-    }
-
-    @if (IsLocked)
-    {
-        <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-4">@LockedCaption</MudAlert>
-    }
-
-    <MudGrid Spacing="3" Class="mt-1">
-        @foreach (AttendanceState state in BoardColumns)
-        {
-            <MudItem xs="12" md="4">
-                <MudPaper Outlined="true" Class="pa-3 standfast-column">
-                    <div class="d-flex align-center mb-2">
-                        <MudIcon Icon="@StandFastTheme.ColumnIcon(state)" Color="@StandFastTheme.ColumnColor(state)" Class="mr-2" />
-                        <MudText Typo="Typo.subtitle1" Class="flex-grow-1">@StandFastTheme.ColumnTitle(state)</MudText>
-                        <MudChip T="string" Size="Size.Small" Color="@StandFastTheme.ColumnColor(state)">@ParticipantsIn(state).Count</MudChip>
-                    </div>
-
-                    @foreach (BoardParticipantDto participant in ParticipantsIn(state))
-                    {
-                        <ParticipantCard Participant="@participant"
-                                         TimeZone="@timeZone"
-                                         MeetingStart="@MeetingStart"
-                                         PriorTurn="@board.PriorTurnFor(participant.PersonId)"
-                                         ShowPriorTurn="@(state == AttendanceState.Available)"
-                                         IsSelected="@(participant.PersonId == selectedPersonId)"
-                                         IsSelf="@Preferences.IsSelf(participant.Email)"
-                                         IsLocked="@IsLocked"
-                                         OnAdvance="AdvanceAsync"
-                                         OnRevert="RevertAsync"
-                                         OnSelect="SelectParticipantAsync" />
-                    }
-
-                    @if (ParticipantsIn(state).Count == 0)
-                    {
-                        <MudText Typo="Typo.body2" Class="mud-text-secondary">@EmptyColumnText(state)</MudText>
-                    }
-                </MudPaper>
-            </MudItem>
-        }
-    </MudGrid>
-
-    @if (SelectedParticipant is { } participant)
-    {
-        <div class="mt-4">
-            <ParticipantUpdatePanel @ref="updatePanel"
-                                    Participant="@participant"
-                                    StandupId="@SelectedStandupId"
-                                    MeetingDate="@SelectedDate"
-                                    TimeZone="@timeZone"
-                                    IsReadOnly="@IsLocked"
-                                    OnSave="SaveUpdateAsync"
-                                    OnClose="CloseUpdate" />
-        </div>
-    }
-    else if (board.Participants.Count > 0)
-    {
-        <MudAlert Severity="Severity.Normal" Dense="true" Class="mt-4">@UpdateHintText</MudAlert>
-    }
-}

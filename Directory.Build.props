@@ -12,7 +12,7 @@
     <Product>StandFast</Product>
     <Company>StandFast</Company>
     <!-- Single source of truth for the application version as MM.mm.pp (Major.Minor.PatchNumber) -->
-    <VersionPrefix>01.01.00</VersionPrefix>
+    <VersionPrefix>01.02.00</VersionPrefix>
   </PropertyGroup>
 
 </Project>

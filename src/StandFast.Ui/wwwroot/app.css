@@ -22,6 +22,64 @@
     height: 100%;
 }
 
+:root {
+    --standfast-page-gutter: 1rem;
+}
+
+.standfast-page {
+    margin-block: var(--standfast-page-gutter);
+}
+
+/*
+ * From the md breakpoint up, the board fills the window below the app bar: the header and the update dock keep their size, and the columns between them scroll.
+ * The dock's minimum height outranks its maximum share of the board, which CSS gives min-height over max-height.
+ */
+@media (min-width: 960px) {
+    .standfast-board {
+        --standfast-update-dock-min-height: 20rem;
+        --standfast-update-dock-max-height: 50%;
+        display: flex;
+        flex-direction: column;
+        height: calc(100dvh - var(--mud-appbar-height) - 2 * var(--standfast-page-gutter));
+    }
+
+    .standfast-board-header,
+    .standfast-board-footer {
+        flex: none;
+    }
+
+    .standfast-board-body {
+        flex: 1 1 0;
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+
+    .standfast-update-dock {
+        display: flex;
+        flex-direction: column;
+        max-height: var(--standfast-update-dock-max-height);
+        min-height: var(--standfast-update-dock-min-height);
+        overflow-y: auto;
+    }
+
+    .standfast-update-dock > .mud-paper {
+        flex: 1 0 auto;
+    }
+
+    /* Keeps the person's name and the Save button in view while a long update scrolls inside the dock. */
+    .standfast-update-panel-header {
+        background-color: var(--mud-palette-surface);
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+}
+
+.standfast-board-footer {
+    margin-top: var(--standfast-page-gutter);
+}
+
 .standfast-today {
     outline: 2px dashed var(--mud-palette-secondary);
     outline-offset: -2px;
@@ -208,10 +266,16 @@
     padding: 0.1rem 0.3rem;
 }
 
+/* Blocks carry no vertical margin: each blank line in the source renders as one spacer line, so the preview spacing matches the editor. */
+.standfast-markdown p,
+.standfast-markdown ul,
+.standfast-markdown ol {
+    margin: 0;
+}
+
 /* MudBlazor's reset zeroes list padding, which leaves bullets and numbers hanging left of the surrounding paragraphs. */
 .standfast-markdown ul,
 .standfast-markdown ol {
-    margin: 0.25rem 0;
     padding-left: 1.5rem;
 }
 
