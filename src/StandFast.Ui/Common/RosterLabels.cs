@@ -16,6 +16,13 @@ public static class RosterLabels
     /// <summary>Plural name of the role, as used for a column listing the people who hold it.</summary>
     public static string Plural(RosterRole role) => string.Concat(Name(role), "s");
 
+    /// <summary>Plural name of how someone takes part, as used by the board's roster filter.</summary>
+    public static string Plural(AttendeeKind kind) => kind switch
+    {
+        AttendeeKind.Guest => "Guests",
+        _ => Plural(RosterRole.Presenter),
+    };
+
     /// <summary>Title of the roster dialog and of the button that opens it.</summary>
     public static string RosterTitle(RosterRole role) => string.Concat(Name(role), " Roster");
 

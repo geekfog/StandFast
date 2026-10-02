@@ -350,7 +350,8 @@
     color: #b8860b;
 }
 
-.standfast-participant-locked {
+/* A card a tap would not move, because the date is locked or the person can go no further. */
+.standfast-participant-inert {
     cursor: default;
 }
 

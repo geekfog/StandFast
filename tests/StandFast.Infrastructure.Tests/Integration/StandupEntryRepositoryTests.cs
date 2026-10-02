@@ -93,6 +93,21 @@ public sealed class StandupEntryRepositoryTests : IClassFixture<AzuriteTableFixt
     }
 
     [AzuriteFact]
+    public async Task GetOnDateAsync_ReturnsEveryPersonsEntryForThatDateOfThatStandupOnly()
+    {
+        Guid guestId = Guid.CreateVersion7();
+        await SeedAsync(Today, "Mine");
+        await SeedAsync(Today.AddDays(-1), "Yesterday");
+        await fixture.Entries.UpsertAsync(new StandupEntry { StandupId = standupId, PersonId = guestId, MeetingDate = Today, State = AttendanceState.Guest });
+        await fixture.Entries.UpsertAsync(new StandupEntry { StandupId = Guid.CreateVersion7(), PersonId = personId, MeetingDate = Today, State = AttendanceState.Guest });
+
+        IReadOnlyList<StandupEntry> found = await fixture.Entries.GetOnDateAsync(standupId, Today);
+
+        Assert.Equal(new[] { personId, guestId }.Order(), found.Select(entry => entry.PersonId).Order());
+        Assert.Equal(AttendanceState.Guest, Assert.Single(found, entry => entry.PersonId == guestId).State);
+    }
+
+    [AzuriteFact]
     public async Task GetPresentedDatesAsync_ReturnsOnlyPresentedDatesInsideTheRange()
     {
         await SeedAsync(Today.AddDays(-10), "Before the range", AttendanceState.Presented);

@@ -54,13 +54,15 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
 
 The board has three columns and one tap moves a person rightwards through them. Each card shows the person's profile photo, ringed in the column's color, or their initials on that color when they have no photo.
 
-1. **Roster** holds everyone on the standup's Presenter Roster, always alphabetical by the name shown. Tap a name as you see them join.
+1. **Roster** lists people not yet marked here, always alphabetical by the name shown, and a Presenters / Guests toggle in its header picks who it lists. Presenters are the standup's Presenter Roster; Guests are every other active person in People, so a visitor can be recorded without being added to the standup. Tap a name as you see them join: a presenter lands in Present and a guest lands in Guests.
 2. **Present, can be called on** holds the people who are actually there, in the same alphabetical order as the roster, so a name sits in the same place whichever of the two columns it is in. Tap a name when you call on them and they finish. Each card here carries the turn that person took at the previous standup, so someone who went late last time can be called early today. Anyone who was not at that standup shows ∞ instead of a number, and the card's caption says when they were marked present.
 3. **Presented** holds everyone who has given their update, in the order they gave it.
 
+**Guests, not presenting** sits under Present in the middle column and holds the people attending without giving an update. Someone on the Presenter Roster is always a presenter there and is never offered as a guest. A guest card goes no further than Guests and has no notes icon, since there is no update to record; its undo arrow sends it back to the roster when tapped by mistake, and its caption says when they were marked as a guest.
+
 Every time on the board, and which date counts as today, is in the standup's own time zone. Each card's caption ends with how many hours the person's time zone is ahead of (+) or behind (-) the standup's at the standup's start time on that date, for example "| +1h". Hovering over it shows their location. A person with no time zone recorded shows no offset. Hovering over the rest of the caption shows the person's title or role, when one is recorded.
 
-The Leader dropdown beside the standup picker records who ran the standup that day. It offers the standup's Leader Roster and nobody else, it is per date rather than per standup, and it can be left empty, so a standup nobody was picked for reads as exactly that.
+The Leader dropdown beside the standup picker records who ran the standup that day. It offers the people on the standup's Leader Roster who are attending that date, as a guest or as a presenter marked present, so nobody who is not there can be picked. A leader who is not also a presenter is tracked as a guest. Sending the day's leader back to the roster clears the pick, and a date whose leader was recorded before this rule still shows that leader. The pick is per date rather than per standup, and it can be left empty, so a standup nobody was picked for reads as exactly that.
 
 The Lock button beside the date closes that date once the standup is over, so a stray tap on a board someone left open cannot change what was recorded. It becomes available once at least one person has presented, since a date nobody has spoken on has nothing to close. A locked date still opens and still shows every update; what it withholds is the tapping, the undo arrows, the Leader dropdown and the Save button. Unlocking asks first, since that is the press that puts a finished standup back within reach.
 
@@ -72,7 +74,7 @@ Your own card carries a dark yellow star after the name, in whichever column you
 
 An undo arrow on each card moves someone back a column if you mis-tap.
 
-The notes icon on a card opens that person's update panel. The icon turns red once anything has been recorded for that person on that date, in all three columns, so you can see at a glance who still owes an update. The card of whoever's panel is open carries an outline.
+The notes icon on a card opens that person's update panel. The icon turns red once anything has been recorded for that person on that date, on every presenter's card, so you can see at a glance who still owes an update. The card of whoever's panel is open carries an outline.
 
 On a wide window the board fits the screen without the page scrolling. The date, Lock button, messages, week strip and dropdowns stay at the top, an open update panel docks at the bottom, and the three columns scroll between them. The panel takes the room its content needs, at least 20rem and at most half the board, with the minimum winning on a short window; past that it scrolls inside itself while the person's name and the Save button stay in view. On a narrow window the board and panel stack and the page scrolls as usual.
 
@@ -327,7 +329,7 @@ Nine tables, all prefixed with `AzureTableStorage:TablePrefix`:
 | `StandupMembers` | Standup id | Person id | The Presenter Roster. One partition per standup, which is exactly how the board reads it. The People screen's role columns are the one query that crosses partitions; see below. |
 | `StandupLeaders` | Standup id | Person id | The Leader Roster, in the same shape. A role gets its own table rather than a column on `StandupMembers`, so the person id stays the whole row key and one person can hold both roles on one standup. |
 | `StandupMeetings` | Standup id | Meeting date | What is recorded about a standup on one date apart from any participant: who led it, and when the date was locked. A row exists only once something has been set, so a date with no row is a meeting nobody annotated. |
-| `StandupEntries` | Standup id + person id | Inverted meeting date | Attendance state, the update, and the blockers. |
+| `StandupEntries` | Standup id + person id | Inverted meeting date | Attendance state (roster, present, presented, or guest), the update, and the blockers. A guest has an entry on the dates they attended and no roster membership. |
 | `UserPreferences` | `UserPreferences` | OpenID Connect subject | One row per signed-in user, holding their chosen appearance, whether they left the navigation menu expanded or collapsed, and the address the provider reports for them. Always read one user at a time, so one partition and a point read. Outside backup and restore; see [Backup and restore](#backup-and-restore). |
 | `AuditLog` | Date bucket | Timestamp | Written by Serilog, not by the repositories. Outside backup and restore; see [Backup and restore](#backup-and-restore). |
 
@@ -357,7 +359,7 @@ The entries table is the only interesting piece of key design. The board needs t
 ```
 
 
-Rendering the board is then one range query per roster member, run in parallel. For a standup of ten to twenty people that is ten to twenty point-ish reads of a few milliseconds each. The alternative, partitioning entries by standup and date so the whole board is a single partition scan, would make the board cheaper but would force a second, denormalised copy of every row to answer "what did this person say last time". One consistent copy beats a dual write here.
+Rendering the board is then one range query per roster member, run in parallel. Guests are not on a roster to look up one by one, so a single query bounded to the standup's partitions and the selected date's row key returns every entry on that date, and the board reads each guest's state from it. For a standup of ten to twenty people that is ten to twenty point-ish reads of a few milliseconds each. The alternative, partitioning entries by standup and date so the whole board is a single partition scan, would make the board cheaper but would force a second, denormalised copy of every row to answer "what did this person say last time". One consistent copy beats a dual write here.
 
 `StorageKeys` is the only place a partition or row key is constructed, and its ordering guarantees are covered by tests, because getting this wrong fails silently by showing the wrong prior update rather than by throwing.
 
@@ -559,6 +561,8 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 
 - Made release branches the only long-lived branches: each release is cut from the one before it, every merge into a release deploys it, and the newest release is the default branch.
 - Made the branch rules kept in the repository the complete set, so a rule removed from the repository is removed from GitHub too.
+- Added guests: anyone in People who is not on a standup's Presenter Roster can be recorded as attending without presenting. A Presenters / Guests toggle on the roster picks who it lists, and guests appear in their own list under Present, can be sent back to the roster, and can never be marked as presented.
+- Made the Leader dropdown offer only leaders who are attending that date, as a guest or a presenter marked present, and clear the pick when the leader is sent back to the roster.
 
 ### v01.00 — 2026-09-15
 

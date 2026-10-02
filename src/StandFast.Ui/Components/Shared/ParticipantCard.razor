@@ -1,5 +1,5 @@
 <MudPaper Outlined="true"
-          Class="@($"d-flex align-center pa-2 mb-2 {(IsLocked ? "standfast-participant-locked" : "standfast-participant")} {(IsSelected ? "standfast-participant-selected" : string.Empty)}")"
+          Class="@($"d-flex align-center pa-2 mb-2 {(CanAdvance ? "standfast-participant" : "standfast-participant-inert")} {(IsSelected ? "standfast-participant-selected" : string.Empty)}")"
           @onclick="OnAdvanceAsync">
     @if (ShowPriorTurn)
     {
@@ -49,14 +49,17 @@
 
     @* The card body is the tap target that advances a participant, so the per-button actions stop the click from bubbling back up to it. *@
     <div class="d-flex align-center" @onclick:stopPropagation="true">
-        @* Colour marks who already has an update recorded, in every column; the card's outline is what marks the one currently open. *@
-        <MudTooltip Text="@UpdateActionDescription">
-            <MudIconButton Icon="@Icons.Material.Filled.EditNote"
-                           Size="Size.Small"
-                           Color="@(Participant.HasUpdate ? Color.Tertiary : Color.Default)"
-                           OnClick="OnSelectAsync"
-                           aria-label="@($"{UpdateActionDescription} for {Participant.DisplayName}")" />
-        </MudTooltip>
+        @* Colour marks who already has an update recorded, in every column; the card's outline is what marks the one currently open. Guests have no update. *@
+        @if (Participant.Kind == AttendeeKind.Presenter)
+        {
+            <MudTooltip Text="@UpdateActionDescription">
+                <MudIconButton Icon="@Icons.Material.Filled.EditNote"
+                               Size="Size.Small"
+                               Color="@(Participant.HasUpdate ? Color.Tertiary : Color.Default)"
+                               OnClick="OnSelectAsync"
+                               aria-label="@($"{UpdateActionDescription} for {Participant.DisplayName}")" />
+            </MudTooltip>
+        }
 
         @if (Participant.State != AttendanceState.Roster && !IsLocked)
         {
@@ -124,6 +127,7 @@
     {
         AttendanceState.Presented => $"Presented {Participant.PresentedUtc.ToLocalDisplay(TimeZone, UiFormats.DateAndTimeWithSeconds)}",
         AttendanceState.Available => $"Available since {Participant.MarkedAvailableUtc.ToLocalDisplay(TimeZone)}",
+        AttendanceState.Guest => $"Guest since {Participant.MarkedAvailableUtc.ToLocalDisplay(TimeZone)}",
         _ => Participant.UpdateSavedUtc is null ? "Not yet marked present" : $"Update saved {Participant.UpdateSavedUtc.ToLocalDisplay(TimeZone)}",
     };
 
@@ -134,7 +138,10 @@
         ? offset.ToOffsetDescription()
         : $"{Participant.Location} · {offset.ToOffsetDescription()}";
 
-    private Task OnAdvanceAsync() => IsLocked ? Task.CompletedTask : OnAdvance.InvokeAsync(Participant.PersonId);
+    /// <summary>False on a locked date, and for anyone a tap would leave where they are, such as a guest already recorded.</summary>
+    private bool CanAdvance => !IsLocked && AttendanceTransitions.Advance(Participant.State, Participant.Kind) != Participant.State;
+
+    private Task OnAdvanceAsync() => CanAdvance ? OnAdvance.InvokeAsync(Participant.PersonId) : Task.CompletedTask;
 
     private Task OnRevertAsync() => OnRevert.InvokeAsync(Participant.PersonId);
 

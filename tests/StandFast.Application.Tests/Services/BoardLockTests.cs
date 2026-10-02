@@ -145,6 +145,7 @@ public sealed class BoardLockTests
     {
         BoardTestContext context = new();
         Person leader = await context.AddMemberAsync("Grace", "Hopper", RosterRole.Leader);
+        await context.Service.AdvanceAsync(context.Standup.Id, BoardTestContext.Today, leader.Id);
         await context.Service.SetLeaderAsync(context.Standup.Id, BoardTestContext.Today, leader.Id);
 
         await context.Service.LockAsync(context.Standup.Id, BoardTestContext.Today);

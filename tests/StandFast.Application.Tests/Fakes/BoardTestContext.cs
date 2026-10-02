@@ -40,11 +40,19 @@ public sealed class BoardTestContext
 
     public async Task<Person> AddMemberAsync(string firstName, string lastName, RosterRole role = RosterRole.Presenter)
     {
+        Person person = await AddPersonAsync(firstName, lastName);
+        await AddMemberAsync(person, role);
+
+        return person;
+    }
+
+    /// <summary>Adds someone to the people directory without putting them on any of the standup's rosters, which is who can attend as a guest.</summary>
+    public async Task<Person> AddPersonAsync(string firstName, string lastName, bool isActive = true)
+    {
         await Standups.UpsertAsync(Standup);
 
-        Person person = new() { FirstName = firstName, LastName = lastName, Email = $"{firstName}.{lastName}@example.com".ToLowerInvariant() };
+        Person person = new() { FirstName = firstName, LastName = lastName, Email = $"{firstName}.{lastName}@example.com".ToLowerInvariant(), IsActive = isActive };
         await People.UpsertAsync(person);
-        await AddMemberAsync(person, role);
 
         return person;
     }

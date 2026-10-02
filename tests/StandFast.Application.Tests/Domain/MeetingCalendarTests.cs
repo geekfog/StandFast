@@ -42,13 +42,31 @@ public sealed class AttendanceTransitionTests
     [InlineData(AttendanceState.Roster, AttendanceState.Available)]
     [InlineData(AttendanceState.Available, AttendanceState.Presented)]
     [InlineData(AttendanceState.Presented, AttendanceState.Presented)]
-    public void Advance_MovesOneColumnRight(AttendanceState from, AttendanceState expected) => Assert.Equal(expected, AttendanceTransitions.Advance(from));
+    public void Advance_MovesAPresenterOneColumnRight(AttendanceState from, AttendanceState expected) =>
+        Assert.Equal(expected, AttendanceTransitions.Advance(from, AttendeeKind.Presenter));
 
     [Theory]
     [InlineData(AttendanceState.Presented, AttendanceState.Available)]
     [InlineData(AttendanceState.Available, AttendanceState.Roster)]
     [InlineData(AttendanceState.Roster, AttendanceState.Roster)]
-    public void Revert_MovesOneColumnLeft(AttendanceState from, AttendanceState expected) => Assert.Equal(expected, AttendanceTransitions.Revert(from));
+    public void Revert_MovesAPresenterOneColumnLeft(AttendanceState from, AttendanceState expected) =>
+        Assert.Equal(expected, AttendanceTransitions.Revert(from, AttendeeKind.Presenter));
+
+    [Theory]
+    [InlineData(AttendanceState.Roster, AttendanceState.Guest)]
+    [InlineData(AttendanceState.Guest, AttendanceState.Guest)]
+    public void Advance_NeverTakesAGuestPastTheGuestList(AttendanceState from, AttendanceState expected) =>
+        Assert.Equal(expected, AttendanceTransitions.Advance(from, AttendeeKind.Guest));
+
+    [Theory]
+    [InlineData(AttendanceState.Guest, AttendanceState.Roster)]
+    [InlineData(AttendanceState.Roster, AttendanceState.Roster)]
+    public void Revert_ReturnsAGuestToTheRoster(AttendanceState from, AttendanceState expected) =>
+        Assert.Equal(expected, AttendanceTransitions.Revert(from, AttendeeKind.Guest));
+
+    [Fact]
+    public void Placement_ReadsAPresentersGuestEntryAsNotYetSeen() =>
+        Assert.Equal(AttendanceState.Roster, AttendanceTransitions.Placement(AttendanceState.Guest, AttendeeKind.Presenter));
 }
 
 public sealed class MeetingDaysTests

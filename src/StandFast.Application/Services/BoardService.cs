@@ -35,7 +35,8 @@ public sealed class BoardService(
         Task<IReadOnlyList<StandupMember>> leaderTask = standups.GetMembersAsync(standupId, RosterRole.Leader, cancellationToken);
         Task<IReadOnlyList<Person>> peopleTask = people.GetAllAsync(cancellationToken);
         Task<StandupMeeting?> meetingTask = standups.GetMeetingAsync(standupId, meetingDate, cancellationToken);
-        await Task.WhenAll(presenterTask, leaderTask, peopleTask, meetingTask);
+        Task<IReadOnlyList<StandupEntry>> onDateTask = entries.GetOnDateAsync(standupId, meetingDate, cancellationToken);
+        await Task.WhenAll(presenterTask, leaderTask, peopleTask, meetingTask, onDateTask);
 
         Dictionary<Guid, Person> peopleById = peopleTask.Result.ToDictionary(person => person.Id);
 
@@ -50,8 +51,17 @@ public sealed class BoardService(
         IReadOnlyDictionary<Guid, int> priorTurns = PresentationOrder.AtMostRecentMeeting(
             loaded.Select(item => item.Pair.Prior?.CompletedTurn).OfType<Presentation>());
 
+        // Anyone active who is not presenting can visit, so guests come from the whole directory rather than a roster.
+        HashSet<Guid> presenterIds = [.. loaded.Select(item => item.Person.Id)];
+        Dictionary<Guid, StandupEntry> entriesOnDate = onDateTask.Result.ToDictionary(entry => entry.PersonId);
+        IEnumerable<BoardParticipantDto> guests = peopleTask.Result
+            .Where(person => person.IsActive && !presenterIds.Contains(person.Id))
+            .Select(person => new StandupEntryPair(entriesOnDate.GetValueOrDefault(person.Id), null).ToParticipantDto(person, AttendeeKind.Guest, BoardMappings.GuestDisplayOrder))
+            .Where(guest => AttendanceTransitions.IsGuestPlacement(guest.State));
+
         IReadOnlyList<BoardParticipantDto> participants = loaded
-            .Select(item => item.Pair.ToParticipantDto(item.Member, item.Person))
+            .Select(item => item.Pair.ToParticipantDto(item.Person, AttendeeKind.Presenter, item.Member.DisplayOrder))
+            .Concat(guests)
             .InColumnOrder(AttendanceState.Roster);
 
         IReadOnlyList<StandupMemberDto> leaders = leaderTask.Result.Where(member => member.IsActive).ToRoster(peopleById);
@@ -110,8 +120,8 @@ public sealed class BoardService(
         await validator.ValidateAndThrowAsync(update, cancellationToken);
         await GuardUnlockedAsync(update.StandupId, update.MeetingDate, cancellationToken);
 
-        (StandupMember Member, Person Person)? context = await ResolveParticipantAsync(update.StandupId, update.PersonId, cancellationToken);
-        if (context is null)
+        // Guests attend without presenting, so only a presenter has an update to record.
+        if (await ResolveAttendeeAsync(update.StandupId, update.PersonId, cancellationToken) is not { Kind: AttendeeKind.Presenter } attendee)
         {
             return null;
         }
@@ -125,21 +135,21 @@ public sealed class BoardService(
         entry.UpdateSavedUtc = clock.UtcNow;
 
         await entries.UpsertAsync(entry, cancellationToken);
-        audit.Record(AuditEvents.UpdateSaved, AuditTargetType, EntryTargetId(update.StandupId, update.PersonId, update.MeetingDate), $"Update saved for {context.Value.Person.DisplayName}.");
+        audit.Record(AuditEvents.UpdateSaved, AuditTargetType, EntryTargetId(update.StandupId, update.PersonId, update.MeetingDate), $"Update saved for {attendee.Person.DisplayName}.");
 
-        return new StandupEntryPair(entry, pair.Prior).ToParticipantDto(context.Value.Member, context.Value.Person);
+        return attendee.ToParticipantDto(new StandupEntryPair(entry, pair.Prior));
     }
 
     public async Task<bool> SetLeaderAsync(Guid standupId, DateOnly meetingDate, Guid? personId, CancellationToken cancellationToken = default)
     {
-        Person? leader = personId is { } id ? await ResolveLeaderAsync(standupId, id, cancellationToken) : null;
+        StandupMeeting? existing = await standups.GetMeetingAsync(standupId, meetingDate, cancellationToken);
+        GuardUnlocked(standupId, meetingDate, existing);
+
+        Person? leader = personId is { } id ? await ResolveLeaderAsync(standupId, meetingDate, id, cancellationToken) : null;
         if (personId is not null && leader is null)
         {
             return false;
         }
-
-        StandupMeeting? existing = await standups.GetMeetingAsync(standupId, meetingDate, cancellationToken);
-        GuardUnlocked(standupId, meetingDate, existing);
 
         await SaveMeetingAsync(standupId, meetingDate, existing, meeting => meeting.LeaderPersonId = personId, cancellationToken);
         audit.Record(AuditEvents.LeaderChanged, MeetingAuditTargetType, MeetingTargetId(standupId, meetingDate), leader is null ? "Leader cleared." : $"{leader.DisplayName} is leading.");
@@ -153,12 +163,13 @@ public sealed class BoardService(
     public async Task<IReadOnlyCollection<DateOnly>> GetLockedDatesAsync(Guid standupId, DateOnly from, DateOnly to, CancellationToken cancellationToken = default) =>
         (await standups.GetMeetingsAsync(standupId, from, to, cancellationToken)).Where(meeting => meeting.IsLocked).Select(meeting => meeting.MeetingDate).ToHashSet();
 
-    private async Task<BoardParticipantDto?> ChangeStateAsync(Guid standupId, DateOnly meetingDate, Guid personId, Func<AttendanceState, AttendanceState> transition, CancellationToken cancellationToken)
+    private async Task<BoardParticipantDto?> ChangeStateAsync(
+        Guid standupId, DateOnly meetingDate, Guid personId, Func<AttendanceState, AttendeeKind, AttendanceState> transition, CancellationToken cancellationToken)
     {
-        await GuardUnlockedAsync(standupId, meetingDate, cancellationToken);
+        StandupMeeting? meeting = await standups.GetMeetingAsync(standupId, meetingDate, cancellationToken);
+        GuardUnlocked(standupId, meetingDate, meeting);
 
-        (StandupMember Member, Person Person)? context = await ResolveParticipantAsync(standupId, personId, cancellationToken);
-        if (context is null)
+        if (await ResolveAttendeeAsync(standupId, personId, cancellationToken) is not { } attendee)
         {
             return null;
         }
@@ -166,21 +177,29 @@ public sealed class BoardService(
         StandupEntryPair pair = await entries.GetCurrentAndPriorAsync(standupId, personId, meetingDate, cancellationToken);
         StandupEntry entry = pair.EnsureEntry(standupId, personId, meetingDate);
 
-        AttendanceState previous = entry.State;
-        AttendanceState next = transition(previous);
+        AttendanceState previous = AttendanceTransitions.Placement(entry.State, attendee.Kind);
+        AttendanceState next = transition(previous, attendee.Kind);
         if (next == previous)
         {
-            return new StandupEntryPair(entry, pair.Prior).ToParticipantDto(context.Value.Member, context.Value.Person);
+            return attendee.ToParticipantDto(new StandupEntryPair(entry, pair.Prior));
         }
 
+        bool attending = AttendanceTransitions.IsAttending(next);
         entry.State = next;
-        entry.MarkedAvailableUtc = next >= AttendanceState.Available ? entry.MarkedAvailableUtc ?? clock.UtcNow : null;
+        entry.MarkedAvailableUtc = !attending ? null : AttendanceTransitions.IsAttending(previous) ? entry.MarkedAvailableUtc ?? clock.UtcNow : clock.UtcNow;
         entry.PresentedUtc = next == AttendanceState.Presented ? clock.UtcNow : null;
 
         await entries.UpsertAsync(entry, cancellationToken);
-        audit.Record(AuditEvents.AttendanceChanged, AuditTargetType, EntryTargetId(standupId, personId, meetingDate), $"{context.Value.Person.DisplayName}: {previous} to {next}.");
+        audit.Record(AuditEvents.AttendanceChanged, AuditTargetType, EntryTargetId(standupId, personId, meetingDate), $"{attendee.Person.DisplayName}: {previous} to {next}.");
 
-        return new StandupEntryPair(entry, pair.Prior).ToParticipantDto(context.Value.Member, context.Value.Person);
+        // Only someone attending can lead, so taking the leader back off the board clears the pick.
+        if (!attending && meeting?.LeaderPersonId == personId)
+        {
+            await SaveMeetingAsync(standupId, meetingDate, meeting, changed => changed.LeaderPersonId = null, cancellationToken);
+            audit.Record(AuditEvents.LeaderChanged, MeetingAuditTargetType, MeetingTargetId(standupId, meetingDate), $"Leader cleared: {attendee.Person.DisplayName} is no longer attending.");
+        }
+
+        return attendee.ToParticipantDto(new StandupEntryPair(entry, pair.Prior));
     }
 
     /// <summary>Writes one change to the date's meeting row, creating the row when nothing has been recorded for that date yet.</summary>
@@ -205,21 +224,40 @@ public sealed class BoardService(
         }
     }
 
-    private async Task<(StandupMember Member, Person Person)?> ResolveParticipantAsync(Guid standupId, Guid personId, CancellationToken cancellationToken)
+    /// <summary>
+    /// How a person takes part in the standup: a presenter when they are on its presenter roster, otherwise a guest as long as they are active.
+    /// Null when their person record has gone, or they are inactive and not presenting.
+    /// </summary>
+    private async Task<Attendee?> ResolveAttendeeAsync(Guid standupId, Guid personId, CancellationToken cancellationToken)
     {
-        StandupMember? member = await FindActiveMemberAsync(standupId, personId, RosterRole.Presenter, cancellationToken);
-        if (member is null)
+        Person? person = await people.GetAsync(personId, cancellationToken);
+        if (person is null)
         {
             return null;
         }
 
-        Person? person = await people.GetAsync(personId, cancellationToken);
-        return person is null ? null : (member, person);
+        if (await FindActiveMemberAsync(standupId, personId, RosterRole.Presenter, cancellationToken) is { } member)
+        {
+            return new Attendee(person, AttendeeKind.Presenter, member.DisplayOrder);
+        }
+
+        return person.IsActive ? new Attendee(person, AttendeeKind.Guest, BoardMappings.GuestDisplayOrder) : null;
     }
 
-    /// <summary>The person behind a leader pick, or null when they are not on the standup's leader roster or their person record has gone.</summary>
-    private async Task<Person?> ResolveLeaderAsync(Guid standupId, Guid personId, CancellationToken cancellationToken) =>
-        await FindActiveMemberAsync(standupId, personId, RosterRole.Leader, cancellationToken) is null ? null : await people.GetAsync(personId, cancellationToken);
+    /// <summary>The person behind a leader pick, or null when they are not on the standup's leader roster, are not attending this date, or their person record has gone.</summary>
+    private async Task<Person?> ResolveLeaderAsync(Guid standupId, DateOnly meetingDate, Guid personId, CancellationToken cancellationToken)
+    {
+        if (await FindActiveMemberAsync(standupId, personId, RosterRole.Leader, cancellationToken) is null
+            || await ResolveAttendeeAsync(standupId, personId, cancellationToken) is not { } attendee)
+        {
+            return null;
+        }
+
+        StandupEntryPair pair = await entries.GetCurrentAndPriorAsync(standupId, personId, meetingDate, cancellationToken);
+        AttendanceState state = AttendanceTransitions.Placement(pair.Current?.State ?? AttendanceState.Roster, attendee.Kind);
+
+        return AttendanceTransitions.IsAttending(state) ? attendee.Person : null;
+    }
 
     private async Task<StandupMember?> FindActiveMemberAsync(Guid standupId, Guid personId, RosterRole role, CancellationToken cancellationToken) =>
         (await standups.GetMembersAsync(standupId, role, cancellationToken)).FirstOrDefault(candidate => candidate.PersonId == personId && candidate.IsActive);
@@ -229,4 +267,10 @@ public sealed class BoardService(
     private static string EntryTargetId(Guid standupId, Guid personId, DateOnly meetingDate) => $"{standupId}/{personId}/{MeetingCalendar.ToRouteValue(meetingDate)}";
 
     private static string MeetingTargetId(Guid standupId, DateOnly meetingDate) => $"{standupId}/{MeetingCalendar.ToRouteValue(meetingDate)}";
+
+    /// <summary>A person resolved against one standup, carrying what a board tile needs beyond their entries.</summary>
+    private sealed record Attendee(Person Person, AttendeeKind Kind, int DisplayOrder)
+    {
+        public BoardParticipantDto ToParticipantDto(StandupEntryPair pair) => pair.ToParticipantDto(Person, Kind, DisplayOrder);
+    }
 }

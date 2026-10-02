@@ -203,7 +203,7 @@ public sealed class BoardServiceTests
         StandupBoardDto board = await context.Service.GetBoardAsync(context.Standup.Id, BoardTestContext.Today);
 
         Assert.Equal(leader.Id, Assert.Single(board.Leaders).PersonId);
-        Assert.Equal("Ada Lovelace", Assert.Single(board.Participants).DisplayName);
+        Assert.Equal("Ada Lovelace", Assert.Single(board.Participants, participant => participant.Kind == AttendeeKind.Presenter).DisplayName);
         Assert.Null(board.LeaderPersonId);
     }
 
@@ -212,6 +212,7 @@ public sealed class BoardServiceTests
     {
         BoardTestContext context = new();
         Person leader = await context.AddMemberAsync("Grace", "Hopper", RosterRole.Leader);
+        await context.Service.AdvanceAsync(context.Standup.Id, BoardTestContext.Today, leader.Id);
 
         Assert.True(await context.Service.SetLeaderAsync(context.Standup.Id, BoardTestContext.Today, leader.Id));
 
@@ -227,6 +228,7 @@ public sealed class BoardServiceTests
     {
         BoardTestContext context = new();
         Person leader = await context.AddMemberAsync("Grace", "Hopper", RosterRole.Leader);
+        await context.Service.AdvanceAsync(context.Standup.Id, BoardTestContext.Today, leader.Id);
 
         await context.Service.SetLeaderAsync(context.Standup.Id, BoardTestContext.Today, leader.Id);
         Assert.True(await context.Service.SetLeaderAsync(context.Standup.Id, BoardTestContext.Today, null));
@@ -255,6 +257,7 @@ public sealed class BoardServiceTests
         BoardTestContext context = new();
         Person person = await context.AddMemberAsync("Ada", "Lovelace");
         await context.AddMemberAsync(person, RosterRole.Leader);
+        await context.Service.AdvanceAsync(context.Standup.Id, BoardTestContext.Today, person.Id);
 
         Assert.True(await context.Service.SetLeaderAsync(context.Standup.Id, BoardTestContext.Today, person.Id));
 
