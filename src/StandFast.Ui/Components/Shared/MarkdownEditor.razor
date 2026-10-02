@@ -1,4 +1,5 @@
 @inject IJSRuntime JS
+@implements IAsyncDisposable
 
 <MudPaper Outlined="true" Class="standfast-markdown-editor">
     <MudToolBar Dense="true" Gutters="false" Class="px-2 standfast-markdown-toolbar">
@@ -57,7 +58,14 @@
     /// <summary>Carries <see cref="Lines"/> to app.css, which keeps a text box that sizes to its content at least that many lines tall.</summary>
     private const string LinesCssProperty = "--standfast-markdown-lines";
 
+    private const string PrefixLinesFunction = "standFastMarkdown.prefixLines";
+    private const string WrapSelectionFunction = "standFastMarkdown.wrapSelection";
+    private const string ShiftLinesFunction = "standFastMarkdown.shiftLines";
+    private const string AttachFunction = "standFastMarkdown.attach";
+    private const string DetachFunction = "standFastMarkdown.detach";
+
     private readonly string editorId = $"markdown-{Guid.NewGuid():N}";
+    private DotNetObjectReference<MarkdownEditor>? selfReference;
     private bool showPreview;
 
     [Parameter]
@@ -104,15 +112,47 @@
 
     private void TogglePreview() => showPreview = !showPreview;
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        selfReference = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync(AttachFunction, editorId, selfReference, nameof(OnListContinuedAsync));
+    }
+
+    /// <summary>Called by the browser after Enter continued or ended a list, with the text it produced.</summary>
+    [JSInvokable]
+    public Task OnListContinuedAsync(string value) => ValueChanged.InvokeAsync(value);
+
     private async Task ApplyAsync(MarkdownCommand command)
     {
-        string? updated = command.IsBlockCommand
-            ? await JS.InvokeAsync<string?>("standFastMarkdown.prefixLines", editorId, command.LinePrefix ?? string.Empty, command.Ordered)
-            : await JS.InvokeAsync<string?>("standFastMarkdown.wrapSelection", editorId, command.Before, command.After, command.Placeholder);
+        string? updated = command switch
+        {
+            { IsListShiftCommand: true } => await JS.InvokeAsync<string?>(ShiftLinesFunction, editorId, command.ListShift),
+            { IsBlockCommand: true } => await JS.InvokeAsync<string?>(PrefixLinesFunction, editorId, command.LinePrefix ?? string.Empty, command.Ordered),
+            _ => await JS.InvokeAsync<string?>(WrapSelectionFunction, editorId, command.Before, command.After, command.Placeholder),
+        };
 
         if (updated is not null)
         {
             await ValueChanged.InvokeAsync(updated);
         }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync(DetachFunction, editorId);
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit closed before the component did, which takes the listener with it.
+        }
+
+        selfReference?.Dispose();
     }
 }

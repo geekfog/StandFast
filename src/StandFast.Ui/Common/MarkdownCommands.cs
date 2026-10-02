@@ -10,9 +10,12 @@ namespace StandFast.Ui.Common;
 /// <param name="Placeholder">Inserted when nothing is selected, so the button always produces valid markdown.</param>
 /// <param name="LinePrefix">Prefix applied to each selected line, for block commands.</param>
 /// <param name="Ordered">True for a numbered list, which renumbers rather than repeating a fixed prefix.</param>
-public sealed record MarkdownCommand(string Tooltip, string Icon, string Before = "", string After = "", string Placeholder = "", string? LinePrefix = null, bool Ordered = false)
+/// <param name="ListShift">1 indents the selected list items one level and -1 outdents them; 0 for every other command.</param>
+public sealed record MarkdownCommand(string Tooltip, string Icon, string Before = "", string After = "", string Placeholder = "", string? LinePrefix = null, bool Ordered = false, int ListShift = 0)
 {
     public bool IsBlockCommand => LinePrefix is not null || Ordered;
+
+    public bool IsListShiftCommand => ListShift != 0;
 }
 
 /// <summary>The markdown toolbar definition, shared by every markdown field so all three board boxes offer identical formatting.</summary>
@@ -28,6 +31,8 @@ public static class MarkdownCommands
         new("Bulleted list", Icons.Material.Filled.FormatListBulleted, LinePrefix: "- "),
         new("Numbered list", Icons.Material.Filled.FormatListNumbered, Ordered: true),
         new("Task list", Icons.Material.Filled.CheckBox, LinePrefix: "- [ ] "),
+        new("Outdent list item", Icons.Material.Filled.FormatIndentDecrease, ListShift: -1),
+        new("Indent list item", Icons.Material.Filled.FormatIndentIncrease, ListShift: 1),
         new("Quote", Icons.Material.Filled.FormatQuote, LinePrefix: "> "),
         new("Link", Icons.Material.Filled.Link, "[", "](https://)", "link text"),
     ];
