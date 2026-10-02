@@ -11,4 +11,7 @@ public enum AttendanceState
 
     /// <summary>Has given their update.</summary>
     Presented = 2,
+
+    /// <summary>Attending without presenting. Only someone who is not on the standup's presenter roster can be a guest; see <see cref="AttendeeKind"/>.</summary>
+    Guest = 3,
 }

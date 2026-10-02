@@ -134,6 +134,9 @@ public sealed class InMemoryStandupEntryRepository : IStandupEntryRepository
         return Task.CompletedTask;
     }
 
+    public Task<IReadOnlyList<StandupEntry>> GetOnDateAsync(Guid standupId, DateOnly meetingDate, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<StandupEntry>>([.. entries.Values.Where(entry => entry.StandupId == standupId && entry.MeetingDate == meetingDate)]);
+
     public Task<IReadOnlyCollection<DateOnly>> GetPresentedDatesAsync(Guid standupId, DateOnly from, DateOnly to, CancellationToken cancellationToken = default)
     {
         IReadOnlyCollection<DateOnly> dates = entries.Values

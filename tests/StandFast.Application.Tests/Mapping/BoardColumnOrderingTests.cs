@@ -72,6 +72,6 @@ public sealed class BoardColumnOrderingTests
         int displayOrder = 0,
         DateTimeOffset? markedAvailableUtc = null,
         DateTimeOffset? presentedUtc = null) =>
-        new(Guid.CreateVersion7(), displayName, "XX", $"{displayName}@example.com", null, null, string.Empty, null, null, displayOrder, AttendanceState.Roster,
+        new(Guid.CreateVersion7(), displayName, "XX", $"{displayName}@example.com", null, null, string.Empty, null, null, displayOrder, AttendeeKind.Presenter, AttendanceState.Roster,
             markedAvailableUtc, presentedUtc, null, null, null, null, null, null, null, null, null);
 }

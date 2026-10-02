@@ -1,4 +1,5 @@
 using StandFast.Application.Dtos;
+using StandFast.Domain.Common;
 using StandFast.Domain.Entities;
 using StandFast.Domain.Enums;
 
@@ -6,8 +7,11 @@ namespace StandFast.Application.Mapping;
 
 public static class BoardMappings
 {
-    /// <summary>Composes one board tile from the roster entry, the person, and the current/prior entry pair returned by storage.</summary>
-    public static BoardParticipantDto ToParticipantDto(this StandupEntryPair pair, StandupMember member, Person person)
+    /// <summary>Guests are not on a roster, so they carry no roster position of their own and the board orders them by name alone.</summary>
+    public const int GuestDisplayOrder = 0;
+
+    /// <summary>Composes one board tile from the person, how they take part, their roster position, and the current/prior entry pair returned by storage.</summary>
+    public static BoardParticipantDto ToParticipantDto(this StandupEntryPair pair, Person person, AttendeeKind kind, int displayOrder)
     {
         StandupEntry? current = pair.Current;
         StandupEntry? prior = pair.Prior;
@@ -22,8 +26,9 @@ public static class BoardMappings
             person.Location,
             person.TimeZoneId,
             person.PhotoSavedUtc,
-            member.DisplayOrder,
-            current?.State ?? AttendanceState.Roster,
+            displayOrder,
+            kind,
+            AttendanceTransitions.Placement(current?.State ?? AttendanceState.Roster, kind),
             current?.MarkedAvailableUtc,
             current?.PresentedUtc,
             current?.Update,

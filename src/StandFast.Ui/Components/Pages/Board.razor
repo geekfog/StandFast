@@ -36,6 +36,7 @@
                             </MudSelect>
                         </MudItem>
                         <MudItem xs="12" sm="6">
+                            @* Only a leader who is here can run the standup, so the picker offers attending leaders rather than the whole leader roster. *@
                             <MudSelect T="Guid?" Value="@board?.LeaderPersonId" ValueChanged="OnLeaderChangedAsync" Label="@RosterLabels.Name(RosterRole.Leader)" Variant="Variant.Outlined" Dense="true" Class="mb-0" Clearable="true"
                                        Disabled="@(LeaderCandidates.Count == 0 || IsLocked)" HelperText="@LeaderHelperText">
                                 @foreach (StandupMemberDto leader in LeaderCandidates)
@@ -82,34 +83,47 @@
     {
         <div class="standfast-board-body">
             <MudGrid Spacing="3" Class="mt-1">
-                @foreach (AttendanceState state in BoardColumns)
+                @foreach (AttendanceState[] column in BoardColumns)
                 {
                     <MudItem xs="12" md="4">
                         <MudPaper Outlined="true" Class="pa-3 standfast-column">
-                            <div class="d-flex align-center mb-2">
-                                <MudIcon Icon="@StandFastTheme.ColumnIcon(state)" Color="@StandFastTheme.ColumnColor(state)" Class="mr-2" />
-                                <MudText Typo="Typo.subtitle1" Class="flex-grow-1">@StandFastTheme.ColumnTitle(state)</MudText>
-                                <MudChip T="string" Size="Size.Small" Color="@StandFastTheme.ColumnColor(state)">@ParticipantsIn(state).Count</MudChip>
-                            </div>
-        
-                            @foreach (BoardParticipantDto participant in ParticipantsIn(state))
+                            @foreach (AttendanceState state in column)
                             {
-                                <ParticipantCard Participant="@participant"
-                                                 TimeZone="@timeZone"
-                                                 MeetingStart="@MeetingStart"
-                                                 PriorTurn="@board.PriorTurnFor(participant.PersonId)"
-                                                 ShowPriorTurn="@(state == AttendanceState.Available)"
-                                                 IsSelected="@(participant.PersonId == selectedPersonId)"
-                                                 IsSelf="@Preferences.IsSelf(participant.Email)"
-                                                 IsLocked="@IsLocked"
-                                                 OnAdvance="AdvanceAsync"
-                                                 OnRevert="RevertAsync"
-                                                 OnSelect="SelectParticipantAsync" />
-                            }
-        
-                            @if (ParticipantsIn(state).Count == 0)
-                            {
-                                <MudText Typo="Typo.body2" Class="mud-text-secondary">@EmptyColumnText(state)</MudText>
+                                <div class="@($"d-flex align-center mb-2 {(state == column[0] ? string.Empty : "mt-4")}")">
+                                    <MudIcon Icon="@StandFastTheme.ColumnIcon(state)" Color="@StandFastTheme.ColumnColor(state)" Class="mr-2" />
+                                    <MudText Typo="Typo.subtitle1" Class="flex-grow-1">@StandFastTheme.ColumnTitle(state)</MudText>
+                                    @if (state == AttendanceState.Roster)
+                                    {
+                                        @* The filter decides who the roster lists, and so whether a tap lands them in Present or in Guests. *@
+                                        <MudToggleGroup T="AttendeeKind" @bind-Value="rosterView" Size="Size.Small" Color="Color.Primary" Class="mr-2" aria-label="Show on the roster">
+                                            @foreach (AttendeeKind kind in AttendeeKindExtensions.InDisplayOrder)
+                                            {
+                                                <MudToggleItem T="AttendeeKind" Value="@kind" Text="@RosterLabels.Plural(kind)" />
+                                            }
+                                        </MudToggleGroup>
+                                    }
+                                    <MudChip T="string" Size="Size.Small" Color="@StandFastTheme.ColumnColor(state)">@ParticipantsIn(state).Count</MudChip>
+                                </div>
+
+                                @foreach (BoardParticipantDto participant in ParticipantsIn(state))
+                                {
+                                    <ParticipantCard Participant="@participant"
+                                                     TimeZone="@timeZone"
+                                                     MeetingStart="@MeetingStart"
+                                                     PriorTurn="@board.PriorTurnFor(participant.PersonId)"
+                                                     ShowPriorTurn="@(state == AttendanceState.Available)"
+                                                     IsSelected="@(participant.PersonId == selectedPersonId)"
+                                                     IsSelf="@Preferences.IsSelf(participant.Email)"
+                                                     IsLocked="@IsLocked"
+                                                     OnAdvance="AdvanceAsync"
+                                                     OnRevert="RevertAsync"
+                                                     OnSelect="SelectParticipantAsync" />
+                                }
+
+                                @if (ParticipantsIn(state).Count == 0)
+                                {
+                                    <MudText Typo="Typo.body2" Class="mud-text-secondary">@EmptyColumnText(state)</MudText>
+                                }
                             }
                         </MudPaper>
                     </MudItem>

@@ -35,6 +35,7 @@ public static class StandFastTheme
     {
         Domain.Enums.AttendanceState.Available => Color.Info,
         Domain.Enums.AttendanceState.Presented => Color.Success,
+        Domain.Enums.AttendanceState.Guest => Color.Secondary,
         _ => Color.Default,
     };
 
@@ -43,6 +44,7 @@ public static class StandFastTheme
     {
         Domain.Enums.AttendanceState.Available => "Present, can be called on",
         Domain.Enums.AttendanceState.Presented => "Presented",
+        Domain.Enums.AttendanceState.Guest => "Guests, not presenting",
         _ => "Roster",
     };
 
@@ -60,6 +62,7 @@ public static class StandFastTheme
     {
         Domain.Enums.AttendanceState.Available => Icons.Material.Filled.HowToReg,
         Domain.Enums.AttendanceState.Presented => Icons.Material.Filled.CheckCircle,
+        Domain.Enums.AttendanceState.Guest => Icons.Material.Filled.EmojiPeople,
         _ => Icons.Material.Filled.Group,
     };
 }

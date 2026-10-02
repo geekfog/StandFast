@@ -43,6 +43,22 @@ public sealed class StandupEntryRepository(ITableClientProvider tables) : IStand
         await client.UpsertEntityAsync(entry.ToTableEntity(), TableUpdateMode.Replace, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<StandupEntry>> GetOnDateAsync(Guid standupId, DateOnly meetingDate, CancellationToken cancellationToken = default)
+    {
+        TableClient client = await tables.GetAsync(StorageNames.StandupEntries, cancellationToken);
+        (string partitionFrom, string partitionTo) = StorageKeys.EntryPartitionRange(standupId);
+        string rowKey = StorageKeys.EntryRowKey(meetingDate);
+        string filter = TableClient.CreateQueryFilter($"PartitionKey ge {partitionFrom} and PartitionKey le {partitionTo} and RowKey eq {rowKey}");
+
+        List<StandupEntry> found = [];
+        await foreach (StandupEntryTableEntity entity in client.QueryAsync<StandupEntryTableEntity>(filter, cancellationToken: cancellationToken))
+        {
+            found.Add(entity.ToDomain());
+        }
+
+        return found;
+    }
+
     public async Task<IReadOnlyCollection<DateOnly>> GetPresentedDatesAsync(Guid standupId, DateOnly from, DateOnly to, CancellationToken cancellationToken = default)
     {
         TableClient client = await tables.GetAsync(StorageNames.StandupEntries, cancellationToken);

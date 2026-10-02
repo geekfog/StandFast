@@ -10,6 +10,9 @@ public interface IStandupEntryRepository
 
     Task UpsertAsync(StandupEntry entry, CancellationToken cancellationToken = default);
 
+    /// <summary>Every entry recorded for one standup on one date, whoever it belongs to. The board reads its guests from this, since guests are not on any roster to look up one by one.</summary>
+    Task<IReadOnlyList<StandupEntry>> GetOnDateAsync(Guid standupId, DateOnly meetingDate, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Meeting dates within the inclusive range on which at least one participant presented. Answers "which days hold a finished standup" for a
     /// whole standup in one query, which is what the week strip marks.

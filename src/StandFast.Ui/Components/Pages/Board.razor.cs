@@ -15,8 +15,11 @@ namespace StandFast.Ui.Components.Pages;
 
 public partial class Board
 {
-    /// <summary>Column order across the board, left to right. Driving the markup from this keeps the columns and the tap transitions in step.</summary>
-    private static readonly AttendanceState[] BoardColumns = [AttendanceState.Roster, AttendanceState.Available, AttendanceState.Presented];
+    /// <summary>
+    /// Columns across the board, left to right, each listing the states it holds from the top. Guests sit under the people present, since both are
+    /// here and guests never move on to presented. Driving the markup from this keeps the columns and the tap transitions in step.
+    /// </summary>
+    private static readonly AttendanceState[][] BoardColumns = [[AttendanceState.Roster], [AttendanceState.Available, AttendanceState.Guest], [AttendanceState.Presented]];
 
     private IReadOnlyList<StandupDto> standups = [];
     private StandupBoardDto? board;
@@ -26,6 +29,9 @@ public partial class Board
     private DateOnly today;
     private Guid? selectedPersonId;
     private ParticipantUpdatePanel? updatePanel;
+
+    /// <summary>Who the roster column lists. Presenters tapped from it become present; anyone else tapped from it becomes a guest.</summary>
+    private AttendeeKind rosterView = AttendeeKind.Presenter;
 
     /// <summary>What the standup picker shows. It follows the URL, and holds a new choice only while unsaved edits are confirmed, so a declined switch puts the picker back.</summary>
     private Guid standupPickerValue;
@@ -76,10 +82,14 @@ public partial class Board
 
     private BoardParticipantDto? SelectedParticipant => board?.Participants.FirstOrDefault(participant => participant.PersonId == selectedPersonId);
 
-    private IReadOnlyList<StandupMemberDto> LeaderCandidates => board?.Leaders ?? [];
+    private IReadOnlyList<StandupMemberDto> LeaderCandidates => board?.LeaderCandidates ?? [];
 
     /// <summary>Says why the leader picker is empty, since an empty dropdown on its own reads as a standup with nobody available to lead.</summary>
-    private string? LeaderHelperText => LeaderCandidates.Count == 0 ? $"Nobody is on the {RosterLabels.RosterTitle(RosterRole.Leader).ToLowerInvariant()} for this standup." : null;
+    private string? LeaderHelperText => LeaderCandidates.Count > 0 ? null : board?.Leaders.Count > 0
+        ? $"Mark someone on the {LeaderRosterName} present or as a guest to pick them."
+        : $"Nobody is on the {LeaderRosterName} for this standup.";
+
+    private static string LeaderRosterName => RosterLabels.RosterTitle(RosterRole.Leader).ToLowerInvariant();
 
     private bool IsLocked => board?.IsLocked == true;
 
@@ -130,13 +140,17 @@ public partial class Board
             await BoardService.GetLockedDatesAsync(SelectedStandupId, week[0], week[^1]));
     }
 
-    private IReadOnlyList<BoardParticipantDto> ParticipantsIn(AttendanceState state) =>
-        board is null ? [] : board.Participants.Where(participant => participant.State == state).InColumnOrder(state);
+    /// <summary>Everyone in one state, in that column's order. The roster lists only the kind of attendee the filter is set to.</summary>
+    private IReadOnlyList<BoardParticipantDto> ParticipantsIn(AttendanceState state) => board is null
+        ? []
+        : board.Participants.Where(participant => participant.State == state && (state != AttendanceState.Roster || participant.Kind == rosterView)).InColumnOrder(state);
 
-    private static string EmptyColumnText(AttendanceState state) => state switch
+    private string EmptyColumnText(AttendanceState state) => (state, rosterView) switch
     {
-        AttendanceState.Available => "Tap a name on the roster as you spot them in the meeting.",
-        AttendanceState.Presented => "Tap a name again once they have given their update.",
+        (AttendanceState.Available, _) => "Tap a name on the roster as you spot them in the meeting.",
+        (AttendanceState.Presented, _) => "Tap a name again once they have given their update.",
+        (AttendanceState.Guest, _) => $"Switch the roster to {RosterLabels.Plural(AttendeeKind.Guest)} and tap a name to record a visitor.",
+        (_, AttendeeKind.Guest) => "Everyone else in People is already here as a guest.",
         _ => "Everyone has been marked present.",
     };
 
@@ -275,7 +289,7 @@ public partial class Board
             return;
         }
 
-        board = board with { Participants = [.. board.Participants.Select(participant => participant.PersonId == updated.PersonId ? updated : participant)] };
+        board = board.WithParticipant(updated);
         presentedDates = WithMarker(presentedDates, HasPresented);
     }
 

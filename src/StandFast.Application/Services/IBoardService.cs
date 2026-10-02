@@ -6,17 +6,20 @@ public interface IBoardService
 {
     Task<StandupBoardDto> GetBoardAsync(Guid standupId, DateOnly meetingDate, CancellationToken cancellationToken = default);
 
-    /// <summary>Tap forward: roster to available, available to presented. Throws <see cref="BoardLockedException"/> once the date has been locked.</summary>
+    /// <summary>
+    /// Tap forward: a presenter goes roster to available to presented, and anyone else in the directory goes roster to guest. Throws
+    /// <see cref="BoardLockedException"/> once the date has been locked.
+    /// </summary>
     Task<BoardParticipantDto?> AdvanceAsync(Guid standupId, DateOnly meetingDate, Guid personId, CancellationToken cancellationToken = default);
 
-    /// <summary>Undo a tap by moving the participant one column back.</summary>
+    /// <summary>Undo a tap by moving the participant one column back, or a guest back to the roster. Taking the day's leader back to the roster clears the leader.</summary>
     Task<BoardParticipantDto?> RevertAsync(Guid standupId, DateOnly meetingDate, Guid personId, CancellationToken cancellationToken = default);
 
     Task<BoardParticipantDto?> SaveUpdateAsync(ParticipantUpdateDto update, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Records who is leading this date, or clears it when <paramref name="personId"/> is null. False means the person is not on the standup's leader
-    /// roster and nothing was written, which is what a picker filled before someone was taken off that roster produces.
+    /// roster or is not attending this date, and nothing was written, which is what a picker filled before either changed produces.
     /// </summary>
     Task<bool> SetLeaderAsync(Guid standupId, DateOnly meetingDate, Guid? personId, CancellationToken cancellationToken = default);
 

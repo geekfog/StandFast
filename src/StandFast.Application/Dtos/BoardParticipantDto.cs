@@ -3,6 +3,7 @@ using StandFast.Domain.Enums;
 namespace StandFast.Application.Dtos;
 
 /// <summary>Everything the board needs for one participant on one date, including the prior update that the "copy forward" action pulls from.</summary>
+/// <param name="Kind">Whether this person presents at the standup or attends it as a guest. Guests have no update to record.</param>
 public sealed record BoardParticipantDto(
     Guid PersonId,
     string DisplayName,
@@ -14,6 +15,7 @@ public sealed record BoardParticipantDto(
     string? TimeZoneId,
     DateTimeOffset? PhotoSavedUtc,
     int DisplayOrder,
+    AttendeeKind Kind,
     AttendanceState State,
     DateTimeOffset? MarkedAvailableUtc,
     DateTimeOffset? PresentedUtc,
