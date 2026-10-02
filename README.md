@@ -388,6 +388,8 @@ Two caveats worth knowing before the design ossifies:
 
 Formatting runs through a small JavaScript helper, because wrapping a selection needs the caret position and the browser owns that. The helper computes the new text and hands it back to Blazor, which remains the owner of the value. Inline commands toggle: pressing bold on already-bold text unwraps it.
 
+Lists follow the same pattern. The indent button nests the selected items under the item above, aligned with its text, and the outdent button aligns them with their parent. Enter on a list item starts the next one with the same bullet, the next number, or an unchecked task box, carrying any text after the caret onto it; Enter on an empty item outdents it, or ends the list at the top level. Every list edit renumbers the numbered lists around it, each nesting level counting on its own, with nested lists starting at 1. The Enter handling listens on the editor's container rather than the text box, because the preview toggle re-creates the text box.
+
 Rendering uses a single pre-built Markdig pipeline with advanced extensions on and raw HTML disabled. Update text is user-supplied and rendered into the page, so HTML is escaped rather than executed.
 
 Markdown collapses any run of blank lines into one paragraph break, so before rendering, `MarkdownRenderer` turns each blank line between content into its own `&nbsp;` paragraph, leaving fenced code blocks as typed. Rendered paragraphs and lists carry no vertical margin, so each blank line in the editor is exactly one empty line in the preview.
@@ -556,6 +558,12 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 # 🚧 Change Summary
 
 *Each entry is a specific version (release/\* branch), in descending order (newest version up top), with a plain bullet list summarizing each change without technical jargon.*
+
+### v01.03.00 — 2026-10-02
+
+- Added indent and outdent buttons to the markdown toolbar for nesting bulleted, numbered, and task list items.
+- Made Enter on a list item start the next item, renumbering the numbered items that follow, and Enter on an empty item step it out a level or end the list.
+- Made the list, heading, and quote buttons leave the cursor in place after the added marker, ready to type, instead of selecting the line.
 
 ### v01.02.00 — 2026-10-01
 
