@@ -6,7 +6,7 @@
 }
 else
 {
-    <div class="standfast-markdown">@Markdown.ToHtml(Value)</div>
+    <div class="standfast-markdown">@Markdown.ToHtml(Value, InteractiveTasks)</div>
 }
 
 @code {
@@ -15,4 +15,8 @@ else
 
     [Parameter]
     public string EmptyText { get; set; } = "Nothing recorded.";
+
+    /// <summary>Enables the task list checkboxes. The host handles their clicks; see <see cref="IMarkdownRenderer.ToggleTask"/>.</summary>
+    [Parameter]
+    public bool InteractiveTasks { get; set; }
 }

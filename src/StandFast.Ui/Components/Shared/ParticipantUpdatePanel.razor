@@ -167,7 +167,8 @@
     [Inject]
     private IDialogService DialogService { get; set; } = default!;
 
-    private bool IsDirty => currentUpdate != Participant.Update || blockers != Participant.Blockers || parkingLot != Participant.ParkingLot;
+    // Compared in stored form, since saving trims the text and the reloaded participant carries what was stored.
+    private bool IsDirty => !OptionalText.Matches(currentUpdate, Participant.Update) || !OptionalText.Matches(blockers, Participant.Blockers) || !OptionalText.Matches(parkingLot, Participant.ParkingLot);
 
     private string PriorLabel => Participant.PriorMeetingDate is { } date
         ? $"Prior ({date.ToDateTime(TimeOnly.MinValue).ToString(UiFormats.ShortDateWithWeekday)})"

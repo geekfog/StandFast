@@ -35,13 +35,13 @@ public static class PersonMappings
         person.Email = EmailAddress.Normalise(dto.Email);
 
         // Blank and absent mean the same thing for each: fall back to the recorded name, hold no notes, and record no title, organization, department or location.
-        person.DisplayAs = Normalise(dto.DisplayAs);
-        person.Notes = Normalise(dto.Notes);
-        person.Title = Normalise(dto.Title);
-        person.Organization = Normalise(dto.Organization);
-        person.Department = Normalise(dto.Department);
-        person.City = Normalise(dto.City);
-        person.StateOrRegion = Normalise(dto.StateOrRegion);
+        person.DisplayAs = OptionalText.Normalize(dto.DisplayAs);
+        person.Notes = OptionalText.Normalize(dto.Notes);
+        person.Title = OptionalText.Normalize(dto.Title);
+        person.Organization = OptionalText.Normalize(dto.Organization);
+        person.Department = OptionalText.Normalize(dto.Department);
+        person.City = OptionalText.Normalize(dto.City);
+        person.StateOrRegion = OptionalText.Normalize(dto.StateOrRegion);
         person.TimeZoneId = TimeZoneIds.ToStoredOrNull(dto.TimeZoneId);
         person.IsActive = dto.IsActive;
     }
@@ -49,6 +49,4 @@ public static class PersonMappings
     public static PersonPhotoDto ToDto(this PersonPhoto photo) => new(photo.ContentType, photo.Content);
 
     public static PersonPhoto ToEntity(this PersonPhotoDto photo, Guid personId) => new() { PersonId = personId, ContentType = photo.ContentType, Content = photo.Content };
-
-    private static string? Normalise(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

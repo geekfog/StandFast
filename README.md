@@ -388,11 +388,15 @@ Two caveats worth knowing before the design ossifies:
 
 Formatting runs through a small JavaScript helper, because wrapping a selection needs the caret position and the browser owns that. The helper computes the new text and hands it back to Blazor, which remains the owner of the value. Inline commands toggle: pressing bold on already-bold text unwraps it.
 
-Lists follow the same pattern. The indent button nests the selected items under the item above, aligned with its text, and the outdent button aligns them with their parent. Enter on a list item starts the next one with the same bullet, the next number, or an unchecked task box, carrying any text after the caret onto it; Enter on an empty item outdents it, or ends the list at the top level. Every list edit renumbers the numbered lists around it, each nesting level counting on its own, with nested lists starting at 1. The Enter handling listens on the editor's container rather than the text box, because the preview toggle re-creates the text box.
+Lists follow the same pattern. The indent button nests the selected items under the item above, aligned with its text, and the outdent button aligns them with their parent. Enter on a list item starts the next one with the same bullet, the next number, or an unchecked task box, carrying any text after the caret onto it; Enter on an empty item outdents it, or ends the list at the top level. Every list edit renumbers the numbered lists around it, each nesting level counting on its own from 1, since some markdown renderers ignore any other starting number, and so does any deletion (Backspace, Delete, cut, or drag) that leaves the caret in or just above a list. The Enter and deletion handling listens on the editor's container rather than the text box, because the preview toggle re-creates the text box.
 
 Rendering uses a single pre-built Markdig pipeline with advanced extensions on and raw HTML disabled. Update text is user-supplied and rendered into the page, so HTML is escaped rather than executed.
 
-Markdown collapses any run of blank lines into one paragraph break, so before rendering, `MarkdownRenderer` turns each blank line between content into its own `&nbsp;` paragraph, leaving fenced code blocks as typed. Rendered paragraphs and lists carry no vertical margin, so each blank line in the editor is exactly one empty line in the preview.
+Markdown collapses any run of blank lines into one paragraph break, so before rendering, `MarkdownRenderer` turns each blank line between content into its own `&nbsp;` paragraph, leaving fenced code blocks as typed. A blank line inside a list stays blank when the list carries on after it, as an indented line or another item of the same kind, since a spacer there would split the list. Rendered paragraphs and lists carry no vertical margin, so each blank line in the editor outside a list is exactly one empty line in the preview, and a list reads as one block.
+
+Task list items hide their bullet so the checkbox takes its place. In an editable box's preview the checkboxes are live: a click is sent to `MarkdownEditor`, which asks `MarkdownRenderer.ToggleTask` to flip the `[ ]` or `[x]` of the task at that position, located through Markdig's own parse so the count matches the rendered boxes. The changed text then marks the update unsaved, the same as typing, and Save update stores it. Read-only boxes render their checkboxes disabled.
+
+Saving stores each box trimmed, with a blank box stored as empty, using the rule in `OptionalText`. The update panel compares its boxes with the stored update by that same rule, so leading or trailing spaces and blank lines never count as an unsaved change.
 
 ## Charting
 
@@ -564,6 +568,12 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 - Added indent and outdent buttons to the markdown toolbar for nesting bulleted, numbered, and task list items.
 - Made Enter on a list item start the next item, renumbering the numbered items that follow, and Enter on an empty item step it out a level or end the list.
 - Made the list, heading, and quote buttons leave the cursor in place after the added marker, ready to type, instead of selecting the line.
+- Fixed the preview so a list nested under a numbered or bulleted item stays indented under it with no empty line in between, and task list items show only their checkbox instead of a bullet as well.
+- Made task checkboxes clickable in the preview, so a task can be checked off without switching back to editing and then saved as usual.
+- Made a list keep its items together in the preview, without an empty line between them, and lined up the task checkboxes with their text.
+- Made deleting a numbered list item renumber the items after it at the same level.
+- Made every numbered list start at 1 whenever the editor renumbers it, top-level lists included.
+- Fixed Save update staying enabled, and the unsaved-changes warning appearing, after a successful save of text that ended in a blank line or space.
 
 ### v01.02.00 — 2026-10-01
 

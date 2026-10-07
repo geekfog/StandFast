@@ -20,7 +20,12 @@ window.standFastMarkdown = (() => {
     const listItemPattern = /^( *)(?:([-*+])|(\d{1,9})([.)]))( +|$)(\[[ xX]\] +)?/;
     const continuationPattern = /^ +\S/;
     const uncheckedTask = '[ ] ';
-    const keyDownHandlers = new Map();
+    const firstListNumber = 1;
+    const editorHandlers = new Map();
+    // Every kind of removal (Backspace, Delete, word and line deletes, cut, drag) reports an input type with this prefix.
+    const deleteInputTypePrefix = 'delete';
+    const previewSelector = '.standfast-markdown';
+    const previewCheckboxSelector = `${previewSelector} input[type="checkbox"]`;
 
     const parseListItem = (line) => {
         const match = listItemPattern.exec(line);
@@ -62,7 +67,7 @@ window.standFastMarkdown = (() => {
         return { first, last };
     };
 
-    // Numbers each ordered sequence consecutively per nesting level. A top-level sequence keeps its first number; a nested one starts at 1.
+    // Numbers each ordered sequence consecutively from 1 per nesting level, since some markdown renderers ignore any other starting number.
     const renumber = (lines, first, last) => {
         const levels = [];
         for (let index = first; index <= last; index++) {
@@ -76,7 +81,7 @@ window.standFastMarkdown = (() => {
             const sibling = levels.length > 0 && levels.at(-1).indent === item.indent ? levels.pop() : null;
             let number = null;
             if (item.number !== null) {
-                number = sibling?.next ?? (levels.length > 0 ? 1 : item.number);
+                number = sibling?.next ?? firstListNumber;
                 const rest = lines[index].slice(item.indent + String(item.number).length + item.delimiter.length);
                 lines[index] = `${' '.repeat(item.indent)}${number}${item.delimiter}${rest}`;
             }
@@ -169,6 +174,31 @@ window.standFastMarkdown = (() => {
         return commit(textArea, next, caret, caret);
     };
 
+    // After a deletion, renumbers the list at the caret and the one starting on the next line, which is where the removed text joined up.
+    const renumberAfterDelete = (textArea) => {
+        const value = textArea.value ?? '';
+        const start = textArea.selectionStart;
+        if (start !== textArea.selectionEnd) {
+            return null;
+        }
+
+        const lines = value.split('\n');
+        const index = lineIndexAt(value, start);
+        const offsetFromEnd = lineStartOffset(lines, index) + lines[index].length - start;
+        const listLines = [index, index + 1].filter((at) => at < lines.length && isListContent(lines[at]));
+        if (listLines.length === 0) {
+            return null;
+        }
+        renumberAround(lines, ...listLines);
+
+        const next = lines.join('\n');
+        if (next === value) {
+            return null;
+        }
+        const caret = caretFromLineEnd(lines, index, offsetFromEnd);
+        return commit(textArea, next, caret, caret);
+    };
+
     return {
         // Wraps the selection (or inserts a placeholder) with the supplied delimiters, and unwraps again when the selection is already wrapped.
         wrapSelection(elementId, before, after, placeholder) {
@@ -209,7 +239,7 @@ window.standFastMarkdown = (() => {
 
             const lines = value.slice(lineStart, lineEnd).split('\n');
             const applied = lines.map((line, index) => {
-                const linePrefix = ordered ? `${index + 1}. ` : prefix;
+                const linePrefix = ordered ? `${firstListNumber + index}. ` : prefix;
                 const orderedPattern = /^\d+\.\s/;
                 if (ordered ? orderedPattern.test(line) : line.startsWith(prefix)) {
                     return ordered ? line.replace(orderedPattern, '') : line.slice(prefix.length);
@@ -267,14 +297,25 @@ window.standFastMarkdown = (() => {
             return commit(textArea, next, lineStartOffset(lines, firstLine), lineStartOffset(lines, lastLine) + lines[lastLine].length);
         },
 
-        // Continues lists on Enter. Listens on the editor container so it survives the text box being re-created by the preview toggle.
-        attach(elementId, dotNetReference, methodName) {
+        // Continues lists on Enter, renumbers them after deletions, and toggles preview checkboxes. Listens on the editor container so it survives the preview toggle re-creating its contents.
+        attach(elementId, dotNetReference, methodName, taskToggledMethodName) {
             const container = document.getElementById(elementId);
-            if (!container || keyDownHandlers.has(elementId)) {
+            if (!container || editorHandlers.has(elementId)) {
                 return;
             }
 
-            const handler = (event) => {
+            // Blazor owns the text, so the click is cancelled and the box shows its new state once the toggled text re-renders.
+            const click = (event) => {
+                const checkbox = event.target;
+                if (!(checkbox instanceof HTMLInputElement) || checkbox.type !== 'checkbox' || checkbox.disabled || !checkbox.closest(previewSelector)) {
+                    return;
+                }
+                event.preventDefault();
+                const checkboxes = [...container.querySelectorAll(previewCheckboxSelector)];
+                dotNetReference.invokeMethodAsync(taskToggledMethodName, checkboxes.indexOf(checkbox));
+            };
+
+            const keydown = (event) => {
                 const textArea = event.target;
                 if (event.key !== 'Enter' || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey || event.isComposing
                     || textArea.tagName !== 'TEXTAREA' || textArea.readOnly) {
@@ -286,15 +327,27 @@ window.standFastMarkdown = (() => {
                     dotNetReference.invokeMethodAsync(methodName, next);
                 }
             };
-            container.addEventListener('keydown', handler);
-            keyDownHandlers.set(elementId, { container, handler });
+            const input = (event) => {
+                const textArea = event.target;
+                if (!event.inputType?.startsWith(deleteInputTypePrefix) || textArea.tagName !== 'TEXTAREA' || textArea.readOnly) {
+                    return;
+                }
+                const next = renumberAfterDelete(textArea);
+                if (next !== null) {
+                    dotNetReference.invokeMethodAsync(methodName, next);
+                }
+            };
+
+            const handlers = { click, input, keydown };
+            Object.entries(handlers).forEach(([type, handler]) => container.addEventListener(type, handler));
+            editorHandlers.set(elementId, { container, handlers });
         },
 
         detach(elementId) {
-            const registration = keyDownHandlers.get(elementId);
+            const registration = editorHandlers.get(elementId);
             if (registration) {
-                registration.container.removeEventListener('keydown', registration.handler);
-                keyDownHandlers.delete(elementId);
+                Object.entries(registration.handlers).forEach(([type, handler]) => registration.container.removeEventListener(type, handler));
+                editorHandlers.delete(elementId);
             }
         },
 

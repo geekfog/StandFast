@@ -1,4 +1,5 @@
 @inject IJSRuntime JS
+@inject IMarkdownRenderer Markdown
 @implements IAsyncDisposable
 
 <MudPaper Outlined="true" Class="standfast-markdown-editor">
@@ -36,7 +37,7 @@
     <div id="@editorId" class="pa-3 standfast-markdown-body" style="@($"{LinesCssProperty}: {Lines}")">
         @if (showPreview || ReadOnly)
         {
-            <MarkdownView Value="@Value" EmptyText="@EmptyText" />
+            <MarkdownView Value="@Value" EmptyText="@EmptyText" InteractiveTasks="@(!ReadOnly)" />
         }
         else
         {
@@ -120,12 +121,17 @@
         }
 
         selfReference = DotNetObjectReference.Create(this);
-        await JS.InvokeVoidAsync(AttachFunction, editorId, selfReference, nameof(OnListContinuedAsync));
+        await JS.InvokeVoidAsync(AttachFunction, editorId, selfReference, nameof(OnListEditedAsync), nameof(OnTaskToggledAsync));
     }
 
-    /// <summary>Called by the browser after Enter continued or ended a list, with the text it produced.</summary>
+    /// <summary>Called by the browser after it edited a list: Enter continued or ended one, or a deletion renumbered one. Carries the text it produced.</summary>
     [JSInvokable]
-    public Task OnListContinuedAsync(string value) => ValueChanged.InvokeAsync(value);
+    public Task OnListEditedAsync(string value) => ValueChanged.InvokeAsync(value);
+
+    /// <summary>Called by the browser when a preview checkbox is clicked, with its position among the preview's checkboxes.</summary>
+    [JSInvokable]
+    public Task OnTaskToggledAsync(int taskIndex) =>
+        ReadOnly || Markdown.ToggleTask(Value, taskIndex) is not { } updated ? Task.CompletedTask : ValueChanged.InvokeAsync(updated);
 
     private async Task ApplyAsync(MarkdownCommand command)
     {
