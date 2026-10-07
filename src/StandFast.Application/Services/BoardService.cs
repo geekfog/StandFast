@@ -129,9 +129,9 @@ public sealed class BoardService(
         StandupEntryPair pair = await entries.GetCurrentAndPriorAsync(update.StandupId, update.PersonId, update.MeetingDate, cancellationToken);
         StandupEntry entry = pair.EnsureEntry(update.StandupId, update.PersonId, update.MeetingDate);
 
-        entry.Update = Normalise(update.Update);
-        entry.Blockers = Normalise(update.Blockers);
-        entry.ParkingLot = Normalise(update.ParkingLot);
+        entry.Update = OptionalText.Normalize(update.Update);
+        entry.Blockers = OptionalText.Normalize(update.Blockers);
+        entry.ParkingLot = OptionalText.Normalize(update.ParkingLot);
         entry.UpdateSavedUtc = clock.UtcNow;
 
         await entries.UpsertAsync(entry, cancellationToken);
@@ -261,8 +261,6 @@ public sealed class BoardService(
 
     private async Task<StandupMember?> FindActiveMemberAsync(Guid standupId, Guid personId, RosterRole role, CancellationToken cancellationToken) =>
         (await standups.GetMembersAsync(standupId, role, cancellationToken)).FirstOrDefault(candidate => candidate.PersonId == personId && candidate.IsActive);
-
-    private static string? Normalise(string? markdown) => string.IsNullOrWhiteSpace(markdown) ? null : markdown.Trim();
 
     private static string EntryTargetId(Guid standupId, Guid personId, DateOnly meetingDate) => $"{standupId}/{personId}/{MeetingCalendar.ToRouteValue(meetingDate)}";
 

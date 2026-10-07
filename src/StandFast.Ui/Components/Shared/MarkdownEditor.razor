@@ -121,12 +121,12 @@
         }
 
         selfReference = DotNetObjectReference.Create(this);
-        await JS.InvokeVoidAsync(AttachFunction, editorId, selfReference, nameof(OnListContinuedAsync), nameof(OnTaskToggledAsync));
+        await JS.InvokeVoidAsync(AttachFunction, editorId, selfReference, nameof(OnListEditedAsync), nameof(OnTaskToggledAsync));
     }
 
-    /// <summary>Called by the browser after Enter continued or ended a list, with the text it produced.</summary>
+    /// <summary>Called by the browser after it edited a list: Enter continued or ended one, or a deletion renumbered one. Carries the text it produced.</summary>
     [JSInvokable]
-    public Task OnListContinuedAsync(string value) => ValueChanged.InvokeAsync(value);
+    public Task OnListEditedAsync(string value) => ValueChanged.InvokeAsync(value);
 
     /// <summary>Called by the browser when a preview checkbox is clicked, with its position among the preview's checkboxes.</summary>
     [JSInvokable]
