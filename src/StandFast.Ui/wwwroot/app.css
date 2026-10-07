@@ -291,6 +291,21 @@
     list-style-type: circle;
 }
 
+/* A task item's checkbox stands in for its bullet. */
+.standfast-markdown li.task-list-item {
+    list-style-type: none;
+}
+
+/* Centered on the first line's lowercase letters, which is where the eye reads the text's middle. */
+.standfast-markdown li.task-list-item input[type="checkbox"] {
+    margin: 0 0.4rem 0 -1.4rem;
+    vertical-align: middle;
+}
+
+.standfast-markdown li.task-list-item input[type="checkbox"]:enabled {
+    cursor: pointer;
+}
+
 .standfast-markdown blockquote {
     border-left: 3px solid var(--mud-palette-lines-default);
     margin-left: 0;

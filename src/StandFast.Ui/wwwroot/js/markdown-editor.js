@@ -20,7 +20,9 @@ window.standFastMarkdown = (() => {
     const listItemPattern = /^( *)(?:([-*+])|(\d{1,9})([.)]))( +|$)(\[[ xX]\] +)?/;
     const continuationPattern = /^ +\S/;
     const uncheckedTask = '[ ] ';
-    const keyDownHandlers = new Map();
+    const editorHandlers = new Map();
+    const previewSelector = '.standfast-markdown';
+    const previewCheckboxSelector = `${previewSelector} input[type="checkbox"]`;
 
     const parseListItem = (line) => {
         const match = listItemPattern.exec(line);
@@ -267,14 +269,25 @@ window.standFastMarkdown = (() => {
             return commit(textArea, next, lineStartOffset(lines, firstLine), lineStartOffset(lines, lastLine) + lines[lastLine].length);
         },
 
-        // Continues lists on Enter. Listens on the editor container so it survives the text box being re-created by the preview toggle.
-        attach(elementId, dotNetReference, methodName) {
+        // Continues lists on Enter and toggles preview checkboxes. Listens on the editor container so it survives the preview toggle re-creating its contents.
+        attach(elementId, dotNetReference, methodName, taskToggledMethodName) {
             const container = document.getElementById(elementId);
-            if (!container || keyDownHandlers.has(elementId)) {
+            if (!container || editorHandlers.has(elementId)) {
                 return;
             }
 
-            const handler = (event) => {
+            // Blazor owns the text, so the click is cancelled and the box shows its new state once the toggled text re-renders.
+            const click = (event) => {
+                const checkbox = event.target;
+                if (!(checkbox instanceof HTMLInputElement) || checkbox.type !== 'checkbox' || checkbox.disabled || !checkbox.closest(previewSelector)) {
+                    return;
+                }
+                event.preventDefault();
+                const checkboxes = [...container.querySelectorAll(previewCheckboxSelector)];
+                dotNetReference.invokeMethodAsync(taskToggledMethodName, checkboxes.indexOf(checkbox));
+            };
+
+            const keydown = (event) => {
                 const textArea = event.target;
                 if (event.key !== 'Enter' || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey || event.isComposing
                     || textArea.tagName !== 'TEXTAREA' || textArea.readOnly) {
@@ -286,15 +299,16 @@ window.standFastMarkdown = (() => {
                     dotNetReference.invokeMethodAsync(methodName, next);
                 }
             };
-            container.addEventListener('keydown', handler);
-            keyDownHandlers.set(elementId, { container, handler });
+            const handlers = { click, keydown };
+            Object.entries(handlers).forEach(([type, handler]) => container.addEventListener(type, handler));
+            editorHandlers.set(elementId, { container, handlers });
         },
 
         detach(elementId) {
-            const registration = keyDownHandlers.get(elementId);
+            const registration = editorHandlers.get(elementId);
             if (registration) {
-                registration.container.removeEventListener('keydown', registration.handler);
-                keyDownHandlers.delete(elementId);
+                Object.entries(registration.handlers).forEach(([type, handler]) => registration.container.removeEventListener(type, handler));
+                editorHandlers.delete(elementId);
             }
         },
 
