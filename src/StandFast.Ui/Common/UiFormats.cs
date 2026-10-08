@@ -58,6 +58,18 @@ public static class UiFormats
         return $"{hours:0.##} {(hours == 1 ? "hour" : "hours")} {(offset > TimeSpan.Zero ? "ahead of" : "behind")} the standup";
     }
 
+    /// <summary>Tenure as a compact label with zero parts left out, for example "3y 2m 1w 4d" or "2w". Same-day tenure reads "0d".</summary>
+    public static string ToTenureLabel(this Tenure tenure)
+    {
+        const string DayUnit = "d";
+
+        string[] parts = [.. new (int Value, string Unit)[] { (tenure.Years, "y"), (tenure.Months, "m"), (tenure.Weeks, "w"), (tenure.Days, DayUnit) }
+            .Where(part => part.Value > 0)
+            .Select(part => $"{part.Value}{part.Unit}")];
+
+        return parts.Length == 0 ? $"0{DayUnit}" : string.Join(' ', parts);
+    }
+
     /// <summary>Renders a UTC timestamp in the app's display time zone, for "saved at" style labels.</summary>
     public static string ToLocalDisplay(this DateTimeOffset? timestamp, TimeZoneInfo timeZone, string format = DateAndTime) =>
         timestamp is null ? string.Empty : TimeZoneInfo.ConvertTime(timestamp.Value, timeZone).ToString(format);

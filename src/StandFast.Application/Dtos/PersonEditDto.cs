@@ -38,5 +38,7 @@ public sealed class PersonEditDto
     /// <summary>Optional. Any id the host resolves; saved in the form <see cref="TimeZoneIds"/> stores.</summary>
     public string? TimeZoneId { get; set; }
 
+    public DateOnly? StartDate { get; set; }
+
     public bool IsActive { get; set; } = true;
 }

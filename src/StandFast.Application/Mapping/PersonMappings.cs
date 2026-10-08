@@ -8,7 +8,7 @@ namespace StandFast.Application.Mapping;
 public static class PersonMappings
 {
     public static PersonDto ToDto(this Person person) =>
-        new(person.Id, person.FirstName, person.LastName, person.Email, person.IsActive, person.DisplayName, person.FullName, person.Initials, person.Notes, person.Title, person.Location, person.TimeZoneId, person.PhotoSavedUtc);
+        new(person.Id, person.FirstName, person.LastName, person.Email, person.IsActive, person.DisplayName, person.FullName, person.Initials, person.Notes, person.Title, person.Location, person.TimeZoneId, person.StartDate, person.PhotoSavedUtc);
 
     public static PersonEditDto ToEditDto(this Person person) => new()
     {
@@ -24,6 +24,7 @@ public static class PersonMappings
         City = person.City,
         StateOrRegion = person.StateOrRegion,
         TimeZoneId = person.TimeZoneId,
+        StartDate = person.StartDate,
         IsActive = person.IsActive,
     };
 
@@ -43,6 +44,7 @@ public static class PersonMappings
         person.City = OptionalText.Normalize(dto.City);
         person.StateOrRegion = OptionalText.Normalize(dto.StateOrRegion);
         person.TimeZoneId = TimeZoneIds.ToStoredOrNull(dto.TimeZoneId);
+        person.StartDate = dto.StartDate;
         person.IsActive = dto.IsActive;
     }
 

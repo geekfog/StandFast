@@ -37,6 +37,9 @@ public sealed class Person
     /// <summary>Time zone the person works in, in the form <see cref="TimeZoneIds"/> stores. Null when not recorded.</summary>
     public string? TimeZoneId { get; set; }
 
+    /// <summary>Date the person joined the organization. Null when not recorded.</summary>
+    public DateOnly? StartDate { get; set; }
+
     public bool IsActive { get; set; } = true;
 
     public DateTimeOffset CreatedUtc { get; set; }

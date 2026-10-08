@@ -13,6 +13,7 @@ public sealed record BoardParticipantDto(
     string? Title,
     string Location,
     string? TimeZoneId,
+    DateOnly? StartDate,
     DateTimeOffset? PhotoSavedUtc,
     int DisplayOrder,
     AttendeeKind Kind,

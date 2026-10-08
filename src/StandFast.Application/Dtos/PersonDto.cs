@@ -5,7 +5,7 @@ namespace StandFast.Application.Dtos;
 /// in one place, and <see cref="DisplayName"/> already reflects any display override.
 /// </summary>
 public sealed record PersonDto(Guid Id, string FirstName, string LastName, string Email, bool IsActive, string DisplayName, string FullName, string Initials, string? Notes,
-    string? Title, string Location, string? TimeZoneId, DateTimeOffset? PhotoSavedUtc)
+    string? Title, string Location, string? TimeZoneId, DateOnly? StartDate, DateTimeOffset? PhotoSavedUtc)
 {
     /// <summary>True when the person is shown under something other than their recorded name, which the admin screen points out.</summary>
     public bool HasDisplayOverride => !string.Equals(DisplayName, FullName, StringComparison.Ordinal);

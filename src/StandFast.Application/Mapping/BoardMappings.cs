@@ -25,6 +25,7 @@ public static class BoardMappings
             person.Title,
             person.Location,
             person.TimeZoneId,
+            person.StartDate,
             person.PhotoSavedUtc,
             displayOrder,
             kind,
