@@ -10,17 +10,14 @@
             @foreach (MarkdownCommand command in MarkdownCommands.All)
             {
                 <MudTooltip Text="@command.Tooltip">
-                    <MudIconButton Icon="@command.Icon" Size="Size.Small" Disabled="showPreview" OnClick="@(() => ApplyAsync(command))" aria-label="@command.Tooltip" />
+                    <MudIconButton Icon="@command.Icon" Size="Size.Small" Disabled="IsPreviewing"OnClick="@(() => ApplyAsync(command))" aria-label="@command.Tooltip" />
                 </MudTooltip>
             }
         }
         <MudSpacer />
-        @ToolbarActions
-        @if (!ReadOnly)
+        @if (!ReadOnly && ShowPreviewToggle)
         {
-            <MudTooltip Text="@(showPreview ? "Edit" : "Preview")">
-                <MudIconButton Icon="@(showPreview ? Icons.Material.Filled.Edit : Icons.Material.Filled.Visibility)" Size="Size.Small" OnClick="TogglePreview" aria-label="@(showPreview ? "Edit" : "Preview")" />
-            </MudTooltip>
+            <MarkdownPreviewToggle Preview="IsPreviewing" PreviewChanged="SetPreviewAsync" />
         }
         @if (!HasToolbarButtons)
         {
@@ -35,7 +32,7 @@
     </MudToolBar>
 
     <div id="@editorId" class="pa-3 standfast-markdown-body" style="@($"{LinesCssProperty}: {Lines}")">
-        @if (showPreview || ReadOnly)
+        @if (IsPreviewing || ReadOnly)
         {
             <MarkdownView Value="@Value" EmptyText="@EmptyText" InteractiveTasks="@(!ReadOnly)" />
         }
@@ -92,10 +89,6 @@
     [Parameter]
     public string EmptyText { get; set; } = "Nothing recorded.";
 
-    /// <summary>Extra buttons for this field, such as "copy the prior update forward".</summary>
-    [Parameter]
-    public RenderFragment? ToolbarActions { get; set; }
-
     /// <summary>Whether the editor fills its container. The expand button, which becomes a close button while expanded, appears only when <see cref="ExpandedChanged"/> is bound.</summary>
     [Parameter]
     public bool Expanded { get; set; }
@@ -103,7 +96,20 @@
     [Parameter]
     public EventCallback<bool> ExpandedChanged { get; set; }
 
-    private bool HasToolbarButtons => !ReadOnly || ToolbarActions is not null || ExpandedChanged.HasDelegate;
+    /// <summary>Whether the box shows rendered text. Owned by the parent when <see cref="PreviewChanged"/> is bound, so several boxes can switch together.</summary>
+    [Parameter]
+    public bool Preview { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> PreviewChanged { get; set; }
+
+    /// <summary>False when the parent offers its own preview toggle for this box.</summary>
+    [Parameter]
+    public bool ShowPreviewToggle { get; set; } = true;
+
+    private bool IsPreviewing => PreviewChanged.HasDelegate ? Preview : showPreview;
+
+    private bool HasToolbarButtons => !ReadOnly || ExpandedChanged.HasDelegate;
 
     private string ExpandTooltip => Expanded ? "Close expanded view" : "Expand";
 
@@ -111,7 +117,16 @@
 
     private Task OnTextChangedAsync(string? value) => ValueChanged.InvokeAsync(value);
 
-    private void TogglePreview() => showPreview = !showPreview;
+    private Task SetPreviewAsync(bool preview)
+    {
+        if (PreviewChanged.HasDelegate)
+        {
+            return PreviewChanged.InvokeAsync(preview);
+        }
+
+        showPreview = preview;
+        return Task.CompletedTask;
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

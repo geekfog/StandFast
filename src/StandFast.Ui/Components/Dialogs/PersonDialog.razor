@@ -58,7 +58,14 @@
                 <MudAlert Severity="Severity.Error" Dense="true" Class="mb-3">@photoError</MudAlert>
             }
 
-            <MudTextField @bind-Value="Person.Email" For="@(() => Person.Email)" Label="Email address" InputType="InputType.Email" Variant="Variant.Outlined" Class="mb-3" />
+            <MudGrid Spacing="3" Class="mb-3">
+                <MudItem xs="12" sm="8">
+                    <MudTextField @bind-Value="Person.Email" For="@(() => Person.Email)" Label="Email address" InputType="InputType.Email" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudDatePicker @bind-Date="StartDate" Label="@PersonLabels.StartDate" DateFormat="@UiFormats.ShortDate" Clearable="true" Variant="Variant.Outlined" />
+                </MudItem>
+            </MudGrid>
 
             <MudGrid Spacing="3" Class="mb-3">
                 <MudItem xs="12" sm="4">
@@ -114,6 +121,13 @@
     private string? photoError;
 
     private string? PhotoUrl => PersonPhotoUrls.Inline(Person.Photo);
+
+    /// <summary>The date picker works in <see cref="DateTime"/>; the person holds a date only.</summary>
+    private DateTime? StartDate
+    {
+        get => Person.StartDate?.ToDateTime(TimeOnly.MinValue);
+        set => Person.StartDate = value is { } date ? DateOnly.FromDateTime(date) : null;
+    }
 
     private void Cancel() => Dialog.Cancel();
 

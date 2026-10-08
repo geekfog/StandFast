@@ -4,4 +4,6 @@ namespace StandFast.Ui.Common;
 public static class PersonLabels
 {
     public const string Title = "Title/Role";
+
+    public const string StartDate = "Start date";
 }

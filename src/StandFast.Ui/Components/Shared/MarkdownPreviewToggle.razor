@@ -1,0 +1,18 @@
+@* Switches markdown between its source and its rendered preview. Shared by a single editor's toolbar and by the update panel, which switches all its boxes at once. *@
+<MudTooltip Text="@Description">
+    <MudIconButton Icon="@(Preview ? Icons.Material.Filled.Edit : Icons.Material.Filled.Visibility)" Size="Size.Small" OnClick="@(() => PreviewChanged.InvokeAsync(!Preview))" aria-label="@Description" />
+</MudTooltip>
+
+@code {
+    [Parameter]
+    public bool Preview { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> PreviewChanged { get; set; }
+
+    /// <summary>What the toggle switches, appended to its tooltip, for a toggle that switches more than one box.</summary>
+    [Parameter]
+    public string? Target { get; set; }
+
+    private string Description => string.Concat(Preview ? "Edit" : "Preview", Target is null ? string.Empty : $" {Target}");
+}

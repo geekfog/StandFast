@@ -41,7 +41,7 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
 
 ## What it does
 
-- **People** are a flat directory: first name, last name, email, active flag, an optional "display as" override, an optional profile photo, an optional title or role, organization and department, markdown notes, and an optional location: city, state or region, and the time zone they work in. When "display as" is set, that is how the person appears everywhere, including the roster and the board; otherwise they appear as first and last name. The People screen shows each person's photo beside their name, or their initials when they have none, their title or role in a Title/Role column, their location and time zone, and lists which standups each person presents at and which they can lead.
+- **People** are a flat directory: first name, last name, email, active flag, an optional "display as" override, an optional profile photo, an optional title or role, organization and department, markdown notes, an optional start date for when they joined the organization, and an optional location: city, state or region, and the time zone they work in. When "display as" is set, that is how the person appears everywhere, including the roster and the board; otherwise they appear as first and last name. The People screen shows each person's photo beside their name, or their initials when they have none, their title or role in a Title/Role column, their location and time zone, their start date, and lists which standups each person presents at and which they can lead.
 - **Standups** are recurring meeting definitions: name, the days they run on, start time, time zone, and two rosters. The Presenter Roster is who gives an update; the Leader Roster is who may run the meeting. The same person can be on both.
 - **The board** is one standup on one date. It opens on today with the current week across the top, a dropdown picks the standup independently of the date, and a second dropdown beside it records who is leading that day.
 - **Reports** chart what a standup has recorded over a period. A dropdown picks the report, a second picks the standup, and quick-pick buttons set how far back it runs.
@@ -60,7 +60,7 @@ The board has three columns and one tap moves a person rightwards through them. 
 
 **Guests, not presenting** sits under Present in the middle column and holds the people attending without giving an update. Someone on the Presenter Roster is always a presenter there and is never offered as a guest. A guest card goes no further than Guests and has no notes icon, since there is no update to record; its undo arrow sends it back to the roster when tapped by mistake, and its caption says when they were marked as a guest.
 
-Every time on the board, and which date counts as today, is in the standup's own time zone. Each card's caption ends with how many hours the person's time zone is ahead of (+) or behind (-) the standup's at the standup's start time on that date, for example "| +1h". Hovering over it shows their location. A person with no time zone recorded shows no offset. Hovering over the rest of the caption shows the person's title or role, when one is recorded.
+Every time on the board, and which date counts as today, is in the standup's own time zone. Each card's caption ends with how many hours the person's time zone is ahead of (+) or behind (-) the standup's at the standup's start time on that date, for example "| +1h". Hovering over it shows their location. A person with no time zone recorded shows no offset. After that comes how long the person has been at the organization as of the board's date, for example "| 5y 7m 1w 2d": whole years first, then whole months of what remains, then whole weeks, then days, leaving out any part that is zero. Hovering over it shows their start date. A person with no start date recorded, or one that falls after the board's date, shows nothing there. Hovering over the rest of the caption shows the person's title or role, when one is recorded.
 
 The Leader dropdown beside the standup picker records who ran the standup that day. It offers the people on the standup's Leader Roster who are attending that date, as a guest or as a presenter marked present, so nobody who is not there can be picked. A leader who is not also a presenter is tracked as a guest. Sending the day's leader back to the roster clears the pick, and a date whose leader was recorded before this rule still shows that leader. The pick is per date rather than per standup, and it can be left empty, so a standup nobody was picked for reads as exactly that.
 
@@ -78,20 +78,21 @@ The notes icon on a card opens that person's update panel. The icon turns red on
 
 On a wide window the board fits the screen without the page scrolling. The date, Lock button, messages, week strip and dropdowns stay at the top, an open update panel docks at the bottom, and the three columns scroll between them. The panel takes the room its content needs, at least 20rem and at most half the board, with the minimum winning on a short window; past that it scrolls inside itself while the person's name and the Save button stay in view. On a narrow window the board and panel stack and the page scrolls as usual.
 
-The panel header shows the person's notes, rendered as markdown, to the right of their name, so anything worth knowing when running the standup is in view while their update is taken.
+The panel header shows the person's profile photo, or their initials when they have none, ringed in their column's color as on their card, and their notes, rendered as markdown, to the right of their name, so anything worth knowing when running the standup is in view while their update is taken.
 
-The panel has four boxes:
+The panel has three boxes:
 
 | Box | Behaviour |
 | --- | --------- |
-| Prior update | Read only, labelled with the date and abbreviated weekday it came from. A copy button pushes its text into the current update so a "same as yesterday, plus…" update takes one tap. The button is available only while the current update is empty, so it never overwrites anything typed. |
-| Current update | Markdown editor with a formatting toolbar, a preview toggle, and an expand button that fills the panel with this one box. While expanded, the person's name, the toolbar, and an X that returns to all four boxes share one line. On a locked day the box shows rendered text only, with no preview toggle. |
+| Current update | Markdown editor with a formatting toolbar and an expand button that fills the panel with this one box. While expanded, the person's name, the toolbar, a preview toggle, and an X that returns to all three boxes share one line. On a locked day the box shows rendered text only. |
 | Blockers | Same editor, including the expand button. A card showing blockers gets a warning icon on the board. |
 | Parking lot | Same editor, including the expand button, for topics to take offline after the standup. |
 
-The four boxes share one height: the tallest content among them sets it, and each editing box grows with its text and fills to the bottom, so nothing scrolls inside a box; a panel taller than the dock allows scrolls as a whole.
+The three boxes share one height: the tallest content among them sets it, and each editing box grows with its text and fills to the bottom, so nothing scrolls inside a box; a panel taller than the dock allows scrolls as a whole.
 
-Save writes all three editable boxes. Cancel closes the panel, and opening another person's update, another date or another standup replaces it; each asks first when there are edits that have not been saved.
+Two icons sit to the left of Cancel in the panel header. The preview toggle switches all three boxes together between markdown source and rendered preview; an expanded box carries the same toggle on its own line. The copy icon brings the person's update, blockers and parking lot from their previous entry on this standup into the matching boxes, each under an italic line naming that standup, for example "_Prior 7 Oct 2026 Wed:_". It fills only boxes that are empty and have something to bring in, so it never overwrites anything typed, and it is available only while at least one such box remains. While it is unavailable, hovering over it says why: either nothing was recorded at an earlier standup, or every box with something to bring in already has text.
+
+Save writes all three boxes. Cancel closes the panel, and opening another person's update, another date or another standup replaces it; each asks first when there are edits that have not been saved.
 
 Everything is keyed by standup, person, and date, so navigating to last Tuesday shows exactly what was recorded on last Tuesday.
 
@@ -323,7 +324,7 @@ Nine tables, all prefixed with `AzureTableStorage:TablePrefix`:
 
 | Table | Partition key | Row key | Holds |
 | ----- | ------------- | ------- | ----- |
-| `People` | `Person` | Person id | The directory. One partition because it is small and always listed whole. |
+| `People` | `Person` | Person id | The directory. One partition because it is small and always listed whole. The start date is a `yyyyMMdd` string, since Table Storage has no date-only column type. |
 | `PersonPhotos` | `Person` | Person id | Each person's profile photo, scaled in the browser to at most 256 pixels a side and stored as a JPEG under the 64 KiB a binary column may hold. Kept apart from `People` so listing the directory never reads the images; the photo endpoint reads one row at a time, and its address carries the save time so browsers cache it until the photo changes. |
 | `Standups` | `Standup` | Standup id | Meeting definitions. Same reasoning. |
 | `StandupMembers` | Standup id | Person id | The Presenter Roster. One partition per standup, which is exactly how the board reads it. The People screen's role columns are the one query that crosses partitions; see below. |
@@ -384,7 +385,7 @@ Two caveats worth knowing before the design ossifies:
 
 ## Markdown editing
 
-`MarkdownEditor` is one component used by all three boxes on the update panel, so the toolbar, the preview toggle, and the character limit cannot drift apart. The toolbar itself is data: `MarkdownCommands.All` is a list of records describing each button, and the component renders whatever is in that list.
+`MarkdownEditor` is one component used by all three boxes on the update panel, so the toolbar, the preview toggle, and the character limit cannot drift apart. Each editor owns its preview state unless the parent binds `Preview`, which is how the update panel switches its three boxes from one `MarkdownPreviewToggle` in its header. The toolbar itself is data: `MarkdownCommands.All` is a list of records describing each button, and the component renders whatever is in that list.
 
 Formatting runs through a small JavaScript helper, because wrapping a selection needs the caret position and the browser owns that. The helper computes the new text and hands it back to Blazor, which remains the owner of the value. Inline commands toggle: pressing bold on already-bold text unwraps it.
 
@@ -572,6 +573,11 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 - Made task checkboxes clickable in the preview, so a task can be checked off without switching back to editing and then saved as usual.
 - Made a list keep its items together in the preview, without an empty line between them, and lined up the task checkboxes with their text.
 - Made deleting a numbered list item renumber the items after it at the same level.
+- Added a start date to each person, set in the person dialog and shown in a Start date column on the People screen.
+- Added how long each person has been at the organization to their board card caption, in years, months, weeks, and days as of the board's date, with their start date shown on hover.
+- Removed the Prior box from the update panel. A copy icon beside Cancel now brings the previous standup's update, blockers, and parking lot into their matching empty boxes, each headed by an italic line naming the standup it came from. When there is nothing to copy, hovering over the icon says why.
+- Fixed the update panel header showing only initials for a person who has a profile photo.
+- Replaced each update box's own preview button with one beside the copy icon that switches all three boxes between markdown and preview together.
 - Made every numbered list start at 1 whenever the editor renumbers it, top-level lists included.
 - Fixed Save update staying enabled, and the unsaved-changes warning appearing, after a successful save of text that ended in a blank line or space.
 

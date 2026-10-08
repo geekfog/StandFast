@@ -101,4 +101,17 @@ public sealed class PersonDisplayTests
         Assert.Equal("Austin", person.City);
         Assert.Null(person.StateOrRegion);
     }
+
+    [Fact]
+    public void StartDate_RoundTripsThroughTheEditModel()
+    {
+        Person person = new();
+        PersonEditDto edit = new() { FirstName = "Ada", LastName = "Lovelace", Email = "ada@example.com", StartDate = new DateOnly(2021, 3, 1) };
+
+        edit.ApplyTo(person);
+
+        Assert.Equal(edit.StartDate, person.StartDate);
+        Assert.Equal(edit.StartDate, person.ToEditDto().StartDate);
+        Assert.Equal(edit.StartDate, person.ToDto().StartDate);
+    }
 }

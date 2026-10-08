@@ -37,6 +37,12 @@
                     <span class="ml-1">| @offset.ToOffsetLabel()</span>
                 </MudTooltip>
             }
+            @if (TenureAtMeeting is { } tenure)
+            {
+                <MudTooltip Text="@($"{PersonLabels.StartDate}: {Participant.StartDate!.Value.ToString(UiFormats.LongDate)}")">
+                    <span class="ml-1">| @tenure.ToTenureLabel()</span>
+                </MudTooltip>
+            }
         </MudText>
     </div>
 
@@ -84,6 +90,10 @@
     /// <summary>When the standup starts on the date shown. The participant's offset from <see cref="TimeZone"/> is measured at this instant.</summary>
     [Parameter]
     public DateTimeOffset MeetingStart { get; set; }
+
+    /// <summary>The date shown on the board. The participant's time at the organization is measured up to this date.</summary>
+    [Parameter]
+    public DateOnly MeetingDate { get; set; }
 
     [Parameter]
     public bool IsSelected { get; set; }
@@ -133,6 +143,9 @@
 
     /// <summary>How far the participant's clock is from the standup's, or null when their time zone is not recorded.</summary>
     private TimeSpan? OffsetFromStandup => TimeZoneIds.Resolve(Participant.TimeZoneId) is { } zone ? TimeZoneIds.OffsetFrom(zone, TimeZone, MeetingStart) : null;
+
+    /// <summary>Time at the organization as of the meeting date, or null when no start date is recorded or it falls after that date.</summary>
+    private Tenure? TenureAtMeeting => Participant.StartDate is { } start ? Tenure.Between(start, MeetingDate) : null;
 
     private string OffsetTooltip(TimeSpan offset) => string.IsNullOrEmpty(Participant.Location)
         ? offset.ToOffsetDescription()
