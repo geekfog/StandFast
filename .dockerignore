@@ -11,3 +11,4 @@ infra/
 tests/
 **/*.user
 **/*.md
+**/*.af

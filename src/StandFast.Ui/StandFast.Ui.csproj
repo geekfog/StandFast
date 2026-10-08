@@ -4,7 +4,13 @@
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
     <UserSecretsId>standfast-ui-8c1f0f9a</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <ApplicationIcon>$(BrandingIconIco)</ApplicationIcon>
   </PropertyGroup>
+
+  <!-- The icon artwork is served from media at the site root under its own file names, which AppInfo refers to. Without ContentRoot, development serves a linked file from wwwroot, where it does not exist. -->
+  <ItemGroup>
+    <Content Include="$(BrandingIconSvg);$(BrandingIconIco);$(BrandingIconPng)" Link="wwwroot\%(Filename)%(Extension)" ContentRoot="$(BrandingDirectory)" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Azure.Extensions.AspNetCore.DataProtection.Blobs" />

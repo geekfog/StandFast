@@ -16,6 +16,7 @@ COPY src/StandFast.Infrastructure/StandFast.Infrastructure.csproj src/StandFast.
 COPY src/StandFast.Ui/StandFast.Ui.csproj src/StandFast.Ui/
 RUN dotnet restore src/StandFast.Ui/StandFast.Ui.csproj
 
+COPY media/ media/
 COPY src/ src/
 
 # The publish restores with the sources in place. A restore evaluated before the Razor components exist settles the project's static web assets

@@ -9,8 +9,16 @@ public static class AppInfo
     public const string Tagline = "Daily scrum tracking";
     public const string RepositoryUrl = "https://github.com/geekfog/StandFast";
 
-    /// <summary>The app's icon under <c>wwwroot</c>, used as the browser tab icon and on the About page.</summary>
-    public const string IconAsset = "favicon.svg";
+    // The icon artwork is named after the product in Directory.Build.props and served at the site root under those file names.
+
+    /// <summary>The app's scalable icon, used as the browser tab icon and on the About page.</summary>
+    public const string IconAsset = $"{Name}.svg";
+
+    /// <summary>The multi-size icon for browsers that cannot show an SVG tab icon.</summary>
+    public const string IconFallbackAsset = $"{Name}.ico";
+
+    /// <summary>The raster icon used when the app is pinned to a phone or tablet home screen.</summary>
+    public const string TouchIconAsset = $"{Name}.png";
 
     /// <summary>Zero-padding applied to each part of the displayed version.</summary>
     private const string VersionPartFormat = "D2";

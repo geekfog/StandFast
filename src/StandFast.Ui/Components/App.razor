@@ -5,8 +5,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
-    @* Tab icon. An explicit link keeps the browser from falling back to /favicon.ico, which is not one of the app's assets. *@
+    @* Browsers that support SVG tab icons take the SVG; the rest take the ICO, and home-screen shortcuts take the PNG. *@
+    <link rel="icon" href="@Assets[AppInfo.IconFallbackAsset]" sizes="any" />
     <link rel="icon" type="image/svg+xml" href="@Assets[AppInfo.IconAsset]" />
+    <link rel="apple-touch-icon" href="@Assets[AppInfo.TouchIconAsset]" />
     <ResourcePreloader />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" />
     <link rel="stylesheet" href="_content/MudBlazor/MudBlazor.min.css" />
