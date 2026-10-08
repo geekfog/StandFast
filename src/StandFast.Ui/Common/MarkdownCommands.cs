@@ -21,10 +21,15 @@ public sealed record MarkdownCommand(string Tooltip, string Icon, string Before 
 /// <summary>The markdown toolbar definition, shared by every markdown field so all three board boxes offer identical formatting.</summary>
 public static class MarkdownCommands
 {
+    public const string ItalicMarker = "_";
+
+    /// <summary>Separates two markdown blocks, so a heading line and the list or paragraph after it render as separate blocks.</summary>
+    public const string BlockSeparator = "\n\n";
+
     public static readonly IReadOnlyList<MarkdownCommand> All =
     [
         new("Bold", Icons.Material.Filled.FormatBold, "**", "**", "bold text"),
-        new("Italic", Icons.Material.Filled.FormatItalic, "_", "_", "italic text"),
+        new("Italic", Icons.Material.Filled.FormatItalic, ItalicMarker, ItalicMarker, "italic text"),
         new("Strikethrough", Icons.Material.Filled.FormatStrikethrough, "~~", "~~", "struck through"),
         new("Inline code", Icons.Material.Filled.Code, "`", "`", "code"),
         new("Heading", Icons.Material.Filled.Title, LinePrefix: "## "),

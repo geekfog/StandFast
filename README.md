@@ -78,20 +78,21 @@ The notes icon on a card opens that person's update panel. The icon turns red on
 
 On a wide window the board fits the screen without the page scrolling. The date, Lock button, messages, week strip and dropdowns stay at the top, an open update panel docks at the bottom, and the three columns scroll between them. The panel takes the room its content needs, at least 20rem and at most half the board, with the minimum winning on a short window; past that it scrolls inside itself while the person's name and the Save button stay in view. On a narrow window the board and panel stack and the page scrolls as usual.
 
-The panel header shows the person's notes, rendered as markdown, to the right of their name, so anything worth knowing when running the standup is in view while their update is taken.
+The panel header shows the person's profile photo, or their initials when they have none, ringed in their column's color as on their card, and their notes, rendered as markdown, to the right of their name, so anything worth knowing when running the standup is in view while their update is taken.
 
-The panel has four boxes:
+The panel has three boxes:
 
 | Box | Behaviour |
 | --- | --------- |
-| Prior update | Read only, labelled with the date and abbreviated weekday it came from. A copy button pushes its text into the current update so a "same as yesterday, plus…" update takes one tap. The button is available only while the current update is empty, so it never overwrites anything typed. |
-| Current update | Markdown editor with a formatting toolbar, a preview toggle, and an expand button that fills the panel with this one box. While expanded, the person's name, the toolbar, and an X that returns to all four boxes share one line. On a locked day the box shows rendered text only, with no preview toggle. |
+| Current update | Markdown editor with a formatting toolbar and an expand button that fills the panel with this one box. While expanded, the person's name, the toolbar, a preview toggle, and an X that returns to all three boxes share one line. On a locked day the box shows rendered text only. |
 | Blockers | Same editor, including the expand button. A card showing blockers gets a warning icon on the board. |
 | Parking lot | Same editor, including the expand button, for topics to take offline after the standup. |
 
-The four boxes share one height: the tallest content among them sets it, and each editing box grows with its text and fills to the bottom, so nothing scrolls inside a box; a panel taller than the dock allows scrolls as a whole.
+The three boxes share one height: the tallest content among them sets it, and each editing box grows with its text and fills to the bottom, so nothing scrolls inside a box; a panel taller than the dock allows scrolls as a whole.
 
-Save writes all three editable boxes. Cancel closes the panel, and opening another person's update, another date or another standup replaces it; each asks first when there are edits that have not been saved.
+Two icons sit to the left of Cancel in the panel header. The preview toggle switches all three boxes together between markdown source and rendered preview; an expanded box carries the same toggle on its own line. The copy icon brings the person's update, blockers and parking lot from their previous entry on this standup into the matching boxes, each under an italic line naming that standup, for example "_Prior 7 Oct 2026 Wed:_". It fills only boxes that are empty and have something to bring in, so it never overwrites anything typed, and it is available only while at least one such box remains. While it is unavailable, hovering over it says why: either nothing was recorded at an earlier standup, or every box with something to bring in already has text.
+
+Save writes all three boxes. Cancel closes the panel, and opening another person's update, another date or another standup replaces it; each asks first when there are edits that have not been saved.
 
 Everything is keyed by standup, person, and date, so navigating to last Tuesday shows exactly what was recorded on last Tuesday.
 
@@ -384,7 +385,7 @@ Two caveats worth knowing before the design ossifies:
 
 ## Markdown editing
 
-`MarkdownEditor` is one component used by all three boxes on the update panel, so the toolbar, the preview toggle, and the character limit cannot drift apart. The toolbar itself is data: `MarkdownCommands.All` is a list of records describing each button, and the component renders whatever is in that list.
+`MarkdownEditor` is one component used by all three boxes on the update panel, so the toolbar, the preview toggle, and the character limit cannot drift apart. Each editor owns its preview state unless the parent binds `Preview`, which is how the update panel switches its three boxes from one `MarkdownPreviewToggle` in its header. The toolbar itself is data: `MarkdownCommands.All` is a list of records describing each button, and the component renders whatever is in that list.
 
 Formatting runs through a small JavaScript helper, because wrapping a selection needs the caret position and the browser owns that. The helper computes the new text and hands it back to Blazor, which remains the owner of the value. Inline commands toggle: pressing bold on already-bold text unwraps it.
 
@@ -574,6 +575,9 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 - Made deleting a numbered list item renumber the items after it at the same level.
 - Added a start date to each person, set in the person dialog and shown in a Start date column on the People screen.
 - Added how long each person has been at the organization to their board card caption, in years, months, weeks, and days as of the board's date, with their start date shown on hover.
+- Removed the Prior box from the update panel. A copy icon beside Cancel now brings the previous standup's update, blockers, and parking lot into their matching empty boxes, each headed by an italic line naming the standup it came from. When there is nothing to copy, hovering over the icon says why.
+- Fixed the update panel header showing only initials for a person who has a profile photo.
+- Replaced each update box's own preview button with one beside the copy icon that switches all three boxes between markdown and preview together.
 - Made every numbered list start at 1 whenever the editor renumbers it, top-level lists included.
 - Fixed Save update staying enabled, and the unsaved-changes warning appearing, after a successful save of text that ended in a blank line or space.
 
