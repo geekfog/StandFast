@@ -140,12 +140,13 @@ Each person gets their own colour. Past the eighth person the colours start agai
 StandFast.slnx
 ├── .github/rulesets/              Branch protection rulesets for the release branches, applied by a workflow
 ├── .vscode/                       F5 launch configuration and build/test tasks
-├── Directory.Build.props          Shared build settings and the single version number
+├── Directory.Build.props          Shared build settings, the single version number, and the icon artwork paths
 ├── Directory.Packages.props       Central package version management
 ├── Dockerfile                     Multi-stage build onto the chiseled ASP.NET runtime
 ├── azure-pipelines.yaml           Test stage plus one release template block per environment
 ├── azure-pipelines-release.yaml   Release stage template: provisions, builds the image, deploys
 ├── infra/main.bicep               All Azure resources
+├── media/                         App icon artwork (Affinity source plus the SVG, PNG and ICO the UI serves), named in Directory.Build.props
 ├── src/
 │   ├── StandFast.Domain           Entities, enums, calendar rules, repository interfaces
 │   ├── StandFast.Application      Services, DTOs, validators, mapping, auditing
@@ -578,6 +579,7 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 - Removed the Prior box from the update panel. A copy icon beside Cancel now brings the previous standup's update, blockers, and parking lot into their matching empty boxes, each headed by an italic line naming the standup it came from. When there is nothing to copy, hovering over the icon says why.
 - Fixed the update panel header showing only initials for a person who has a profile photo.
 - Replaced each update box's own preview button with one beside the copy icon that switches all three boxes between markdown and preview together.
+- Replaced the app icon with the new StandFast speech-bubble checkmark, on the browser tab, the About page, phone and tablet home-screen shortcuts, and the app executable.
 - Made every numbered list start at 1 whenever the editor renumbers it, top-level lists included.
 - Fixed Save update staying enabled, and the unsaved-changes warning appearing, after a successful save of text that ended in a blank line or space.
 
