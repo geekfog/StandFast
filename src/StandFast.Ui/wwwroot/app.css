@@ -202,13 +202,42 @@
     display: inline;
 }
 
+/* On a narrow screen the notes and the buttons each drop to their own line rather than squeezing the person's name. */
+.standfast-update-panel-header {
+    flex-wrap: wrap;
+    row-gap: 0.5rem;
+}
+
 /* Person notes share the update panel's header row, so a long note scrolls rather than pushing the editors down. */
 .standfast-person-notes {
     border-left: 1px solid var(--mud-palette-lines-default);
+    flex: 1 1 12rem;
     max-height: 6rem;
     min-width: 0;
     overflow-y: auto;
     padding-left: 1rem;
+}
+
+/* The header buttons stack pair by pair beside the notes before the whole group drops to its own line, so no label is ever clipped. */
+.standfast-update-panel-actions {
+    column-gap: 1.5rem;
+    display: flex;
+    flex: 1 0 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    margin-left: auto;
+    max-width: max-content;
+    row-gap: 0.5rem;
+    width: min-content;
+}
+
+.standfast-update-panel-actions > div {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.standfast-update-panel-actions .mud-button-root {
+    white-space: nowrap;
 }
 
 /* Editors side by side in a grid row stretch to the tallest column, so their bottom borders line up whatever their toolbars wrap to. */
@@ -304,6 +333,16 @@
 
 .standfast-markdown li.task-list-item input[type="checkbox"]:enabled {
     cursor: pointer;
+}
+
+/* MudBlazor's reset strips link color and underline, which leaves rendered links indistinguishable from text. */
+.standfast-markdown a {
+    color: var(--mud-palette-primary);
+    text-decoration: underline;
+}
+
+.standfast-markdown a:hover {
+    color: var(--mud-palette-primary-darken);
 }
 
 .standfast-markdown blockquote {

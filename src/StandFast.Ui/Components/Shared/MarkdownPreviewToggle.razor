@@ -1,6 +1,8 @@
 @* Switches markdown between its source and its rendered preview. Shared by a single editor's toolbar and by the update panel, which switches all its boxes at once. *@
 <MudTooltip Text="@Description">
-    <MudIconButton Icon="@(Preview ? Icons.Material.Filled.Edit : Icons.Material.Filled.Visibility)" Size="Size.Small" OnClick="@(() => PreviewChanged.InvokeAsync(!Preview))" aria-label="@Description" />
+    <MudButton Variant="Variant.Filled" Color="Color.Default" DropShadow="false" Size="@Size" StartIcon="@(Preview ? Icons.Material.Filled.Edit : Icons.Material.Filled.Visibility)" OnClick="@(() => PreviewChanged.InvokeAsync(!Preview))" aria-label="@Description">
+        @Label
+    </MudButton>
 </MudTooltip>
 
 @code {
@@ -14,5 +16,10 @@
     [Parameter]
     public string? Target { get; set; }
 
-    private string Description => string.Concat(Preview ? "Edit" : "Preview", Target is null ? string.Empty : $" {Target}");
+    [Parameter]
+    public Size Size { get; set; } = Size.Small;
+
+    private string Label => Preview ? "Edit" : "Preview";
+
+    private string Description => Target is null ? Label : $"{Label} {Target}";
 }

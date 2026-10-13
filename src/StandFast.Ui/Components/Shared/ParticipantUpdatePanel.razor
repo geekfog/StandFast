@@ -13,26 +13,32 @@
             }
             else
             {
-                <div class="flex-grow-1 mx-4 standfast-person-notes">
+                <div class="mx-4 standfast-person-notes">
                     <MarkdownView Value="@Participant.Notes" />
                 </div>
             }
-            @if (!IsReadOnly)
-            {
-                <MarkdownPreviewToggle @bind-Preview="isPreviewing" Target="all boxes" />
-                <MudTooltip Text="@CopyPriorDescription">
-                    <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" Disabled="@(!CanCopyPriorForward)" OnClick="CopyPriorForward" Class="mr-6" aria-label="@CopyPriorDescription" />
-                </MudTooltip>
-            }
-            <MudButton Variant="Variant.Text" Color="Color.Default" StartIcon="@Icons.Material.Filled.Close" OnClick="CancelAsync" Class="mr-2">
-                @(IsReadOnly ? "Close" : "Cancel")
-            </MudButton>
-            @if (!IsReadOnly)
-            {
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" Disabled="@(!IsDirty || isSaving)" OnClick="SaveAsync">
-                    @(isSaving ? "Saving..." : "Save update")
-                </MudButton>
-            }
+            <div class="standfast-update-panel-actions">
+                @if (!IsReadOnly)
+                {
+                    <div>
+                        <MarkdownPreviewToggle @bind-Preview="isPreviewing" Target="all boxes" Size="Size.Medium" />
+                        <MudTooltip Text="@CopyPriorDescription">
+                            <MudButton Variant="Variant.Filled" Color="Color.Default" DropShadow="false" StartIcon="@Icons.Material.Filled.ContentCopy" Disabled="@(!CanCopyPriorForward)" OnClick="CopyPriorForward" aria-label="@CopyPriorDescription">Copy</MudButton>
+                        </MudTooltip>
+                    </div>
+                }
+                <div>
+                    <MudButton Variant="Variant.Filled" Color="Color.Default" DropShadow="false" StartIcon="@Icons.Material.Filled.Close" OnClick="CancelAsync">
+                        @(IsReadOnly ? "Close" : "Cancel")
+                    </MudButton>
+                    @if (!IsReadOnly)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" Disabled="@(!IsDirty || isSaving)" OnClick="SaveAsync">
+                            @(isSaving ? "Saving..." : "Save")
+                        </MudButton>
+                    }
+                </div>
+            </div>
         </div>
     }
 
