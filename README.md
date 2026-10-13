@@ -90,7 +90,7 @@ The panel has three boxes:
 
 The three boxes share one height: the tallest content among them sets it, and each editing box grows with its text and fills to the bottom, so nothing scrolls inside a box; a panel taller than the dock allows scrolls as a whole.
 
-Two icons sit to the left of Cancel in the panel header. The preview toggle switches all three boxes together between markdown source and rendered preview; an expanded box carries the same toggle on its own line. The copy icon brings the person's update, blockers and parking lot from their previous entry on this standup into the matching boxes, each under an italic line naming that standup, for example "_Prior 7 Oct 2026 Wed:_". It fills only boxes that are empty and have something to bring in, so it never overwrites anything typed, and it is available only while at least one such box remains. While it is unavailable, hovering over it says why: either nothing was recorded at an earlier standup, or every box with something to bring in already has text.
+Two buttons sit to the left of Cancel and Save in the panel header. Preview (Edit while previewing) switches all three boxes together between markdown source and rendered preview; an expanded box carries the same toggle on its own line. Copy brings the person's update, blockers and parking lot from their previous entry on this standup into the matching boxes, each under an italic line naming that standup, for example "_Prior 7 Oct 2026 Wed:_". It fills only boxes that are empty and have something to bring in, so it never overwrites anything typed, and it is available only while at least one such box remains. While it is unavailable, hovering over it says why: either nothing was recorded at an earlier standup, or every box with something to bring in already has text.
 
 Save writes all three boxes. Cancel closes the panel, and opening another person's update, another date or another standup replaces it; each asks first when there are edits that have not been saved.
 
@@ -396,7 +396,7 @@ Rendering uses a single pre-built Markdig pipeline with advanced extensions on a
 
 Markdown collapses any run of blank lines into one paragraph break, so before rendering, `MarkdownRenderer` turns each blank line between content into its own `&nbsp;` paragraph, leaving fenced code blocks as typed. A blank line inside a list stays blank when the list carries on after it, as an indented line or another item of the same kind, since a spacer there would split the list. Rendered paragraphs and lists carry no vertical margin, so each blank line in the editor outside a list is exactly one empty line in the preview, and a list reads as one block.
 
-Task list items hide their bullet so the checkbox takes its place. In an editable box's preview the checkboxes are live: a click is sent to `MarkdownEditor`, which asks `MarkdownRenderer.ToggleTask` to flip the `[ ]` or `[x]` of the task at that position, located through Markdig's own parse so the count matches the rendered boxes. The changed text then marks the update unsaved, the same as typing, and Save update stores it. Read-only boxes render their checkboxes disabled.
+Task list items hide their bullet so the checkbox takes its place. In an editable box's preview the checkboxes are live: a click is sent to `MarkdownEditor`, which asks `MarkdownRenderer.ToggleTask` to flip the `[ ]` or `[x]` of the task at that position, located through Markdig's own parse so the count matches the rendered boxes. The changed text then marks the update unsaved, the same as typing, and Save stores it. Read-only boxes render their checkboxes disabled.
 
 Saving stores each box trimmed, with a blank box stored as empty, using the rule in `OptionalText`. The update panel compares its boxes with the stored update by that same rule, so leading or trailing spaces and blank lines never count as an unsaved change.
 
@@ -582,6 +582,9 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 - Replaced the app icon with the new StandFast speech-bubble checkmark, on the browser tab, the About page, phone and tablet home-screen shortcuts, and the app executable.
 - Made every numbered list start at 1 whenever the editor renumbers it, top-level lists included.
 - Fixed Save update staying enabled, and the unsaved-changes warning appearing, after a successful save of text that ended in a blank line or space.
+- Shortened Save update to Save, gave Cancel, Copy, and Preview/Edit a gray button background, and labeled Copy, Preview, and Edit beside their icons.
+- Made the update panel buttons stack two by two beside the person notes when space runs short, and move below them on a narrow screen, so their labels are never cut off.
+- Fixed links in the markdown preview looking like plain text. They now show in the accent color and underlined.
 
 ### v01.02.00 — 2026-10-01
 
