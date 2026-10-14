@@ -38,4 +38,7 @@ public static class AttendanceTransitions
 
     /// <summary>True once someone has been seen at the meeting, in whichever way they take part. Only an attending leader can be picked to lead.</summary>
     public static bool IsAttending(AttendanceState state) => state != AttendanceState.Roster;
+
+    /// <summary>True when someone belongs on the board in <paramref name="state"/>. An inactive person is never offered on the roster, but still shows on a date they attended.</summary>
+    public static bool IsOnBoard(AttendanceState state, bool isActive) => isActive || IsAttending(state);
 }

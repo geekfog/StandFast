@@ -150,7 +150,7 @@ public partial class Board
         (AttendanceState.Available, _) => "Tap a name on the roster as you spot them in the meeting.",
         (AttendanceState.Presented, _) => "Tap a name again once they have given their update.",
         (AttendanceState.Guest, _) => $"Switch the roster to {RosterLabels.Plural(AttendeeKind.Guest)} and tap a name to record a visitor.",
-        (_, AttendeeKind.Guest) => "Everyone else in People is already here as a guest.",
+        (_, AttendeeKind.Guest) => "Every other active person in People is already here as a guest.",
         _ => "Everyone has been marked present.",
     };
 

@@ -51,17 +51,19 @@ public sealed class BoardService(
         IReadOnlyDictionary<Guid, int> priorTurns = PresentationOrder.AtMostRecentMeeting(
             loaded.Select(item => item.Pair.Prior?.CompletedTurn).OfType<Presentation>());
 
-        // Anyone active who is not presenting can visit, so guests come from the whole directory rather than a roster.
+        // Anyone who is not presenting can visit, so guests come from the whole directory rather than a roster.
         HashSet<Guid> presenterIds = [.. loaded.Select(item => item.Person.Id)];
         Dictionary<Guid, StandupEntry> entriesOnDate = onDateTask.Result.ToDictionary(entry => entry.PersonId);
-        IEnumerable<BoardParticipantDto> guests = peopleTask.Result
-            .Where(person => person.IsActive && !presenterIds.Contains(person.Id))
-            .Select(person => new StandupEntryPair(entriesOnDate.GetValueOrDefault(person.Id), null).ToParticipantDto(person, AttendeeKind.Guest, BoardMappings.GuestDisplayOrder))
-            .Where(guest => AttendanceTransitions.IsGuestPlacement(guest.State));
+        IEnumerable<(Person Person, BoardParticipantDto Participant)> guests = peopleTask.Result
+            .Where(person => !presenterIds.Contains(person.Id))
+            .Select(person => (Person: person, Participant: new StandupEntryPair(entriesOnDate.GetValueOrDefault(person.Id), null).ToParticipantDto(person, AttendeeKind.Guest, BoardMappings.GuestDisplayOrder)))
+            .Where(guest => AttendanceTransitions.IsGuestPlacement(guest.Participant.State));
 
         IReadOnlyList<BoardParticipantDto> participants = loaded
-            .Select(item => item.Pair.ToParticipantDto(item.Person, AttendeeKind.Presenter, item.Member.DisplayOrder))
+            .Select(item => (item.Person, Participant: item.Pair.ToParticipantDto(item.Person, AttendeeKind.Presenter, item.Member.DisplayOrder)))
             .Concat(guests)
+            .Where(item => AttendanceTransitions.IsOnBoard(item.Participant.State, item.Person.IsActive))
+            .Select(item => item.Participant)
             .InColumnOrder(AttendanceState.Roster);
 
         IReadOnlyList<StandupMemberDto> leaders = leaderTask.Result.Where(member => member.IsActive).ToRoster(peopleById);
@@ -120,18 +122,22 @@ public sealed class BoardService(
         await validator.ValidateAndThrowAsync(update, cancellationToken);
         await GuardUnlockedAsync(update.StandupId, update.MeetingDate, cancellationToken);
 
-        // Guests attend without presenting, so only a presenter has an update to record.
-        if (await ResolveAttendeeAsync(update.StandupId, update.PersonId, cancellationToken) is not { Kind: AttendeeKind.Presenter } attendee)
+        if (await ResolveAttendeeAsync(update.StandupId, update.PersonId, cancellationToken) is not { } attendee)
         {
             return null;
         }
 
         StandupEntryPair pair = await entries.GetCurrentAndPriorAsync(update.StandupId, update.PersonId, update.MeetingDate, cancellationToken);
         StandupEntry entry = pair.EnsureEntry(update.StandupId, update.PersonId, update.MeetingDate);
+        if (!attendee.IsOnBoard(entry.State))
+        {
+            return null;
+        }
 
+        bool recordsBlockersAndParkingLot = attendee.Kind.RecordsBlockersAndParkingLot();
         entry.Update = OptionalText.Normalize(update.Update);
-        entry.Blockers = OptionalText.Normalize(update.Blockers);
-        entry.ParkingLot = OptionalText.Normalize(update.ParkingLot);
+        entry.Blockers = recordsBlockersAndParkingLot ? OptionalText.Normalize(update.Blockers) : null;
+        entry.ParkingLot = recordsBlockersAndParkingLot ? OptionalText.Normalize(update.ParkingLot) : null;
         entry.UpdateSavedUtc = clock.UtcNow;
 
         await entries.UpsertAsync(entry, cancellationToken);
@@ -178,6 +184,11 @@ public sealed class BoardService(
         StandupEntry entry = pair.EnsureEntry(standupId, personId, meetingDate);
 
         AttendanceState previous = AttendanceTransitions.Placement(entry.State, attendee.Kind);
+        if (!attendee.IsOnBoard(entry.State))
+        {
+            return null;
+        }
+
         AttendanceState next = transition(previous, attendee.Kind);
         if (next == previous)
         {
@@ -225,8 +236,8 @@ public sealed class BoardService(
     }
 
     /// <summary>
-    /// How a person takes part in the standup: a presenter when they are on its presenter roster, otherwise a guest as long as they are active.
-    /// Null when their person record has gone, or they are inactive and not presenting.
+    /// How a person takes part in the standup: a presenter when they are on its presenter roster, otherwise a guest. Null when their person record has gone.
+    /// Whether an inactive person can be changed on a given date is <see cref="Attendee.IsOnBoard"/>.
     /// </summary>
     private async Task<Attendee?> ResolveAttendeeAsync(Guid standupId, Guid personId, CancellationToken cancellationToken)
     {
@@ -241,7 +252,7 @@ public sealed class BoardService(
             return new Attendee(person, AttendeeKind.Presenter, member.DisplayOrder);
         }
 
-        return person.IsActive ? new Attendee(person, AttendeeKind.Guest, BoardMappings.GuestDisplayOrder) : null;
+        return new Attendee(person, AttendeeKind.Guest, BoardMappings.GuestDisplayOrder);
     }
 
     /// <summary>The person behind a leader pick, or null when they are not on the standup's leader roster, are not attending this date, or their person record has gone.</summary>
@@ -270,5 +281,8 @@ public sealed class BoardService(
     private sealed record Attendee(Person Person, AttendeeKind Kind, int DisplayOrder)
     {
         public BoardParticipantDto ToParticipantDto(StandupEntryPair pair) => pair.ToParticipantDto(Person, Kind, DisplayOrder);
+
+        /// <summary>The board's own visibility rule, so nothing can change someone the board does not show, such as an inactive person not attending.</summary>
+        public bool IsOnBoard(AttendanceState stored) => AttendanceTransitions.IsOnBoard(AttendanceTransitions.Placement(stored, Kind), Person.IsActive);
     }
 }
