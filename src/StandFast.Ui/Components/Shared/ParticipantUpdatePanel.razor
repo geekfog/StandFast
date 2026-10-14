@@ -46,7 +46,7 @@
         @if (IsShown(EditorField.Update))
         {
             <MudItem xs="12" md="@ColumnWidth" Class="standfast-markdown-column">
-                <MarkdownEditor Label="@LabelFor(EditorField.Update, "Current")"
+                <MarkdownEditor Label="@LabelFor(EditorField.Update, UpdateLabel)"
                                 @bind-Value="currentUpdate"
                                 ReadOnly="@IsReadOnly"
                                 Lines="@LinesFor(EditorField.Update)"
@@ -54,7 +54,7 @@
                                 ShowPreviewToggle="@IsExpanded(EditorField.Update)"
                                 Expanded="@IsExpanded(EditorField.Update)"
                                 ExpandedChanged="@(expanded => SetExpanded(EditorField.Update, expanded))"
-                                Placeholder="What did you do, what is next?"
+                                Placeholder="@UpdatePlaceholder"
                                 EmptyText="Nothing recorded for this date." />
             </MudItem>
         }
@@ -159,11 +159,18 @@
     // Compared in stored form, since saving trims the text and the reloaded participant carries what was stored.
     private bool IsDirty => !OptionalText.Matches(currentUpdate, Participant.Update) || !OptionalText.Matches(blockers, Participant.Blockers) || !OptionalText.Matches(parkingLot, Participant.ParkingLot);
 
-    private int ColumnWidth => expandedField is null ? GridColumns / SideBySideColumns : GridColumns;
+    private bool RecordsBlockersAndParkingLot => Participant.Kind.RecordsBlockersAndParkingLot();
+
+    // Guests record notes only, so their single box takes the full width.
+    private int ColumnWidth => expandedField is null && RecordsBlockersAndParkingLot ? GridColumns / SideBySideColumns : GridColumns;
+
+    private string UpdateLabel => RecordsBlockersAndParkingLot ? "Current" : "Notes";
+
+    private string UpdatePlaceholder => RecordsBlockersAndParkingLot ? "What did you do, what is next?" : "Anything to note?";
 
     private bool IsExpanded(EditorField field) => expandedField == field;
 
-    private bool IsShown(EditorField field) => expandedField is null || IsExpanded(field);
+    private bool IsShown(EditorField field) => (field == EditorField.Update || RecordsBlockersAndParkingLot) && (expandedField is null || IsExpanded(field));
 
     private int LinesFor(EditorField field) => IsExpanded(field) ? ExpandedLines : MarkdownEditor.DefaultLines;
 

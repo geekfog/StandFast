@@ -9,7 +9,7 @@ public enum AttendeeKind
     /// <summary>On the standup's presenter roster: marked present, then called on to give an update.</summary>
     Presenter = 0,
 
-    /// <summary>Not on the presenter roster: attends without presenting, which includes a leader who is not also a presenter.</summary>
+    /// <summary>Not on the presenter roster: attends without presenting, which includes a leader who is not also a presenter. A guest can record notes, but no blockers or parking lot.</summary>
     Guest = 1,
 }
 
@@ -17,4 +17,7 @@ public static class AttendeeKindExtensions
 {
     /// <summary>Kinds in the order the board's roster filter lists them.</summary>
     public static IReadOnlyList<AttendeeKind> InDisplayOrder { get; } = [AttendeeKind.Presenter, AttendeeKind.Guest];
+
+    /// <summary>True when this kind of attendee records blockers and a parking lot alongside their update. Guests record notes only.</summary>
+    public static bool RecordsBlockersAndParkingLot(this AttendeeKind kind) => kind == AttendeeKind.Presenter;
 }

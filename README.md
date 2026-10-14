@@ -41,7 +41,7 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
 
 ## What it does
 
-- **People** are a flat directory: first name, last name, email, active flag, an optional "display as" override, an optional profile photo, an optional title or role, organization and department, markdown notes, an optional start date for when they joined the organization, and an optional location: city, state or region, and the time zone they work in. When "display as" is set, that is how the person appears everywhere, including the roster and the board; otherwise they appear as first and last name. The People screen shows each person's photo beside their name, or their initials when they have none, their title or role in a Title/Role column, their location and time zone, their start date, and lists which standups each person presents at and which they can lead.
+- **People** are a flat directory: first name, last name, email, active flag, an optional "display as" override, an optional profile photo, an optional title or role, organization and department, markdown notes, an optional start date for when they joined the organization, and an optional location: city, state or region, and the time zone they work in. When "display as" is set, that is how the person appears everywhere, including the roster and the board; otherwise they appear as first and last name. The People screen shows each person's photo beside their name, or their initials when they have none, their title or role in a Title/Role column, their location and time zone, their start date, and lists which standups each person presents at and which they can lead. It lists active people only until its Show inactive switch is turned on.
 - **Standups** are recurring meeting definitions: name, the days they run on, start time, time zone, and two rosters. The Presenter Roster is who gives an update; the Leader Roster is who may run the meeting. The same person can be on both.
 - **The board** is one standup on one date. It opens on today with the current week across the top, a dropdown picks the standup independently of the date, and a second dropdown beside it records who is leading that day.
 - **Reports** chart what a standup has recorded over a period. A dropdown picks the report, a second picks the standup, and quick-pick buttons set how far back it runs.
@@ -55,11 +55,11 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
 
 The board has three columns and one tap moves a person rightwards through them. Each card shows the person's profile photo, ringed in the column's color, or their initials on that color when they have no photo.
 
-1. **Roster** lists people not yet marked here, always alphabetical by the name shown, and a Presenters / Guests toggle in its header picks who it lists. Presenters are the standup's Presenter Roster; Guests are every other active person in People, so a visitor can be recorded without being added to the standup. Tap a name as you see them join: a presenter lands in Present and a guest lands in Guests.
+1. **Roster** lists people not yet marked here, always alphabetical by the name shown, and a Presenters / Guests toggle in its header picks who it lists. Presenters are the active people on the standup's Presenter Roster; Guests are every other active person in People, so a visitor can be recorded without being added to the standup. An inactive person is never listed on the roster, but still shows in Present, Guests or Presented on any date they attended. Tap a name as you see them join: a presenter lands in Present and a guest lands in Guests.
 2. **Present, can be called on** holds the people who are actually there, in the same alphabetical order as the roster, so a name sits in the same place whichever of the two columns it is in. Tap a name when you call on them and they finish. Each card here carries the turn that person took at the previous standup, so someone who went late last time can be called early today. Anyone who was not at that standup shows ∞ instead of a number, and the card's caption says when they were marked present.
 3. **Presented** holds everyone who has given their update, in the order they gave it.
 
-**Guests, not presenting** sits under Present in the middle column and holds the people attending without giving an update. Someone on the Presenter Roster is always a presenter there and is never offered as a guest. A guest card goes no further than Guests and has no notes icon, since there is no update to record; its undo arrow sends it back to the roster when tapped by mistake, and its caption says when they were marked as a guest.
+**Guests, not presenting** sits under Present in the middle column and holds the people attending without presenting. Someone on the Presenter Roster is always a presenter there and is never offered as a guest. A guest card goes no further than Guests, and its notes icon opens an update panel with a single Notes box and no Blockers or Parking lot; its undo arrow sends it back to the roster when tapped by mistake, and its caption says when they were marked as a guest.
 
 Every time on the board, and which date counts as today, is in the standup's own time zone. Each card's caption ends with how many hours the person's time zone is ahead of (+) or behind (-) the standup's at the standup's start time on that date, for example "| +1h". Hovering over it shows their location. A person with no time zone recorded shows no offset. After that comes how long the person has been at the organization as of the board's date, for example "| 5y 7m 1w 2d": whole years first, then whole months of what remains, then whole weeks, then days, leaving out any part that is zero. Hovering over it shows their start date. A person with no start date recorded, or one that falls after the board's date, shows nothing there. Hovering over the rest of the caption shows the person's title or role, when one is recorded.
 
@@ -75,13 +75,13 @@ Your own card carries a dark yellow star after the name, in whichever column you
 
 An undo arrow on each card moves someone back a column if you mis-tap.
 
-The notes icon on a card opens that person's update panel. The icon turns red once anything has been recorded for that person on that date, on every presenter's card, so you can see at a glance who still owes an update. The card of whoever's panel is open carries an outline.
+The notes icon on a card opens that person's update panel. The icon turns red once anything has been recorded for that person on that date, on every card, so you can see at a glance who still owes an update. The card of whoever's panel is open carries an outline.
 
 On a wide window the board fits the screen without the page scrolling. The date, Lock button, messages, week strip and dropdowns stay at the top, an open update panel docks at the bottom, and the three columns scroll between them. The panel takes the room its content needs, at least 20rem and at most half the board, with the minimum winning on a short window; past that it scrolls inside itself while the person's name and the Save button stay in view. On a narrow window the board and panel stack and the page scrolls as usual.
 
 The panel header shows the person's profile photo, or their initials when they have none, ringed in their column's color as on their card, and their notes, rendered as markdown, to the right of their name, so anything worth knowing when running the standup is in view while their update is taken.
 
-The panel has three boxes:
+The panel has three boxes for a presenter. A guest gets only the first, labeled Notes, at full width:
 
 | Box | Behaviour |
 | --- | --------- |
@@ -587,6 +587,9 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 - Made the update panel buttons stack two by two beside the person notes when space runs short, and move below them on a narrow screen, so their labels are never cut off.
 - Fixed links in the markdown preview looking like plain text. They now show in the accent color and underlined.
 - Made StandFast installable as an app from Edge or Chrome, opening in its own window with its own taskbar icon and a title bar matching the light or dark appearance.
+- Let guests record notes. A guest card has the notes icon, and its update panel shows a single Notes box without Blockers or Parking lot.
+- Made the People page list only active people, with a Show inactive switch to list everyone.
+- Kept inactive people off the board's roster, while still showing them on any date they were present, a guest, or presented.
 
 ### v01.02.00 — 2026-10-01
 

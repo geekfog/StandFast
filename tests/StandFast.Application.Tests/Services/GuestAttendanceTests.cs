@@ -24,6 +24,42 @@ public sealed class GuestAttendanceTests
     }
 
     [Fact]
+    public async Task GetBoardAsync_ShowsInactivePeopleOnlyOnADateTheyAttended()
+    {
+        BoardTestContext context = new();
+        Person presented = await context.AddMemberAsync("Ada", "Lovelace");
+        Person notHere = await context.AddMemberAsync("Alan", "Turing");
+        Person visitor = await context.AddPersonAsync("Grace", "Hopper");
+        await context.Service.AdvanceAsync(context.Standup.Id, BoardTestContext.Today, presented.Id);
+        await context.Service.AdvanceAsync(context.Standup.Id, BoardTestContext.Today, presented.Id);
+        await context.Service.AdvanceAsync(context.Standup.Id, BoardTestContext.Today, visitor.Id);
+        foreach (Person person in new[] { presented, notHere, visitor })
+        {
+            person.IsActive = false;
+            await context.People.UpsertAsync(person);
+        }
+
+        StandupBoardDto board = await context.Service.GetBoardAsync(context.Standup.Id, BoardTestContext.Today);
+
+        Assert.Equal(AttendanceState.Presented, Assert.Single(board.Participants, participant => participant.PersonId == presented.Id).State);
+        Assert.Equal(AttendanceState.Guest, Assert.Single(board.Participants, participant => participant.PersonId == visitor.Id).State);
+        Assert.DoesNotContain(board.Participants, participant => participant.PersonId == notHere.Id);
+    }
+
+    [Fact]
+    public async Task AdvanceAsync_RefusesAnInactivePersonWhoIsNotAttending()
+    {
+        BoardTestContext context = new();
+        Person presenter = await context.AddMemberAsync("Ada", "Lovelace");
+        presenter.IsActive = false;
+        await context.People.UpsertAsync(presenter);
+
+        BoardParticipantDto? moved = await context.Service.AdvanceAsync(context.Standup.Id, BoardTestContext.Today, presenter.Id);
+
+        Assert.Null(moved);
+    }
+
+    [Fact]
     public async Task AdvanceAsync_MakesANonPresenterAGuestWhoGoesNoFurther()
     {
         BoardTestContext context = new();
@@ -77,7 +113,7 @@ public sealed class GuestAttendanceTests
     }
 
     [Fact]
-    public async Task SaveUpdateAsync_RecordsNothingForAGuest()
+    public async Task SaveUpdateAsync_RecordsNotesButNoBlockersOrParkingLotForAGuest()
     {
         BoardTestContext context = new();
         Person visitor = await context.AddPersonAsync("Grace", "Hopper");
@@ -89,9 +125,16 @@ public sealed class GuestAttendanceTests
             PersonId = visitor.Id,
             MeetingDate = BoardTestContext.Today,
             Update = "Just listening in.",
+            Blockers = "Waiting on access.",
+            ParkingLot = "Talk about the release.",
         });
 
-        Assert.Null(saved);
+        Assert.NotNull(saved);
+        Assert.Equal(AttendeeKind.Guest, saved.Kind);
+        Assert.Equal(AttendanceState.Guest, saved.State);
+        Assert.Equal("Just listening in.", saved.Update);
+        Assert.Null(saved.Blockers);
+        Assert.Null(saved.ParkingLot);
     }
 
     [Fact]
