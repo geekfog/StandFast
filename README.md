@@ -47,6 +47,7 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
 - **Reports** chart what a standup has recorded over a period. A dropdown picks the report, a second picks the standup, and quick-pick buttons set how far back it runs.
 - **Backup** downloads everything the app holds as one file and restores it again, replacing whatever is there at the time. The audit log and each user's own settings are excluded from both directions.
 - **Appearance** is light or dark, chosen from the toggle in the title bar and remembered for whoever is signed in. It follows that person to any browser or machine they sign in from, and a user who has never chosen gets light.
+- **Installing as an app**: Edge and Chrome offer to install StandFast from the address bar. The installed app opens in its own window with its own icon on the taskbar and Start menu, and its title bar takes the app bar's color, following the light or dark appearance. Edge is still required to run it.
 - **About** shows the version, summarizes what the app is for, and links to its source repository.
 - **Environment tag**: every environment other than production shows its name on a dark red tag at the top of the navigation menu (for example `Development` locally, `DEV` or `UAT` when deployed), shortened to three letters while the menu is collapsed. Production shows no tag.
 
@@ -450,9 +451,9 @@ The download is a plain HTTP endpoint rather than something the Blazor circuit p
 
 ## OpenID Connect sign-in
 
-Authorization code flow with PKCE against the provider's discovery document, with the session held in a persistent cookie that outlives the browser. Its expiry is `SignInSession:IdleDays` from the last request, because every request renews it rather than only those past the halfway point, so the setting is exactly the idle time a sign-in tolerates. The cookie is encrypted with the Data Protection key ring, which in Azure lives in blob storage, so a release or a replica restart keeps everyone signed in. A fallback authorisation policy requires an authenticated user, so a new page is protected unless it opts out; the health endpoint, the two auth endpoints and the static assets are the deliberate exceptions.
+Authorization code flow with PKCE against the provider's discovery document, with the session held in a persistent cookie that outlives the browser. Its expiry is `SignInSession:IdleDays` from the last request, because every request renews it rather than only those past the halfway point, so the setting is exactly the idle time a sign-in tolerates. The cookie is encrypted with the Data Protection key ring, which in Azure lives in blob storage, so a release or a replica restart keeps everyone signed in. A fallback authorisation policy requires an authenticated user, so a new page is protected unless it opts out; the health endpoint, the two auth endpoints, the web app manifest and the static assets are the deliberate exceptions.
 
-The static assets matter more than they look. `MapStaticAssets` registers every stylesheet, script and Blazor framework file as an endpoint, and the fallback policy applies to endpoints, so without an explicit opt-out the browser is sent to the identity provider to fetch a CSS file. Nothing there is secret, and an asset request cannot complete an interactive redirect.
+The static assets matter more than they look. `MapStaticAssets` registers every stylesheet, script and Blazor framework file as an endpoint, and the fallback policy applies to endpoints, so without an explicit opt-out the browser is sent to the identity provider to fetch a CSS file. Nothing there is secret, and an asset request cannot complete an interactive redirect. The web app manifest at `/manifest.webmanifest` is anonymous for the same reason: browsers fetch it without cookies. `ManifestEndpoints` builds it once from `AppInfo` and `StandFastTheme`, so the installed app's name, icons and colors follow those.
 
 Nothing in the code names a provider. `AuthenticationSetup` reads an `Authority`, a client id and a secret, and discovers every endpoint from `{Authority}/.well-known/openid-configuration`, so swapping providers is a configuration change. StandFast is configured against Kinde.
 
@@ -585,6 +586,7 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 - Shortened Save update to Save, gave Cancel, Copy, and Preview/Edit a gray button background, and labeled Copy, Preview, and Edit beside their icons.
 - Made the update panel buttons stack two by two beside the person notes when space runs short, and move below them on a narrow screen, so their labels are never cut off.
 - Fixed links in the markdown preview looking like plain text. They now show in the accent color and underlined.
+- Made StandFast installable as an app from Edge or Chrome, opening in its own window with its own taskbar icon and a title bar matching the light or dark appearance.
 
 ### v01.02.00 — 2026-10-01
 

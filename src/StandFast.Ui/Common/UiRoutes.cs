@@ -37,4 +37,7 @@ public static class UiRoutes
     public const string ReturnUrlQueryKey = "returnUrl";
 
     public const string HealthCheck = "/healthz";
+
+    /// <summary>The web app manifest, which lets a browser install the site as an app in its own window.</summary>
+    public const string Manifest = "/manifest.webmanifest";
 }

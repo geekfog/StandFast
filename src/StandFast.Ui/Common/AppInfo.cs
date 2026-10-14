@@ -20,6 +20,9 @@ public static class AppInfo
     /// <summary>The raster icon used when the app is pinned to a phone or tablet home screen.</summary>
     public const string TouchIconAsset = $"{Name}.png";
 
+    /// <summary>Pixel dimensions of <see cref="TouchIconAsset"/>, declared in the web app manifest.</summary>
+    public const string TouchIconSizes = "512x512";
+
     /// <summary>Zero-padding applied to each part of the displayed version.</summary>
     private const string VersionPartFormat = "D2";
 
