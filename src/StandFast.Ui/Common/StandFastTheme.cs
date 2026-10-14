@@ -1,4 +1,5 @@
 using MudBlazor;
+using MudBlazor.Utilities;
 
 namespace StandFast.Ui.Common;
 
@@ -29,6 +30,10 @@ public static class StandFastTheme
             DefaultBorderRadius = "8px",
         },
     };
+
+    /// <summary>The app bar's color as a hex string, used to tint the browser and installed-app title bar to match it.</summary>
+    public static string AppBarColor(bool isDarkMode) =>
+        (isDarkMode ? Default.PaletteDark.AppbarBackground : Default.PaletteLight.AppbarBackground).ToString(MudColorOutputFormats.Hex);
 
     /// <summary>Colour assigned to each board column, used by both the column header and the participant chips.</summary>
     public static Color ColumnColor(Domain.Enums.AttendanceState state) => state switch
