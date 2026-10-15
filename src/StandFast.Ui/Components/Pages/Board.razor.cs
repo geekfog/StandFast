@@ -258,7 +258,25 @@ public partial class Board
 
     private void CloseUpdate() => selectedPersonId = null;
 
-    private Task AdvanceAsync(Guid personId) => ApplyAsync(() => BoardService.AdvanceAsync(SelectedStandupId, SelectedDate, personId));
+    /// <summary>Advances one person. The first person marked here on a date brings the reader along from the roster too, since whoever is running the board is at the meeting.</summary>
+    private async Task AdvanceAsync(Guid personId)
+    {
+        bool wasAnyoneAttending = IsAnyoneAttending;
+
+        await AdvanceOneAsync(personId);
+
+        if (!wasAnyoneAttending && IsAnyoneAttending && SelfOnRoster is { } self && self.PersonId != personId)
+        {
+            await AdvanceOneAsync(self.PersonId);
+        }
+    }
+
+    private Task AdvanceOneAsync(Guid personId) => ApplyAsync(() => BoardService.AdvanceAsync(SelectedStandupId, SelectedDate, personId));
+
+    private bool IsAnyoneAttending => board?.Participants.Any(participant => AttendanceTransitions.IsAttending(participant.State)) == true;
+
+    /// <summary>The reader's own card while it is still on the roster, or null when they are not on this board or are already marked here.</summary>
+    private BoardParticipantDto? SelfOnRoster => board?.Participants.FirstOrDefault(participant => participant.State == AttendanceState.Roster && Preferences.IsSelf(participant.Email));
 
     private Task RevertAsync(Guid personId) => ApplyAsync(() => BoardService.RevertAsync(SelectedStandupId, SelectedDate, personId));
 
