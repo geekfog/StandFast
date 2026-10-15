@@ -70,7 +70,7 @@ People, standups, and rosters are set up once and changed as the team changes. B
 | Capability | Outcome | Limitations |
 | ---------- | ------- | ----------- |
 | Multiple standups | Each standup keeps its own schedule, time zone, rosters, and history. | |
-| Attendance and speaking order | One tap marks someone as joined and a second as having presented, so the board shows who is still waiting. Each card shows the turn the person took last time, so the order can be varied. | Guests cannot be marked as presented. |
+| Attendance and speaking order | One tap marks someone as joined and a second as having presented, so the board shows who is still waiting. Each card shows the turn the person took last time, so the order can be varied. Marking the first person on a date also marks you, when your own card is still on the roster. | Guests cannot be marked as presented. |
 | Leader | Records who ran the standup on each date. | Only people on the Leader Roster who are attending that date can be picked. |
 | Context at a glance | Each card shows the person's photo, their time zone offset from the standup, and their time with the organization, with location, start date, and title or role on hover. | Shown only for details recorded in People. |
 | Updates | Each person's update, blockers, and parking lot are captured with formatting, and last time's entry can be copied in with one click. | Guests get one notes box. |
@@ -291,6 +291,10 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 
 *Each entry is a specific version (release/\* branch), in descending order (newest version up top), with a plain bullet list summarizing each change without technical jargon.*
 
+### v01.04.00 — 2026-10-15
+
+- Made marking the first person present on a date also mark you, when your own starred card is still on the roster.
+
 ### v01.03.00 — 2026-10-02
 
 - Added indent and outdent buttons to the markdown toolbar for nesting bulleted, numbered, and task list items.
@@ -324,7 +328,7 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 - Added guests: anyone in People who is not on a standup's Presenter Roster can be recorded as attending without presenting. A Presenters / Guests toggle on the roster picks who it lists, and guests appear in their own list under Present, can be sent back to the roster, and can never be marked as presented.
 - Made the Leader dropdown offer only leaders who are attending that date, as a guest or a presenter marked present, and clear the pick when the leader is sent back to the roster.
 
-### v01.00 — 2026-09-15
+### v01.00.00 — 2026-09-15
 
 - Created the StandFast solution: a daily scrum board with people, standup definitions, and a date-based board.
 - Added the three-column board that opens on today, with the current week across the top and a separate picker for which standup you are running.

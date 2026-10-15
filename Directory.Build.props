@@ -12,7 +12,7 @@
     <Product>StandFast</Product>
     <Company>StandFast</Company>
     <!-- Single source of truth for the application version as MM.mm.pp (Major.Minor.PatchNumber) -->
-    <VersionPrefix>01.03.00</VersionPrefix>
+    <VersionPrefix>01.04.00</VersionPrefix>
     <!-- Single source of truth for the app's icon artwork: one file per format under media, each named after the product -->
     <BrandingDirectory>$(MSBuildThisFileDirectory)media\</BrandingDirectory>
     <BrandingIconSvg>$(BrandingDirectory)$(Product).svg</BrandingIconSvg>
