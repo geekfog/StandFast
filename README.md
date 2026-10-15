@@ -156,7 +156,7 @@ Run every command from the repository root unless a step says otherwise.
 1. Install the .NET SDK and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite), and optionally an editor, from the [Technical Overview](#technical-overview).
 2. Get the source: `git clone https://github.com/geekfog/StandFast.git`, then `cd StandFast`.
 3. Trust the HTTPS development certificate with `dotnet dev-certs https --trust`. This works on Windows and macOS; on Linux, follow [Microsoft's instructions](https://learn.microsoft.com/aspnet/core/security/enforcing-ssl#trust-the-aspnet-core-https-development-certificate) for your distribution.
-4. Register an application with your identity provider as a server-side web app that uses the authorization code flow with a client secret:
+4. <a id="register-identity-provider"></a>Register an application with your identity provider as a server-side web app that uses the authorization code flow with a client secret:
 
    | Provider setting | Value |
    | ---------------- | ----- |
@@ -189,9 +189,10 @@ An Azure DevOps pipeline builds the app on every change to a `release/*` branch 
 
 These steps set up the one environment the pipeline defines, PRD. Another environment is another `azure-pipelines-release.yaml` block in `azure-pipelines.yaml`, with its own variable group and Pipelines environment.
 
-1. Register an application with your identity provider as in [Run Locally](#run-locally) step 4, without callback URLs for now.
-2. In your Azure DevOps project, create an Azure Resource Manager [service connection](https://learn.microsoft.com/azure/devops/pipelines/library/service-endpoints) to the subscription, named `StandFast-Azure`. That name is set in [azure-pipelines.yaml](azure-pipelines.yaml).
-3. As someone with **Owner** or **User Access Administrator** on the subscription, give the service connection's principal the **Role Based Access Control Administrator** role at subscription scope, so the deployment can grant the app's managed identity its access. Without it the release fails with `Authorization failed for template resource … Microsoft.Authorization/roleAssignments`. Either:
+1. [Fork](https://github.com/geekfog/StandFast/fork) this repository. The pipeline builds from your fork.
+2. [Register an application with your identity provider](#register-identity-provider), without callback URLs for now.
+3. In your Azure DevOps project, create an Azure Resource Manager [service connection](https://learn.microsoft.com/azure/devops/pipelines/library/service-endpoints) to the subscription, named `StandFast-Azure`. That name is set in [azure-pipelines.yaml](azure-pipelines.yaml).
+4. As someone with **Owner** or **User Access Administrator** on the subscription, give the service connection's principal the **Role Based Access Control Administrator** role at subscription scope, so the deployment can grant the app's managed identity its access. Without it the release fails with `Authorization failed for template resource … Microsoft.Authorization/roleAssignments`. Either:
    - Run this in [Azure Cloud Shell](https://learn.microsoft.com/azure/cloud-shell/overview) (PowerShell):
 
      ```powershell
@@ -201,12 +202,12 @@ These steps set up the one environment the pipeline defines, PRD. Another enviro
      ```
 
    - Or, in the Azure portal: open the service connection in Azure DevOps and note its id, select **Manage service connection roles**, then **+ Add** → **Add role assignment** → **Privileged administrator roles** → **Role Based Access Control Administrator**. Select the member by searching for the service connection id, and on the Conditions tab choose **Allow user to assign all roles (highly privileged)**.
-4. Create the [variable groups](https://learn.microsoft.com/azure/devops/pipelines/library/variable-groups) `standfast-vars` and `standfast-prd-vars`, holding every variable [Settings](#settings) marks as required, and authorize both for the pipeline. Mark `a_OidcClientSecret` as secret, or link the group to a Key Vault that holds it.
-5. Create the [Pipelines environment](https://learn.microsoft.com/azure/devops/pipelines/process/environments) `StandFast PRD`.
-6. Create a pipeline from `azure-pipelines.yaml` in this repository, then push or merge to a `release/*` branch to run it.
-7. At the end of the release log, copy the app's address and the two callback URLs, and register the callback URLs with the identity provider.
-8. Open `<app address>/healthz`, which returns `Healthy`, then open the app's address and sign in.
-9. Set up the data as in [Using StandFast](#using-standfast), or restore a backup within the app, taken from another environment.
+5. Create the [variable groups](https://learn.microsoft.com/azure/devops/pipelines/library/variable-groups) `standfast-vars` and `standfast-prd-vars`, holding every variable [Settings](#settings) marks as required, with `a_AppBase` and `a_RegionToken` chosen by the [resource naming rule](#resource-naming), and authorize both for the pipeline. Mark `a_OidcClientSecret` as secret, or link the group to a Key Vault that holds it.
+6. Create the [Pipelines environment](https://learn.microsoft.com/azure/devops/pipelines/process/environments) `StandFast PRD`.
+7. Create a pipeline from `azure-pipelines.yaml` in your copy, authorizing Azure DevOps to read it when asked, then push or merge to a `release/*` branch to run it.
+8. At the end of the release log, copy the app's address and the two callback URLs, and register the callback URLs with the identity provider.
+9. Open `<app address>/healthz`, which returns `Healthy`, then open the app's address and sign in.
+10. Set up the data as in [Using StandFast](#using-standfast), or restore a backup within the app, taken from another environment.
 
 ## Optional settings
 
@@ -228,7 +229,8 @@ Open the custom domain if one is set, or the container app's **Application Url**
 | Test | `dotnet test StandFast.slnx`. The Azurite integration tests skip themselves when Azurite is not running. The pipeline runs the same build and tests on every pull request. |
 | Contributing | Branch `feature/*` from the release branch you are targeting and open a pull request into it. Every merge into a release branch deploys. Add a line for the change under that version in the Change Summary below. |
 | Versions and branches | `VersionPrefix` in [Directory.Build.props](Directory.Build.props) is the only version. Each `release/MM.mm` branch is cut from the previous one, and the newest is the default branch. |
-| Branch policy | [GitHub rulesets](https://docs.github.com/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets) in [.github/rulesets](.github/rulesets) allow changes to release branches only by pull request and make every release branch but the newest read-only. The [Branch policy](.github/workflows/branch-policy.yml) workflow applies them and needs a repository secret `RULESET_ADMIN_TOKEN`: a fine-grained personal access token for this repository with **Administration: Read and write**. |
+| Taking updates | Each version arrives as a new `release/MM.mm` branch in this repository. In your copy, run `git fetch upstream`, then push the new branch with `git push origin upstream/release/MM.mm:refs/heads/release/MM.mm`, which deploys it. GitHub's Sync fork button only updates the branch you are on. |
+| Branch policy | Maintainer only; a copy can skip it. [GitHub rulesets](https://docs.github.com/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets) in [.github/rulesets](.github/rulesets) allow changes to release branches only by pull request and make every release branch but the newest read-only. The [Branch policy](.github/workflows/branch-policy.yml) workflow applies them and needs a repository secret `RULESET_ADMIN_TOKEN`: a fine-grained personal access token for this repository with **Administration: Read and write**. GitHub turns Actions off in a fork until the owner enables them. |
 | Ownership | Maintained by Hans Dickel ([geekfog](https://github.com/geekfog)). |
 | Support | [GitHub Issues](https://github.com/geekfog/StandFast/issues). |
 | License | [GNU General Public License v3.0](LICENSE). |
@@ -246,9 +248,9 @@ Locally a setting is a key in a settings file or user secrets. In Azure it is a 
 | `StandFastUi:DisplayTimeZoneId` | The [time zone](#time-zones) for times that belong to no standup, such as on the Backup screen, and for a standup whose own time zone the server cannot resolve. The board and reports use the standup's own time zone. Empty falls back to the server's zone: your machine's locally, UTC in the container. | User secrets, optional | `standfast-<env>-vars`: `a_DisplayTimeZoneId` | Variable required, value may be empty |
 | (none) | The custom domain the app answers on; see [Optional settings](#optional-settings). Empty leaves only the generated Container Apps address. | (none) | `standfast-<env>-vars`: `a_CustomDomain` | Variable required, value may be empty |
 | (none) | Branches that may release to this environment; see [Optional settings](#optional-settings). | (none) | `standfast-<env>-vars`: `a_AllowedBranches` | Optional |
-| (none) | Region segment of every resource name, such as `usnorth`. | (none) | `standfast-<env>-vars`: `a_RegionToken` | Required |
+| (none) | Region segment of every resource name, such as `<region>`; see the [resource naming rule](#resource-naming). | (none) | `standfast-<env>-vars`: `a_RegionToken` | Required |
 | (none) | Azure region everything is created in, such as `northcentralus`. | (none) | `standfast-<env>-vars`: `a_Location` | Required |
-| (none) | First segment of every resource name and the `Product` tag, identical across environments, such as `standfast`. | (none) | `standfast-vars`: `a_AppBase` | Required |
+| (none) | First segment of every resource name and the `Product` tag, identical across environments, such as `<appbase>`; see the [resource naming rule](#resource-naming). | (none) | `standfast-vars`: `a_AppBase` | Required |
 | `AzureTableStorage:TablePrefix` | Prefix on every table name, so one storage account can hold several environments. Letters and digits only, starting with a letter, 21 characters at most. | `appsettings.Development.json`: `StandFastDev`, overridable in user secrets | Set by the Bicep; see [Values set for you](#values-set-for-you) | Committed |
 | `AzureTableStorage:CreateTablesOnStartup` | Creates missing tables at startup. Turn off only where the identity has no table-create rights. | `appsettings.json`: `true` | `appsettings.json`: `true` | Committed |
 | `BoardLock:GraceMinutes` | Minutes after a date's last presentation within which locking it records the moment Lock was pressed. A lock applied later is dated from the last presentation instead, so a date locked the next morning does not read as a meeting that ran all night. | `appsettings.json`: `60` | `standfast-<env>-vars`: `a_BoardLockGraceMinutes` | Optional; an undefined variable keeps the committed value |
@@ -257,6 +259,8 @@ Locally a setting is a key in a settings file or user secrets. In Azure it is a 
 | `Oidc:CallbackPath`, `Oidc:SignedOutCallbackPath`, `Oidc:SignedOutRedirectUri` | Sign-in and sign-out paths. The two callback paths, after the app's address, are what gets registered with the identity provider. | `appsettings.json` | `appsettings.json` | Committed |
 | `Oidc:Scopes` | Scopes added to `openid`, `profile`, and `email`. Only needed when the provider requires another. | `appsettings.json`, optional | `appsettings.json`, optional | Optional |
 
+<a id="resource-naming">**Resource naming rule:**</a> each Azure resource is named `a_AppBase`, the environment code, and `a_RegionToken` run together, plus a short suffix. The storage account, Key Vault, and container registry names must be unique across all of Azure, so choose values no one else uses. Use letters and digits only, with the three parts together at most 22 characters, because storage account and Key Vault names are limited to 24.
+
 ### Values set for you
 
 Listed so a value found in a deployed app can be traced to what produced it. None of these is set by hand.
@@ -264,7 +268,7 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 | Value | Set by |
 | ----- | ------ |
 | `AzureTableStorage:ServiceUri` | The Bicep, from the storage account it creates. The app authenticates with `DefaultAzureCredential`, so no key is involved. Empty locally, which makes the connection string apply. |
-| `AzureTableStorage:TablePrefix` | The Bicep, as `a_AppBase` plus the environment code, such as `standfastPRD`. |
+| `AzureTableStorage:TablePrefix` | The Bicep, as `a_AppBase` plus the environment code, such as `<appbase>PRD`. |
 | `StandFastUi:DataProtectionBlobUri` | The Bicep, from the same storage account. Holds the Data Protection key ring that every replica shares. |
 | `StandFastUi:EnvironmentLabel` | The Bicep, as the environment code everywhere except PRD, where it is empty. Drives the navigation menu's environment tag. Unset locally, where the tag shows the `ASPNETCORE_ENVIRONMENT` name. |
 
@@ -311,7 +315,7 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 - Let guests record notes. A guest card has the notes icon, and its update panel shows a single Notes box without Blockers or Parking lot.
 - Made the People page list only active people, with a Show inactive switch to list everyone.
 - Kept inactive people off the board's roster, while still showing them on any date they were present, a guest, or presented.
-- Reorganized the documentation so a newcomer can read what StandFast does, how to set it up and use it, and how to run it locally and deploy it, in that order, with every setting listed in one place.
+- Reorganized the documentation so a newcomer can read what StandFast does, how to set it up and use it, and how to run it locally and deploy it, in that order, with every setting listed in one place, and steps for running your own copy.
 
 ### v01.02.00 — 2026-10-01
 
