@@ -1,8 +1,21 @@
 # About StandFast
 
-StandFast is a daily scrum board. You pick a standup and a date, tap people as you spot them in the Teams call, tap them again as they give their update, and capture what they said as markdown alongside whatever they said last time.
+StandFast is a web app for running a daily standup. The person running the call taps each attendee in as they join, taps them again as they give their update, and records what they said.
 
-It runs as a single Blazor Server container in Azure Container Apps, signs in through OpenID Connect (Kinde), and stores everything in Azure Table Storage.
+| Capability | What it gives you |
+| ---------- | ----------------- |
+| Multiple standups | Any number of standups, each with its own days, start time, time zone, presenters, and possible leaders. Anyone can attend as a guest. |
+| Attendance and order | Who was present, who attended as a guest, who presented, and in what order. Each card shows the turn the person took last time. |
+| Leader | Who ran the standup that day, picked from the possible leaders who are attending. |
+| Context at a glance | Each card shows the person's photo, their time zone offset from the standup, and how long they have been with the organization. Hovering shows their location, start date, and title or role. |
+| Updates | Markdown notes for each person's update, blockers, and parking-lot topics, with last time's entry one click away. |
+| History | Any past date opens exactly as it was recorded, and a locked date can no longer be changed by accident. |
+| Reports | A chart of speaking order over time and a table of meeting days, presenters, and how long each meeting ran. |
+| People | A directory of names, photos, roles, organization and department, location, time zone, start date, and notes. |
+
+<img src=".readme/screen-001.png" alt="StandFast board" align="left" />
+
+It runs in Azure as a single container, signs in through your OpenID Connect provider, and can be installed as a desktop app from Edge or Chrome.
 
 # Table of Contents
 
@@ -28,9 +41,6 @@ It runs as a single Blazor Server container in Azure Container Apps, signs in th
   - [Backup and restore](#backup-and-restore)
   - [OpenID Connect sign-in](#openid-connect-sign-in)
   - [Azure Container Apps](#azure-container-apps)
-    - [What you gain over App Service](#what-you-gain-over-app-service)
-    - [What it costs you](#what-it-costs-you)
-    - [What bites Blazor Server specifically](#what-bites-blazor-server-specifically)
   - [Deploying](#deploying)
     - [Versions and branches](#versions-and-branches)
     - [Branch filtering](#branch-filtering)
@@ -63,13 +73,13 @@ The board has three columns and one tap moves a person rightwards through them. 
 
 Every time on the board, and which date counts as today, is in the standup's own time zone. Each card's caption ends with how many hours the person's time zone is ahead of (+) or behind (-) the standup's at the standup's start time on that date, for example "| +1h". Hovering over it shows their location. A person with no time zone recorded shows no offset. After that comes how long the person has been at the organization as of the board's date, for example "| 5y 7m 1w 2d": whole years first, then whole months of what remains, then whole weeks, then days, leaving out any part that is zero. Hovering over it shows their start date. A person with no start date recorded, or one that falls after the board's date, shows nothing there. Hovering over the rest of the caption shows the person's title or role, when one is recorded.
 
-The Leader dropdown beside the standup picker records who ran the standup that day. It offers the people on the standup's Leader Roster who are attending that date, as a guest or as a presenter marked present, so nobody who is not there can be picked. A leader who is not also a presenter is tracked as a guest. Sending the day's leader back to the roster clears the pick, and a date whose leader was recorded before this rule still shows that leader. The pick is per date rather than per standup, and it can be left empty, so a standup nobody was picked for reads as exactly that.
+The Leader dropdown beside the standup picker records who ran the standup that day. It offers the people on the standup's Leader Roster who are attending that date, as a guest or as a presenter marked present, so nobody who is not there can be picked. A leader who is not also a presenter is tracked as a guest. Sending the day's leader back to the roster clears the pick. The pick is per date rather than per standup, and it can be left empty, so a standup nobody was picked for reads as exactly that.
 
-The Lock button beside the date closes that date once the standup is over, so a stray tap on a board someone left open cannot change what was recorded. It becomes available once at least one person has presented, since a date nobody has spoken on has nothing to close. A locked date still opens and still shows every update; what it withholds is the tapping, the undo arrows, the Leader dropdown and the Save button. Unlocking asks first, since that is the press that puts a finished standup back within reach.
+The Lock button beside the date closes that date once the standup is over, so a stray tap on a board someone left open cannot change what was recorded. It becomes available once at least one person has presented, since a date nobody has spoken on has nothing to close. A locked date still opens and still shows every update; what it withholds is the tapping, the undo arrows, the Leader dropdown and the Save button. Unlocking asks first.
 
 The time the lock carries is the time it was applied, as long as the standup is still recent. Lock the date hours later, or the next morning, and it is dated from the last person who presented instead, plus a few minutes, because a board closed the next day should not read as though the meeting ran that long. Both windows are settings; see [Everything you set](#everything-you-set). A date nobody presented on has no such anchor, so it takes the time it was locked whenever that was, and a date locked twice keeps the first time.
 
-A dot under a date in the week strip means someone presented on that date, so a week with a finished standup is recognisable without opening each day. The dot is blue while the date is still open and orange once it is locked, matching the colour the Lock button and the locked banner carry. On the selected date the dot is ringed in the button's text color so it stands out from the green fill.
+A dot under a date in the week strip means someone presented on that date, so a week with a finished standup is recognizable without opening each day. The dot is blue while the date is still open and orange once it is locked, matching the color the Lock button and the locked banner carry. On the selected date the dot is ringed in the button's text color so it stands out from the green fill.
 
 Your own card carries a dark yellow star after the name, in whichever column you are sitting in, so you can find yourself on a long roster without reading the names. It shows when the address you signed in with matches the one on your person record.
 
@@ -83,7 +93,7 @@ The panel header shows the person's profile photo, or their initials when they h
 
 The panel has three boxes for a presenter. A guest gets only the first, labeled Notes, at full width:
 
-| Box | Behaviour |
+| Box | Behavior |
 | --- | --------- |
 | Current update | Markdown editor with a formatting toolbar and an expand button that fills the panel with this one box. While expanded, the person's name, the toolbar, a preview toggle, and an X that returns to all three boxes share one line. On a locked day the box shows rendered text only. |
 | Blockers | Same editor, including the expand button. A card showing blockers gets a warning icon on the board. |
@@ -105,7 +115,7 @@ The period runs back from today and is set by the quick-pick buttons: 30 days, 6
 
 **Presenting Order vs Date** draws one line per person against the dates the standup ran. The vertical axis is the turn they took, first at the top, with ∞ along the bottom for a day they did not present; the horizontal axis is the dates themselves. A dot marks each day someone actually presented, and the line between dots shows whether they are drifting later or earlier over the period. Only days on which somebody presented appear, so a fortnight off does not fill the chart with empty columns, and only people who presented at least once in the period get a line — including anyone since taken off the roster, because the report is of what happened rather than of who is on the roster now.
 
-Each person gets their own colour. Past the eighth person the colours start again as dashed lines, then as longer dashes, and so on through thirteen patterns, so two people never share both a colour and a line style until the 105th. The legend carries each person's line drawn in their own style, and the order numbers are also available as a plain table under the chart.
+Each person gets their own color. Past the eighth person the colors start again as dashed lines, then as longer dashes, and so on through thirteen patterns, so two people never share both a color and a line style until the 105th. The legend carries each person's line drawn in their own style, and the order numbers are also available as a plain table under the chart.
 
 **Standup Activity** is a table of the days the standup actually ran, newest first. A day appears once somebody has presented on it, so a date that was only annotated — a leader picked, people marked present — is not one of them.
 
@@ -127,7 +137,7 @@ Each person gets their own colour. Past the eighth person the colours start agai
 | Programming Language | C# 14 |
 | UI | Blazor Server (interactive server render mode) with MudBlazor 9 |
 | Markdown | Markdig for rendering, a custom toolbar plus a small JavaScript selection helper for editing |
-| Identity | OpenID Connect (Kinde) via `Microsoft.AspNetCore.Authentication.OpenIdConnect` |
+| Identity | OpenID Connect (OAuth2 Provider, such as [Kinde](https://kinde.com)) via `Microsoft.AspNetCore.Authentication.OpenIdConnect` |
 | Storage | Azure Table Storage (`Azure.Data.Tables`), managed identity authentication |
 | Logging | Serilog: console everywhere, an Azure Table sink for audit records |
 | Hosting | Azure Container Apps, external ingress, sticky sessions |
@@ -166,7 +176,7 @@ Everything sensitive goes into user secrets rather than into `appsettings.json`;
 
 Run the tests with `dotnet test`. The Azurite integration tests skip themselves when nothing is listening on the emulator's table port, so the suite is green with or without it, on this machine and on the build agent.
 
-`.vscode/launch.json` gives an F5 configuration that builds the solution and launches the UI on the `https` profile, taking its ports and environment from `launchSettings.json` rather than repeating them. It sets `hotReloadEnabled` to false, because starting a Hot Reload session writes `Service IManagedEditAndContinueEngineRegistration is unavailable` into the Debug Console on every launch. That exception comes from the debugger, not the app, and nothing stops working, but it appears on every run. Set the flag back to true once the C# Dev Kit installation is sorted out.
+`.vscode/launch.json` gives an F5 configuration that builds the solution and launches the UI on the `https` profile, taking its ports and environment from `launchSettings.json` rather than repeating them. It sets `hotReloadEnabled` to false, because Hot Reload logs a harmless debugger exception on every launch.
 
 ## Configuration
 
@@ -175,8 +185,6 @@ The release stage creates the resource group, then deploys the platform resource
 1. An **Azure Resource Manager** service connection named `StandFast-Azure`. The name lives in `azure-pipelines.yaml` rather than a variable group, because Azure DevOps resolves service connection references while compiling the pipeline, before any variable group has been read.
 
 2. **Role Based Access Control Administrator** on that service connection's principal, at subscription scope. The Bicep gives the app's managed identity its four data-plane roles (otherwise yields `Authorization failed for template resource … Microsoft.Authorization/roleAssignments` in the pipeline). 
-
-   
 
    **OPTION 1: Command Line**
 
@@ -198,13 +206,9 @@ The release stage creates the resource group, then deploys the platform resource
    az role assignment create --assignee-object-id <service principal object id> --assignee-principal-type ServicePrincipal --role "Role Based Access Control Administrator" --scope /subscriptions/<subscription id>
    ```
 
-   
-
    **OPTION 2: Azure Portal**
 
    Open the Azure DevOps Project-based Service Connection. Note the service connection ID (GUID) under the name. Click **Manage service connection roles**. This opens **Access control (IAM)** for the subscription On the top bar, click **+ Add** → **Add role assignment**. In the Role tab, click **Privileged administrator roles** tab. Click on **Role Based Access Control Administrator**. Click **Next** button, In the Members tab, verify **User, group, or service principal** is selected within **Assign access to**. click **+ Select members**. Search for the service connection ID (GUID) previously noted. By default, it is prefixed with the Azure DevOps Organization Name with a hyphen and the Azure DevOps Project name, followed by a hyphen and the service connection ID (GUID). select the member, click **Select** button, and click **Next** button. In the Conditions tab, choose **Allow user to assign all roles (highly privileged)**. Click the **Review + Assign** button.
-
-   
 
 3. The two variable groups below, with both authorized for the pipeline. A group that exists but is not authorized fails the run identically to one that does not exist.
 
@@ -246,7 +250,7 @@ Nothing here is yours to fill in. It is listed so a value you find in the deploy
 | `StandFastUi:EnvironmentLabel`       | Bicep, as the environment code for every environment except PRD, where it is empty. Drives the navigation menu's environment tag. Unset locally, where the tag falls back to the `ASPNETCORE_ENVIRONMENT` name. |
 | `ASPNETCORE_ENVIRONMENT`              | Bicep, always `Production`, in every cloud environment including DEV. `appsettings.Development.json` is therefore a local-only file and never applies to a deployed environment. |
 | Resource group, registry login server, image tag | The release stage, from `a_AppBase`, `a_RegionToken` and the build number. |
-| `p_MinReplicas`, `p_MaxReplicas`      | `infra/main.bicep` defaults of 1 and 3. No variable group feeds them; change the defaults to change the scale range, and read [What bites Blazor Server specifically](#what-bites-blazor-server-specifically) before dropping the minimum to zero. |
+| `p_MinReplicas`, `p_MaxReplicas`      | `infra/main.bicep` defaults of 1 and 3. No variable group feeds them; change the defaults to change the scale range, and read [Azure Container Apps](#azure-container-apps) before dropping the minimum to zero. |
 
 The `g_` variables declared in `azure-pipelines.yaml` and the `v_` values the release stage computes are part of the pipeline rather than settings, and need nothing from you.
 
@@ -289,32 +293,29 @@ A time zone picked for a standup or a person is saved as its IANA id whichever h
 
 ## Layering
 
-Each layer depends only on the one below it. Compile-time dependencies point inward: the Domain declares the repository interfaces, and Infrastructure implements them, so nothing above the Domain knows Azure Table Storage exists.
+Each arrow is a project reference, pointing from the project that uses another to the one it uses. The Domain references nothing, and Infrastructure points inward to implement the interfaces declared by the Domain and the Application, so the Application and Domain never touch Azure Table Storage.
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│ StandFast.Ui                                                │
-│ Blazor Server, MudBlazor, OpenID Connect sign-in, Serilog   │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│ StandFast.Application                                       │
-│ Services, DTOs, validators, mapping, audit records          │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│ StandFast.Domain                                            │
-│ Entities, enums, calendar rules, repository interfaces      │
-└──────────────────────────────┬──────────────────────────────┘
-                               │ implements
-                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│ StandFast.Infrastructure                                    │
-│ Azure Table Storage clients, table entities, key design     │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    Ui["<b>StandFast.Ui</b><br/>Blazor Server, MudBlazor, OpenID Connect sign-in, Serilog"]
+    Application["<b>StandFast.Application</b><br/>Services, DTOs, validators, mapping, audit records, backup and current-user interfaces"]
+    Domain["<b>StandFast.Domain</b><br/>Entities, enums, calendar rules, repository interfaces"]
+    Infrastructure["<b>StandFast.Infrastructure</b><br/>Azure Table Storage clients, table entities, key design"]
+
+    Ui -- calls services --> Application
+    Ui -- registers services, audit log table --> Infrastructure
+    Application --> Domain
+    Infrastructure -- implements backup store --> Application
+    Infrastructure -- implements repositories --> Domain
 ```
+
+| Reference | Why it exists |
+| --------- | ------------- |
+| Ui → Application | Pages and components call Application services and receive DTOs. |
+| Ui → Infrastructure | Startup only: `Program.cs` calls `AddStandFastInfrastructure` to register the storage services, and `LoggingSetup.cs` reads the storage settings to send audit records to their own table. No page or component uses Infrastructure. |
+| Application → Domain | Services work with domain entities and the repository interfaces. |
+| Infrastructure → Application | `TableBackupStore` implements `IBackupStore`. |
+| Infrastructure → Domain | The Table Storage repositories implement the Domain's repository interfaces. |
 
 The UI never sees a domain entity and never sees an `ITableEntity`. Services return DTOs; the Application layer is the only place a mapping happens; Infrastructure owns a parallel set of table entity classes because Azure Tables has no enum, `DateOnly`, or `TimeOnly` type and those encodings are a storage concern, not a domain one.
 
@@ -338,11 +339,11 @@ Nine tables, all prefixed with `AzureTableStorage:TablePrefix`:
 
 Settings are keyed by the provider's subject identifier rather than by a person record, because signing in and being on a roster are independent: anyone who can sign in gets settings, whether or not they appear on a board. That identifier comes from outside the app, so `StorageKeys` folds the characters Azure Table keys reject onto the separator and the row keeps the original value in its own column.
 
-The address stored beside those settings is what bridges the two sides. A signed-in user and a person on a roster are separate records with nothing in common but an email address, so the address the provider reports is written through on every sign-in that changes it, and the board marks the card whose person record carries the same one. `EmailAddress` holds the stored form and the comparison, so a roster address and a claim are normalised and matched on the same terms. Nothing matches when either side has no address, which is what makes an anonymous session mark nobody.
+The address stored beside those settings is what bridges the two sides. A signed-in user and a person on a roster are separate records with nothing in common but an email address, so the address the provider reports is written through on every sign-in that changes it, and the board marks the card whose person record carries the same one. `EmailAddress` holds the stored form and the comparison, so a roster address and a claim are normalized and matched on the same terms. Nothing matches when either side has no address, which is what makes an anonymous session mark nobody.
 
 ### Tables and keys
 
-The entries table is the only interesting piece of key design. The board needs two things for each person: their record for the selected date, and their most recent record before it. Storing the row key as the date subtracted from `99999999` makes ascending row-key order the same as descending date order, which collapses both lookups into one range query.
+The board needs two things for each person: their record for the selected date, and their most recent record before it. Storing the row key as the date subtracted from `99999999` makes ascending row-key order the same as descending date order, which collapses both lookups into one range query.
 
 ```text
 ┌───────────────────────────────────────────────────────────────────┐
@@ -361,8 +362,7 @@ The entries table is the only interesting piece of key design. The board needs t
 └───────────────────────────────────────────────────────────────────┘
 ```
 
-
-Rendering the board is then one range query per roster member, run in parallel. Guests are not on a roster to look up one by one, so a single query bounded to the standup's partitions and the selected date's row key returns every entry on that date, and the board reads each guest's state from it. For a standup of ten to twenty people that is ten to twenty point-ish reads of a few milliseconds each. The alternative, partitioning entries by standup and date so the whole board is a single partition scan, would make the board cheaper but would force a second, denormalised copy of every row to answer "what did this person say last time". One consistent copy beats a dual write here.
+Rendering the board is then one range query per roster member, run in parallel. Guests are not on a roster to look up one by one, so a single query bounded to the standup's partitions and the selected date's row key returns every entry on that date, and the board reads each guest's state from it. For a standup of ten to twenty people that is ten to twenty point-ish reads of a few milliseconds each. The alternative, partitioning entries by standup and date so the whole board is a single partition scan, would make the board cheaper but would force a second, denormalized copy of every row to answer "what did this person say last time". One consistent copy beats a dual write here.
 
 `StorageKeys` is the only place a partition or row key is constructed, and its ordering guarantees are covered by tests, because getting this wrong fails silently by showing the wrong prior update rather than by throwing.
 
@@ -378,9 +378,9 @@ A date's lock is the timestamp on its meeting row and nothing else: there is no 
 
 ### Why Table Storage and not SQL
 
-Agreed, and for more reasons than cost. Every read this app performs is either "give me a small list" or "give me this participant's last two rows", which is exactly the access pattern Table Storage is good at. There are no joins, no reporting queries, no referential integrity worth enforcing in the database, and the write volume is a few rows per person per day. Azure SQL or PostgreSQL would add a server to size, patch, back up, and pay for around the clock, in exchange for query capabilities this app never uses.
+Every read this app performs is either "give me a small list" or "give me this participant's last two rows", which is exactly the access pattern Table Storage is good at. There are no joins, no reporting queries, no referential integrity worth enforcing in the database, and the write volume is a few rows per person per day. Azure SQL or PostgreSQL would add a server to size, patch, back up, and pay for around the clock, in exchange for query capabilities this app never uses.
 
-Two caveats worth knowing before the design ossifies:
+Limits:
 
 - **No cross-table transactions.** Deleting a standup removes its rosters and its meetings in a loop, not atomically. If that matters later, move them into the standup partition so the delete becomes one batch.
 - **No ad-hoc queries.** Reports work only where the keys already bound the answer. The presenting order report does, because it asks for one standup over a date range and both halves of the key constrain that. "Show me everyone who was blocked in August" does not: it filters on a column, which means a scan or a second index table written at the same time as the entry. A report of that shape is the point to revisit the store, and moving to SQL then is a contained change because the repository interfaces are the only seam that would move.
@@ -407,11 +407,11 @@ Report charts are SVG written by the component rather than a charting package. T
 
 A chart fills the width the window gives it. The dates are spread across whatever space is reported, down to a floor of 34 pixels apart, which is where their rotated labels would start to overlap; a period long enough to hit that floor grows past the window and scrolls sideways instead. Only the browser knows how much room there is, so `chart-resize.js` reports the width on the first paint and on every resize after it, and the component rebuilds its geometry from the number. The chart draws at the floor until the first measurement arrives, which is what the prerendered HTML carries.
 
-`SeriesStyles` assigns each series its colour and dash pattern. The eight hues are a palette validated for separation under simulated protanopia and deuteranopia and for lightness in both themes; the slot order is what makes neighbouring hues separable, so slots are not reordered. Series fill every hue at one dash pattern before moving to the next, which keeps a chart of eight or fewer people entirely in solid lines and guarantees a repeated colour always arrives with a different line.
+`SeriesStyles` assigns each series its color and dash pattern. The eight hues are a palette validated for separation under simulated protanopia and deuteranopia and for lightness in both themes; the slot order is what makes neighboring hues separable, so slots are not reordered. Series fill every hue at one dash pattern before moving to the next, which keeps a chart of eight or fewer people entirely in solid lines and guarantees a repeated color always arrives with a different line.
 
 Three of the light steps and two of the dark ones fall below a 3:1 contrast ratio against the surface they are drawn on. The relief for that is the table of order numbers beneath the chart, which is why it is there rather than as a convenience.
 
-Series colours are picked in C# from the signed-in user's appearance setting, not by a stylesheet, because MudBlazor switches themes by rewriting its palette variables rather than by a selector a media query could match. Everything else the chart draws — grid, axis text, the ring around a marker — uses the MudBlazor palette variables and follows the theme on its own.
+Series colors are picked in C# from the signed-in user's appearance setting, not by a stylesheet, because MudBlazor switches themes by rewriting its palette variables rather than by a selector a media query could match. Everything else the chart draws — grid, axis text, the ring around a marker — uses the MudBlazor palette variables and follows the theme on its own.
 
 ## Auditing and logging
 
@@ -445,15 +445,15 @@ The file carries rows as columns rather than as typed entities, with each value 
 
 Two consequences follow from that shape. A column added to a table entity is backed up without touching the backup code, and a file taken before that column still restores. And because the table name stored is the logical one, a backup taken from one environment restores into another whatever its table prefix is.
 
-A restore is validated in full before a single row is touched: an unrecognised format version, a table the application does not own, a table listed twice, or a row that cannot be converted all stop the restore with the data untouched. Past that point each table is emptied and refilled, in batches of 100 within a partition, because Azure Tables has no transaction spanning tables or partitions. A failure mid-way therefore leaves the remaining tables as they were rather than half-merged; the file is still on disk, so the fix is to run the restore again.
+A restore is validated in full before a single row is touched: an unrecognized format version, a table the application does not own, a table listed twice, or a row that cannot be converted all stop the restore with the data untouched. Past that point each table is emptied and refilled, in batches of 100 within a partition, because Azure Tables has no transaction spanning tables or partitions. A failure mid-way therefore leaves the remaining tables as they were rather than half-merged; the file is still on disk, so the fix is to run the restore again.
 
-The download is a plain HTTP endpoint rather than something the Blazor circuit produces, so the file streams with its own content type and file name and never sits in circuit memory. It carries no authorisation metadata, which means the fallback policy protects it exactly like a page. Both directions are audited.
+The download is a plain HTTP endpoint rather than something the Blazor circuit produces, so the file streams with its own content type and file name and never sits in circuit memory. It carries no authorization metadata, which means the fallback policy protects it exactly like a page. Both directions are audited.
 
 ## OpenID Connect sign-in
 
-Authorization code flow with PKCE against the provider's discovery document, with the session held in a persistent cookie that outlives the browser. Its expiry is `SignInSession:IdleDays` from the last request, because every request renews it rather than only those past the halfway point, so the setting is exactly the idle time a sign-in tolerates. The cookie is encrypted with the Data Protection key ring, which in Azure lives in blob storage, so a release or a replica restart keeps everyone signed in. A fallback authorisation policy requires an authenticated user, so a new page is protected unless it opts out; the health endpoint, the two auth endpoints, the web app manifest and the static assets are the deliberate exceptions.
+Authorization code flow with PKCE against the provider's discovery document, with the session held in a persistent cookie that outlives the browser. Its expiry is `SignInSession:IdleDays` from the last request, because every request renews it rather than only those past the halfway point, so the setting is exactly the idle time a sign-in tolerates. The cookie is encrypted with the Data Protection key ring, which in Azure lives in blob storage, so a release or a replica restart keeps everyone signed in. A fallback authorization policy requires an authenticated user, so a new page is protected unless it opts out; the health endpoint, the two auth endpoints, the web app manifest and the static assets are the deliberate exceptions.
 
-The static assets matter more than they look. `MapStaticAssets` registers every stylesheet, script and Blazor framework file as an endpoint, and the fallback policy applies to endpoints, so without an explicit opt-out the browser is sent to the identity provider to fetch a CSS file. Nothing there is secret, and an asset request cannot complete an interactive redirect. The web app manifest at `/manifest.webmanifest` is anonymous for the same reason: browsers fetch it without cookies. `ManifestEndpoints` builds it once from `AppInfo` and `StandFastTheme`, so the installed app's name, icons and colors follow those.
+`MapStaticAssets` registers every stylesheet, script and Blazor framework file as an endpoint, and the fallback policy applies to endpoints, so without an explicit opt-out the browser is sent to the identity provider to fetch a CSS file. Nothing there is secret, and an asset request cannot complete an interactive redirect. The web app manifest at `/manifest.webmanifest` is anonymous for the same reason: browsers fetch it without cookies. `ManifestEndpoints` builds it once from `AppInfo` and `StandFastTheme`, so the installed app's name, icons and colors follow those.
 
 Nothing in the code names a provider. `AuthenticationSetup` reads an `Authority`, a client id and a secret, and discovers every endpoint from `{Authority}/.well-known/openid-configuration`, so swapping providers is a configuration change. StandFast is configured against Kinde.
 
@@ -461,7 +461,7 @@ Inbound claim mapping is switched off, so claims stay under their OIDC names: `s
 
 Where that principal comes from depends on what is running. `ICurrentUser` reads the HTTP context, which is what an audited service call has. An interactive Blazor circuit has no HTTP context, so a component that needs the signed-in user takes the cascading authentication state instead; the main layout does exactly that. It loads the settings once, on the prerender and again on the circuit, and cascades them to every page, so a screen that marks the reader's own row does not fetch them for itself.
 
-`/auth/login` and `/auth/logout` replace what an identity-provider-specific UI package would otherwise supply. Sign-out ends both the local cookie session and the provider's own session, so the next sign-in is a real one rather than a silent re-issue. The login endpoint accepts a `returnUrl`, and only site-relative values are honoured, so a crafted link cannot bounce a user to another host once authenticated.
+`/auth/login` and `/auth/logout` replace what an identity-provider-specific UI package would otherwise supply. Sign-out ends both the local cookie session and the provider's own session, so the next sign-in is a real one rather than a silent re-issue. The login endpoint accepts a `returnUrl`, and only site-relative values are honored, so a crafted link cannot bounce a user to another host once authenticated.
 
 Two deployment details matter:
 
@@ -470,43 +470,17 @@ Two deployment details matter:
 
 ## Azure Container Apps
 
-This is the part of the stack that is new if you come from App Service, so here is what actually changes in practice.
-
-Container Apps is Kubernetes with the Kubernetes removed from view. Underneath there is AKS, KEDA for scaling, Envoy for ingress, and Dapr if you want it; you get a managed environment, revisions, and a YAML-free deployment surface. An App Service Plan maps roughly to a Container Apps *Environment*, and a Web App maps roughly to a *Container App*, but the unit you deploy is an image rather than a build output.
-
-### What you gain over App Service
-
-- **The runtime is yours.** No waiting for a stack version to appear in the platform's list, no `WEBSITE_*` app settings to coax a preview SDK into working. The .NET 10 chiseled base image in `Dockerfile` is the whole story, and it is the same image locally, in the pipeline, and in Azure.
-- **Revisions are first class.** Every deployment creates a revision. You can run two at once and split traffic by percentage without slot swaps, and rolling back is pointing traffic at the previous revision rather than redeploying.
-- **Scaling responds to more than CPU.** KEDA scalers cover HTTP concurrency, queue depth, and custom metrics. This app only uses the HTTP scaler, but the door is open.
-- **Scale to zero exists.** Not useful here (see below), but it is the reason Container Apps is cheap for bursty or internal workloads.
-- **Per-second consumption billing.** You pay for vCPU-seconds and memory-seconds actually used, rather than for a plan sitting idle. A small always-on app can land either side of a B1 plan depending on replica count.
-- **Managed identity works the same way**, so the storage and Key Vault story is identical to what you already do on App Service.
-
-### What it costs you
-
-- **You now own the image.** Base image CVEs, `dotnet publish` inside a container, and a registry to feed are your problem. App Service patched the runtime for you.
-- **There is no Kudu.** No console into the app, no `/home` file share, no log files on disk unless you mount storage. Diagnostics go through Log Analytics, which is why the file sink here is development-only and production logs go to stdout.
-- **The local filesystem is ephemeral and the container is not writable in the usual places.** Anything that assumed a writable working directory needs rethinking. This is what forces the Data Protection key ring into blob storage.
-- **Cold start is a container start, not a warm-up.** Pulling and starting an image is slower than an App Service instance waking up.
-- **More moving parts to provision.** Registry, environment, Log Analytics workspace, and identity, versus a plan and a site. Compare the two halves of `infra/main.bicep` to see it.
-- **Cost is harder to predict.** A plan has a price per month. Consumption billing depends on how often you scale and for how long.
-
-### What bites Blazor Server specifically
-
-Blazor Server keeps a stateful SignalR circuit per browser tab, which makes it the least forgiving workload to put on an elastic, multi-replica platform. Three settings in this repo exist solely because of that, and they are worth understanding before you reuse this pattern:
+Blazor Server keeps a stateful SignalR circuit per browser tab, which makes it the least forgiving workload to put on an elastic, multi-replica platform. Three settings in this repo exist solely because of that:
 
 1. **Sticky sessions are on.** `ingress.stickySessions.affinity` is `sticky`. Without it a reconnecting browser can be routed to a different replica, which has never heard of its circuit, and the user gets the reconnect overlay followed by a full reload.
 2. **The Data Protection key ring is shared.** Circuit state and antiforgery tokens are encrypted with it. Left on local disk, each replica generates its own key ring and any request that lands on another replica fails to decrypt. The key ring lives in a blob, written through the managed identity.
 3. **Minimum replicas is one, not zero.** Scaling to zero terminates every live circuit. For an app whose whole job is to be open during a meeting, that is not a trade worth making, so the floor stays at one and the saving goes with it.
 
-If those three were not needed, the same Bicep would happily scale this to zero and cost close to nothing between standups. That tension between an elastic host and a stateful UI framework is the real lesson of running this here.
-
 ## Deploying
 
 `azure-pipelines.yaml` restores, builds and tests, then includes `azure-pipelines-release.yaml` once per environment. Each release stage is self-contained: it creates the resource group, deploys `infra/main.bicep` with `p_DeployApp=false` to bring up the registry and the rest of the platform, runs `az acr build` to build the image inside that registry, then deploys the same Bicep again with `p_DeployApp=true` and the resulting image. Both deployments read one parameters file composed in PowerShell, so their inputs cannot drift apart.
 
-Building in the registry rather than on the agent means there is no Docker registry service connection and no Docker daemon in the pipeline. The cost is that each environment builds its own image rather than promoting one artefact; with a registry per environment that would need an import step either way.
+Building in the registry rather than on the agent means there is no Docker registry service connection and no Docker daemon in the pipeline. The cost is that each environment builds its own image rather than promoting one artifact; with a registry per environment that would need an import step either way.
 
 `Dockerfile` restores the project files in their own layer so a source-only change keeps the cached restore, and then publishes with the sources in place, restoring a second time. That second restore is what makes the image correct: a restore evaluated before the Razor components exist settles the project's static web assets without Blazor's framework files among them, and a publish reusing that result omits `wwwroot/_framework`. Such an image serves every page, stylesheet and package asset while returning 404 for `blazor.web.js`, which renders the app and leaves it unable to respond to a click. Nothing else about it looks wrong, which is why the build asserts that file exists.
 
@@ -529,7 +503,6 @@ Branch policy lives in the repository as GitHub rulesets under [.github/rulesets
 | [Locked releases](.github/rulesets/locked-releases.json) | Every versioned release branch but the newest, filled in by the workflow | Read-only: no push, merge or deletion. Branches are ordered by version number, so `release/02.00` locks `release/01.25`; a `release/*` branch whose name is not a version is left alone. Changing a locked release means disabling this ruleset for the duration. |
 
 The workflow also makes the newest release branch the repository's default, so a new pull request targets it. It runs when a release branch is created, when a change to a ruleset file or its script is pushed to a release branch, and by hand from the Actions tab. Each ruleset is matched by name, so one that already exists is updated rather than duplicated, and one on the repository that no file defines is deleted. GitHub runs it from the triggering branch's own commit, so a policy change is in effect once it is on the release branch the next release is cut from. It needs one repository secret, `RULESET_ADMIN_TOKEN`: a fine-grained personal access token for this repository with **Administration: Read and write**.
-
 
 ### Branch filtering
 
@@ -590,6 +563,9 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 - Let guests record notes. A guest card has the notes icon, and its update panel shows a single Notes box without Blockers or Parking lot.
 - Made the People page list only active people, with a Show inactive switch to list everyone.
 - Kept inactive people off the board's roster, while still showing them on any date they were present, a guest, or presented.
+- Rewrote the opening of this document as a short summary of what StandFast is for and what it can do.
+- Redrew the layering diagram so GitHub renders it as a picture, and corrected it to show how the projects actually depend on each other.
+- Trimmed general background and side remarks from this document, keeping only what is specific to StandFast.
 
 ### v01.02.00 — 2026-10-01
 
@@ -625,7 +601,7 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 - Added a Backup screen that downloads everything the app holds as a single file, and restores one back by replacing all current data. The audit log is left out of both, so restoring an old backup never wipes the record of who changed what.
 - Fixed the repository's ignore rules, which were quietly leaving the new backup source folders out of version control.
 - Added an F5 launch configuration and build/test tasks for the editor, with Hot Reload switched off to stop a debugger error appearing in the Debug Console on every run.
-- Coloured the notes icon on a board card once that person has an update recorded for the date, so it is obvious who still owes one, with the outline on the card left to mark whose panel is open.
+- Colored the notes icon on a board card once that person has an update recorded for the date, so it is obvious who still owes one, with the outline on the card left to mark whose panel is open.
 - Changed Cancel on the update panel to always be available and to close the panel, asking first whether unsaved edits should be lost.
 - Corrected the configuration table against what the code and the deployment actually do, and split out a short list of the values that are filled in for you.
 - Fixed the build pipeline failing every storage integration test: the check for whether the emulator is running threw instead of answering on an agent that has no emulator, so the tests reported as failures rather than skipping as intended.
@@ -640,7 +616,7 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 - Marked the dates in the week strip that someone presented on, so a day with a finished standup can be spotted without opening it.
 - Fixed the deployed app loading but never responding to a click: the container build was leaving Blazor's startup script out of the published output, so the browser asked for a file that was not there. The build now also checks the script is present and fails rather than shipping an app that cannot work.
 - Added a Reports screen with a dropdown for choosing which report to show, a picker for the standup, and quick-pick buttons for the last 30, 60, 90 or 180 days or the last year.
-- Added the first report, Presenting Order vs Date: a line per person showing the turn they took at each standup over the period, with a dot on the days they presented and ∞ along the bottom for the days they did not. Everyone gets their own colour, and once the colours run out they come back as dashed lines so no two people ever look alike. The same numbers are also available as a table under the chart.
+- Added the first report, Presenting Order vs Date: a line per person showing the turn they took at each standup over the period, with a dot on the days they presented and ∞ along the bottom for the days they did not. Everyone gets their own color, and once the colors run out they come back as dashed lines so no two people ever look alike. The same numbers are also available as a table under the chart.
 - Made a report chart spread across the full width of the browser window and follow it as the window is resized, packing the dates only as tightly as their labels allow before scrolling sideways instead.
 - Gave each standup a second roster of the people who may run it, alongside the roster of the people who present. The Standups screen has a button for each, and someone can be on both.
 - Renamed the People table's Standups column to Presenters and added a Leaders column beside it, so each person's two kinds of involvement read separately.
