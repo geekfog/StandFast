@@ -13,6 +13,7 @@ public partial class Reports
     private IReadOnlyList<StandupDto> standups = [];
     private PresentingOrderTimelineDto? timeline;
     private StandupActivityDto? activity;
+    private AttendanceDto? attendance;
     private TimeZoneInfo timeZone = TimeZoneInfo.Local;
     private ReportKind loadedReport;
     private Guid loadedStandupId;
@@ -52,7 +53,7 @@ public partial class Reports
     private int SelectedDays => ReportWindow.ResolveDays(DaysQuery);
 
     /// <summary>Whichever report is loaded, seen as the standup and period it covers. The page's heading and its "nothing to show" branch read only this, so a new report adds no markup to either.</summary>
-    private IReportHeader? Header => (IReportHeader?)activity ?? timeline;
+    private IReportHeader? Header => (IReportHeader?)activity ?? (IReportHeader?)attendance ?? timeline;
 
     protected override async Task OnInitializedAsync()
     {
@@ -71,15 +72,20 @@ public partial class Reports
         timeZone = UiOptions.Value.ResolveTimeZone(standups.FirstOrDefault(standup => standup.Id == SelectedStandupId));
 
         // Only the chosen report is held, so the page renders whichever one is loaded without having to be told which that is.
-        (timeline, activity) = (null, null);
+        (timeline, activity, attendance) = (null, null, null);
 
-        if (SelectedReport == ReportKind.StandupActivity)
+        switch (SelectedReport)
         {
-            activity = await ReportService.GetStandupActivityAsync(SelectedStandupId, SelectedDays, timeZone);
-            return;
+            case ReportKind.StandupActivity:
+                activity = await ReportService.GetStandupActivityAsync(SelectedStandupId, SelectedDays, timeZone);
+                break;
+            case ReportKind.Attendance:
+                attendance = await ReportService.GetAttendanceAsync(SelectedStandupId, SelectedDays, timeZone);
+                break;
+            default:
+                timeline = await ReportService.GetPresentingOrderTimelineAsync(SelectedStandupId, SelectedDays, timeZone);
+                break;
         }
-
-        timeline = await ReportService.GetPresentingOrderTimelineAsync(SelectedStandupId, SelectedDays, timeZone);
     }
 
     private Task OnReportChangedAsync(ReportKind report) => NavigateAsync(report, SelectedStandupId, SelectedDays);

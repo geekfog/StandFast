@@ -44,6 +44,15 @@ public sealed class ReportTestContext
         PresentedUtc = NineAm.AddDays(meetingDate.DayNumber - Today.DayNumber).AddMinutes(minutesIntoMeeting),
     });
 
+    /// <summary>Puts a person on the presenter roster as of <paramref name="joinedOn"/>, which is the first date the attendance report expects them.</summary>
+    public Task OnRosterAsync(Person person, DateOnly joinedOn) => Standups.UpsertMemberAsync(new StandupMember
+    {
+        StandupId = Standup.Id,
+        PersonId = person.Id,
+        Role = RosterRole.Presenter,
+        CreatedUtc = NineAm.AddDays(joinedOn.DayNumber - Today.DayNumber),
+    });
+
     /// <summary>Closes a date at a given moment, which is what the activity report measures a standup's length against.</summary>
     public Task LockedAsync(DateOnly meetingDate, DateTimeOffset lockedUtc) => UpsertMeetingAsync(meetingDate, meeting => meeting.LockedUtc = lockedUtc);
 
