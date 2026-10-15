@@ -13,20 +13,19 @@ public sealed record SeriesStyle(string Color, string? DashArray, string Pattern
 public static class SeriesStyles
 {
     /// <summary>
-    /// The categorical hues, in the order they are handed out. Each carries a light-theme and a dark-theme step of the same hue, so a series
-    /// keeps its identity when the theme is switched. The order is the palette's own: it is what makes neighbouring slots separable under
-    /// simulated protanopia and deuteranopia, so slots are not reordered.
+    /// The categorical hues, in the order they are handed out: blue, orange, teal, magenta, yellow, violet. Each carries a light-theme and a
+    /// dark-theme step of the same hue, so a series keeps its identity when the theme is switched. Lines cross every other line, so every pair
+    /// is kept at least 15 apart (OKLab ΔE×100) under normal, protan, and deutan vision, with each step at 3:1 or better against its theme's
+    /// surface. Six hues is the most that clears that floor in both themes; a seventh hue always lands too close to one already here.
     /// </summary>
     private static readonly (string Light, string Dark)[] Hues =
     [
-        ("#2a78d6", "#3987e5"),
-        ("#eb6834", "#d95926"),
-        ("#1baf7a", "#199e70"),
-        ("#eda100", "#c98500"),
-        ("#e87ba4", "#d55181"),
-        ("#008300", "#008300"),
-        ("#4a3aa7", "#9085e9"),
-        ("#e34948", "#e66767"),
+        ("#3a90fb", "#79aff7"),
+        ("#784104", "#df7d03"),
+        ("#30a4a0", "#7fe2ca"),
+        ("#a41884", "#b76d8a"),
+        ("#9c7907", "#fdc234"),
+        ("#6216e1", "#8f63fe"),
     ];
 
     /// <summary>
@@ -50,7 +49,7 @@ public static class SeriesStyles
         ("Extra long dash", "26 6"),
     ];
 
-    /// <summary>How many series can be drawn before a style is used a second time. Eight hues across thirteen patterns gives 104.</summary>
+    /// <summary>How many series can be drawn before a style is used a second time: every hue under every pattern.</summary>
     public static int Count => Hues.Length * Patterns.Length;
 
     /// <summary>

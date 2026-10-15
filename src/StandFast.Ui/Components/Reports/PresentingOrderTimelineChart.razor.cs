@@ -19,11 +19,13 @@ public partial class PresentingOrderTimelineChart : IAsyncDisposable
 
     private const string ObserveFunction = "standFastChart.observe";
     private const string DisconnectFunction = "standFastChart.disconnect";
+    private const string EnableSeriesFocusFunction = "standFastChart.enableSeriesFocus";
 
     /// <summary>Width changes smaller than this are ignored, so a scrollbar appearing or a rounding difference cannot start a render loop.</summary>
     private const int WidthChangeThreshold = 2;
 
     private readonly string hostId = $"standfast-chart-{Guid.CreateVersion7():N}";
+    private string FocusRootId => $"{hostId}-focus";
     private DotNetObjectReference<PresentingOrderTimelineChart>? selfReference;
     private int availableWidth;
 
@@ -52,6 +54,7 @@ public partial class PresentingOrderTimelineChart : IAsyncDisposable
 
         selfReference = DotNetObjectReference.Create(this);
         await JS.InvokeVoidAsync(ObserveFunction, hostId, selfReference);
+        await JS.InvokeVoidAsync(EnableSeriesFocusFunction, FocusRootId);
     }
 
     /// <summary>Called by the browser with the room the chart has, on the first paint and on every resize after it.</summary>

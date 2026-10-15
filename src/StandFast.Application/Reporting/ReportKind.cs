@@ -29,7 +29,7 @@ public static class ReportCatalog
     /// <summary>One line describing what the report answers, shown beneath its title.</summary>
     public static string Description(this ReportKind report) => report switch
     {
-        ReportKind.PresentingOrderTimeline => $"The turn each person took at every standup in the period. Anyone who did not present on a day drops to the {PresentationOrder.NoTurnSymbol} row.",
+        ReportKind.PresentingOrderTimeline => $"The turn each person took at every standup in the period. Anyone who did not present on a day drops to the {PresentationOrder.NoTurnSymbol} row. Hover a line or name to pick that person out, and click to keep them highlighted.",
         ReportKind.StandupActivity => "Every day in the period the standup actually ran, newest first, with how many people presented and how long it took.",
         _ => string.Empty,
     };

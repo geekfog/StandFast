@@ -294,6 +294,8 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 ### v01.04.00 — 2026-10-15
 
 - Made marking the first person present on a date also mark you, when your own starred card is still on the roster.
+- Made the Presenting Order vs Date chart pick out one person at a time. Hovering a line, dot, or name in the legend fades everyone else back and names the person in a popup, with the date and turn when over a dot. Clicking keeps that person highlighted until they or an empty part of the chart is clicked.
+- Replaced the chart's colors with six that stay clearly different from each other in both light and dark mode, including for color-blind readers: blue, orange, teal, magenta, yellow, and violet. The seventh person onward gets the same colors again as dashed lines.
 
 ### v01.03.00 — 2026-10-02
 
