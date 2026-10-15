@@ -1,299 +1,139 @@
-# About StandFast
+# <a id="about">ℹ️</a> About StandFast
 
-StandFast is a web app for running a daily standup. The person running the call taps each attendee in as they join, taps them again as they give their update, and records what they said.
+StandFast is a web app for the person who runs a team's daily standup meeting. It records who joined, who has given their update and in what order, and what each person said, next to what they said last time. Every meeting stays available as it was recorded, and reports show how meetings ran over time.
 
-| Capability | What it gives you |
-| ---------- | ----------------- |
-| Multiple standups | Any number of standups, each with its own days, start time, time zone, presenters, and possible leaders. Anyone can attend as a guest. |
-| Attendance and order | Who was present, who attended as a guest, who presented, and in what order. Each card shows the turn the person took last time. |
-| Leader | Who ran the standup that day, picked from the possible leaders who are attending. |
-| Context at a glance | Each card shows the person's photo, their time zone offset from the standup, and how long they have been with the organization. Hovering shows their location, start date, and title or role. |
-| Updates | Markdown notes for each person's update, blockers, and parking-lot topics, with last time's entry one click away. |
-| History | Any past date opens exactly as it was recorded, and a locked date can no longer be changed by accident. |
-| Reports | A chart of speaking order over time and a table of meeting days, presenters, and how long each meeting ran. |
-| People | A directory of names, photos, roles, organization and department, location, time zone, start date, and notes. |
+StandFast does not host the call and does not connect to any meeting or chat service. Anyone the sign-in service lets in can view and change everything, because there are no roles. The repository deploys to Azure only.
 
 <img src=".readme/screen-001.png" alt="StandFast board" align="left" />
 
-It runs in Azure as a single container, signs in through your OpenID Connect provider, and can be installed as a desktop app from Edge or Chrome.
+# <a id="table-of-contents">📖</a> Table of Contents
 
-# Table of Contents
+- [ℹ️ About StandFast](#about)
+- [📃 Overview](#overview)
+  - [Terms](#terms)
+  - [Using StandFast](#using-standfast)
+  - [Capabilities](#capabilities)
+- [💻 Technical Overview](#technical-overview)
+- [📐 Architecture Summary](#architecture-summary)
+- [🚀 Run Locally](#run-locally)
+- [☁️ Run in Hosted Environment (Azure)](#run-hosted)
+  - [Set up and deploy](#set-up-and-deploy)
+  - [Optional settings](#optional-settings)
+  - [Access an existing deployment](#access-an-existing-deployment)
+- [⚙️ Development and Support](#development-and-support)
+  - [Settings](#settings)
+    - [Values set for you](#values-set-for-you)
+    - [Time zones](#time-zones)
+- [🚧 Change Summary](#change-summary)
 
-- [About StandFast](#about-standfast)
-- [📃 Overview](#-overview)
-  - [What it does](#what-it-does)
-  - [The daily flow](#the-daily-flow)
-  - [Reports](#reports)
-- [💻 Technical Overview](#-technical-overview)
-  - [Solution layout](#solution-layout)
-  - [Running it locally](#running-it-locally)
-  - [Configuration](#configuration)
-    - [Everything you set](#everything-you-set)
-    - [Naming by location](#naming-by-location)
-- [📐 Architecture Summary](#-architecture-summary)
-  - [Layering](#layering)
-  - [Data model and Azure Table Storage](#data-model-and-azure-table-storage)
-    - [Tables and keys](#tables-and-keys)
-    - [Why Table Storage and not SQL](#why-table-storage-and-not-sql)
-  - [Markdown editing](#markdown-editing)
-  - [Charting](#charting)
-  - [Auditing and logging](#auditing-and-logging)
-  - [Backup and restore](#backup-and-restore)
-  - [OpenID Connect sign-in](#openid-connect-sign-in)
-  - [Azure Container Apps](#azure-container-apps)
-  - [Deploying](#deploying)
-    - [Versions and branches](#versions-and-branches)
-    - [Branch filtering](#branch-filtering)
-    - [Custom domain](#custom-domain)
-- [🚧 Change Summary](#-change-summary)
+# <a id="overview">📃</a> Overview
 
-# 📃 Overview
+## Terms
 
-## What it does
+| Term | Meaning |
+| ---- | ------- |
+| Standup | A recurring meeting set up in StandFast, with a name, the days it runs, a start time, a time zone, and two rosters. |
+| Presenter Roster | The people expected to give an update at a standup. |
+| Leader Roster | The people who may run a standup. One person can be on both rosters. |
+| Guest | Someone attending a standup who is not on its Presenter Roster. A guest can have notes recorded but takes no turn. |
+| Board | One standup on one date, where attendance and updates are recorded. |
+| Turn | A presenter's position in the order people gave their updates on a date. |
+| Update | What a presenter said, in three parts: current update, blockers (what is in their way), and parking lot (topics to take up after the meeting). Each is written in [Markdown](https://www.markdownguide.org/basic-syntax/), a plain-text formatting syntax. |
+| Lock | Closing a date after the meeting, so what was recorded cannot be changed by accident. |
+| Identity provider | The external sign-in service StandFast trusts to say who a user is, using the [OpenID Connect](https://openid.net/developers/how-connect-works/) standard. |
 
-- **People** are a flat directory: first name, last name, email, active flag, an optional "display as" override, an optional profile photo, an optional title or role, organization and department, markdown notes, an optional start date for when they joined the organization, and an optional location: city, state or region, and the time zone they work in. When "display as" is set, that is how the person appears everywhere, including the roster and the board; otherwise they appear as first and last name. The People screen shows each person's photo beside their name, or their initials when they have none, their title or role in a Title/Role column, their location and time zone, their start date, and lists which standups each person presents at and which they can lead. It lists active people only until its Show inactive switch is turned on.
-- **Standups** are recurring meeting definitions: name, the days they run on, start time, time zone, and two rosters. The Presenter Roster is who gives an update; the Leader Roster is who may run the meeting. The same person can be on both.
-- **The board** is one standup on one date. It opens on today with the current week across the top, a dropdown picks the standup independently of the date, and a second dropdown beside it records who is leading that day.
-- **Reports** chart what a standup has recorded over a period. A dropdown picks the report, a second picks the standup, and quick-pick buttons set how far back it runs.
-- **Backup** downloads everything the app holds as one file and restores it again, replacing whatever is there at the time. The audit log and each user's own settings are excluded from both directions.
-- **Appearance** is light or dark, chosen from the toggle in the title bar and remembered for whoever is signed in. It follows that person to any browser or machine they sign in from, and a user who has never chosen gets light.
-- **Installing as an app**: Edge and Chrome offer to install StandFast from the address bar. The installed app opens in its own window with its own icon on the taskbar and Start menu, and its title bar takes the app bar's color, following the light or dark appearance. Edge is still required to run it.
-- **About** shows the version, summarizes what the app is for, and links to its source repository.
-- **Environment tag**: every environment other than production shows its name on a dark red tag at the top of the navigation menu (for example `Development` locally, `DEV` or `UAT` when deployed), shortened to three letters while the menu is collapsed. Production shows no tag.
+## Using StandFast
 
-## The daily flow
+```mermaid
+flowchart TB
+    People["<b>People</b><br/>Add everyone who attends, with the email they sign in with"]
+    Standup["<b>Standups</b><br/>Create a standup: days, start time, time zone"]
+    Presenters["<b>Presenter Roster</b><br/>Who gives an update"]
+    Leaders["<b>Leader Roster</b><br/>Who may run the meeting"]
+    Board["<b>Board</b><br/>Pick the standup and date"]
+    Run["Mark people as they join and as they present,<br/>pick the leader, record each update"]
+    Lock["<b>Lock</b> the date when the meeting ends"]
+    Reports["<b>Reports</b><br/>Review speaking order and meeting history"]
 
-The board has three columns and one tap moves a person rightwards through them. Each card shows the person's profile photo, ringed in the column's color, or their initials on that color when they have no photo.
-
-1. **Roster** lists people not yet marked here, always alphabetical by the name shown, and a Presenters / Guests toggle in its header picks who it lists. Presenters are the active people on the standup's Presenter Roster; Guests are every other active person in People, so a visitor can be recorded without being added to the standup. An inactive person is never listed on the roster, but still shows in Present, Guests or Presented on any date they attended. Tap a name as you see them join: a presenter lands in Present and a guest lands in Guests.
-2. **Present, can be called on** holds the people who are actually there, in the same alphabetical order as the roster, so a name sits in the same place whichever of the two columns it is in. Tap a name when you call on them and they finish. Each card here carries the turn that person took at the previous standup, so someone who went late last time can be called early today. Anyone who was not at that standup shows ∞ instead of a number, and the card's caption says when they were marked present.
-3. **Presented** holds everyone who has given their update, in the order they gave it.
-
-**Guests, not presenting** sits under Present in the middle column and holds the people attending without presenting. Someone on the Presenter Roster is always a presenter there and is never offered as a guest. A guest card goes no further than Guests, and its notes icon opens an update panel with a single Notes box and no Blockers or Parking lot; its undo arrow sends it back to the roster when tapped by mistake, and its caption says when they were marked as a guest.
-
-Every time on the board, and which date counts as today, is in the standup's own time zone. Each card's caption ends with how many hours the person's time zone is ahead of (+) or behind (-) the standup's at the standup's start time on that date, for example "| +1h". Hovering over it shows their location. A person with no time zone recorded shows no offset. After that comes how long the person has been at the organization as of the board's date, for example "| 5y 7m 1w 2d": whole years first, then whole months of what remains, then whole weeks, then days, leaving out any part that is zero. Hovering over it shows their start date. A person with no start date recorded, or one that falls after the board's date, shows nothing there. Hovering over the rest of the caption shows the person's title or role, when one is recorded.
-
-The Leader dropdown beside the standup picker records who ran the standup that day. It offers the people on the standup's Leader Roster who are attending that date, as a guest or as a presenter marked present, so nobody who is not there can be picked. A leader who is not also a presenter is tracked as a guest. Sending the day's leader back to the roster clears the pick. The pick is per date rather than per standup, and it can be left empty, so a standup nobody was picked for reads as exactly that.
-
-The Lock button beside the date closes that date once the standup is over, so a stray tap on a board someone left open cannot change what was recorded. It becomes available once at least one person has presented, since a date nobody has spoken on has nothing to close. A locked date still opens and still shows every update; what it withholds is the tapping, the undo arrows, the Leader dropdown and the Save button. Unlocking asks first.
-
-The time the lock carries is the time it was applied, as long as the standup is still recent. Lock the date hours later, or the next morning, and it is dated from the last person who presented instead, plus a few minutes, because a board closed the next day should not read as though the meeting ran that long. Both windows are settings; see [Everything you set](#everything-you-set). A date nobody presented on has no such anchor, so it takes the time it was locked whenever that was, and a date locked twice keeps the first time.
-
-A dot under a date in the week strip means someone presented on that date, so a week with a finished standup is recognizable without opening each day. The dot is blue while the date is still open and orange once it is locked, matching the color the Lock button and the locked banner carry. On the selected date the dot is ringed in the button's text color so it stands out from the green fill.
-
-Your own card carries a dark yellow star after the name, in whichever column you are sitting in, so you can find yourself on a long roster without reading the names. It shows when the address you signed in with matches the one on your person record.
-
-An undo arrow on each card moves someone back a column if you mis-tap.
-
-The notes icon on a card opens that person's update panel. The icon turns red once anything has been recorded for that person on that date, on every card, so you can see at a glance who still owes an update. The card of whoever's panel is open carries an outline.
-
-On a wide window the board fits the screen without the page scrolling. The date, Lock button, messages, week strip and dropdowns stay at the top, an open update panel docks at the bottom, and the three columns scroll between them. The panel takes the room its content needs, at least 20rem and at most half the board, with the minimum winning on a short window; past that it scrolls inside itself while the person's name and the Save button stay in view. On a narrow window the board and panel stack and the page scrolls as usual.
-
-The panel header shows the person's profile photo, or their initials when they have none, ringed in their column's color as on their card, and their notes, rendered as markdown, to the right of their name, so anything worth knowing when running the standup is in view while their update is taken.
-
-The panel has three boxes for a presenter. A guest gets only the first, labeled Notes, at full width:
-
-| Box | Behavior |
-| --- | --------- |
-| Current update | Markdown editor with a formatting toolbar and an expand button that fills the panel with this one box. While expanded, the person's name, the toolbar, a preview toggle, and an X that returns to all three boxes share one line. On a locked day the box shows rendered text only. |
-| Blockers | Same editor, including the expand button. A card showing blockers gets a warning icon on the board. |
-| Parking lot | Same editor, including the expand button, for topics to take offline after the standup. |
-
-The three boxes share one height: the tallest content among them sets it, and each editing box grows with its text and fills to the bottom, so nothing scrolls inside a box; a panel taller than the dock allows scrolls as a whole.
-
-Two buttons sit to the left of Cancel and Save in the panel header. Preview (Edit while previewing) switches all three boxes together between markdown source and rendered preview; an expanded box carries the same toggle on its own line. Copy brings the person's update, blockers and parking lot from their previous entry on this standup into the matching boxes, each under an italic line naming that standup, for example "_Prior 7 Oct 2026 Wed:_". It fills only boxes that are empty and have something to bring in, so it never overwrites anything typed, and it is available only while at least one such box remains. While it is unavailable, hovering over it says why: either nothing was recorded at an earlier standup, or every box with something to bring in already has text.
-
-Save writes all three boxes. Cancel closes the panel, and opening another person's update, another date or another standup replaces it; each asks first when there are edits that have not been saved.
-
-Everything is keyed by standup, person, and date, so navigating to last Tuesday shows exactly what was recorded on last Tuesday.
-
-## Reports
-
-The Reports screen shows one report at a time. The report, the standup, and the period all live in the address, so a view can be pasted to someone else and they see the same thing.
-
-The period runs back from today and is set by the quick-pick buttons: 30 days, 60, 90, 180, or a year. It opens on 30 days.
-
-**Presenting Order vs Date** draws one line per person against the dates the standup ran. The vertical axis is the turn they took, first at the top, with ∞ along the bottom for a day they did not present; the horizontal axis is the dates themselves. A dot marks each day someone actually presented, and the line between dots shows whether they are drifting later or earlier over the period. Only days on which somebody presented appear, so a fortnight off does not fill the chart with empty columns, and only people who presented at least once in the period get a line — including anyone since taken off the roster, because the report is of what happened rather than of who is on the roster now.
-
-Each person gets their own color. Past the eighth person the colors start again as dashed lines, then as longer dashes, and so on through thirteen patterns, so two people never share both a color and a line style until the 105th. The legend carries each person's line drawn in their own style, and the order numbers are also available as a plain table under the chart.
-
-**Standup Activity** is a table of the days the standup actually ran, newest first. A day appears once somebody has presented on it, so a date that was only annotated — a leader picked, people marked present — is not one of them.
-
-| Column | Holds |
-| ------ | ----- |
-| Date | The meeting date. |
-| Day of Week | Its weekday, so a standup that keeps slipping to Fridays is visible without reading the dates. |
-| Status | A padlock, orange and closed once the day is locked and open while it can still be changed. Hovering it gives the time it was locked. |
-| Presenters | How many people gave their update that day. |
-| Total Time (min) | Minutes from the day's first turn to the moment it was locked. A day still open has no end time, so it reads — instead of a number. |
-
-# 💻 Technical Overview
-
-| Element | Requirement |
-| ------- | ----------- |
-| Platform | .NET 10, Linux containers |
-| Development Environment | Visual Studio Code or Visual Studio 2026 |
-| Compiler | .NET SDK 10.0.400 (pinned in `global.json`) |
-| Programming Language | C# 14 |
-| UI | Blazor Server (interactive server render mode) with MudBlazor 9 |
-| Markdown | Markdig for rendering, a custom toolbar plus a small JavaScript selection helper for editing |
-| Identity | OpenID Connect (OAuth2 Provider, such as [Kinde](https://kinde.com)) via `Microsoft.AspNetCore.Authentication.OpenIdConnect` |
-| Storage | Azure Table Storage (`Azure.Data.Tables`), managed identity authentication |
-| Logging | Serilog: console everywhere, an Azure Table sink for audit records |
-| Hosting | Azure Container Apps, external ingress, sticky sessions |
-| Infrastructure as Code | Bicep, deployed by Azure DevOps Pipelines |
-| Architecture | Four layers (UI, Application, Domain, Infrastructure) with the Domain owning the repository interfaces |
-| Assistive Development | AI coding assistant |
-
-## Solution layout
-
-```text
-StandFast.slnx
-├── .github/rulesets/              Branch protection rulesets for the release branches, applied by a workflow
-├── .vscode/                       F5 launch configuration and build/test tasks
-├── Directory.Build.props          Shared build settings, the single version number, and the icon artwork paths
-├── Directory.Packages.props       Central package version management
-├── Dockerfile                     Multi-stage build onto the chiseled ASP.NET runtime
-├── azure-pipelines.yaml           Test stage plus one release template block per environment
-├── azure-pipelines-release.yaml   Release stage template: provisions, builds the image, deploys
-├── infra/main.bicep               All Azure resources
-├── media/                         App icon artwork (Affinity source plus the SVG, PNG and ICO the UI serves), named in Directory.Build.props
-├── src/
-│   ├── StandFast.Domain           Entities, enums, calendar rules, repository interfaces
-│   ├── StandFast.Application      Services, DTOs, validators, mapping, auditing
-│   ├── StandFast.Infrastructure   Azure Table Storage implementation of the repositories
-│   └── StandFast.Ui               Blazor Server app
-└── tests/
-    ├── StandFast.Application.Tests     Board, report, and calendar rules against in-memory fakes
-    └── StandFast.Infrastructure.Tests  Storage key ordering, table entity round-trips, and Azurite integration tests
+    People --> Standup
+    Standup --> Presenters
+    Standup --> Leaders
+    Presenters --> Board
+    Leaders --> Board
+    Board --> Run --> Lock --> Reports
 ```
 
-## Running it locally
+People, standups, and rosters are set up once and changed as the team changes. Board through Lock repeats at every meeting.
 
-Azurite supplies Table Storage. Install it from npm, start it, then start the app with `dotnet run --project src/StandFast.Ui`.
+## Capabilities
 
-Everything sensitive goes into user secrets rather than into `appsettings.json`; the project already carries a `UserSecretsId`. At a minimum that is `AzureTableStorage:ConnectionString` set to `UseDevelopmentStorage=true` for Azurite, and the three OIDC values. Sign-in needs an application registered with your OpenID Connect provider: in Kinde, create a **Back-end web** application, add `https://localhost:7111/signin-oidc` to its allowed callback URLs and `https://localhost:7111/signout-callback-oidc` to its allowed logout redirect URLs, then set `Oidc:Authority` (your `https://yourbusiness.kinde.com` domain), `Oidc:ClientId` and `Oidc:ClientSecret`. [Everything you set](#everything-you-set) lists the rest.
+| Capability | Outcome | Limitations |
+| ---------- | ------- | ----------- |
+| Multiple standups | Each standup keeps its own schedule, time zone, rosters, and history. | |
+| Attendance and speaking order | One tap marks someone as joined and a second as having presented, so the board shows who is still waiting. Each card shows the turn the person took last time, so the order can be varied. | Guests cannot be marked as presented. |
+| Leader | Records who ran the standup on each date. | Only people on the Leader Roster who are attending that date can be picked. |
+| Context at a glance | Each card shows the person's photo, their time zone offset from the standup, and their time with the organization, with location, start date, and title or role on hover. | Shown only for details recorded in People. |
+| Updates | Each person's update, blockers, and parking lot are captured with formatting, and last time's entry can be copied in with one click. | Guests get one notes box. |
+| History | Any past date opens exactly as recorded, and a locked date cannot be changed by accident. | A locked date must be unlocked to change it. |
+| Reports | A chart of each person's turn over time, and a table of the days a standup ran, how many presented, and how long it took. | The period runs back from today, a year at most. |
+| People directory | One list of everyone, with photo, title or role, organization, department, location, time zone, start date, and notes. | |
+| Backup and restore | The whole data set downloads as one file and can be restored into any StandFast environment. | Restoring replaces all data. The audit log and each user's own settings are not included. |
+| Appearance | Light or dark mode follows each user to any browser. | |
+| Browser-installed app | StandFast can be installed from the browser to open in its own window with its own icon. | Offered by Edge and Chrome. |
 
-Run the tests with `dotnet test`. The Azurite integration tests skip themselves when nothing is listening on the emulator's table port, so the suite is green with or without it, on this machine and on the build agent.
+# <a id="technical-overview">💻</a> Technical Overview
 
-`.vscode/launch.json` gives an F5 configuration that builds the solution and launches the UI on the `https` profile, taking its ports and environment from `launchSettings.json` rather than repeating them. It sets `hotReloadEnabled` to false, because Hot Reload logs a harmless debugger exception on every launch.
+| Element | Role | Needed for |
+| ------- | ---- | ---------- |
+| [.NET SDK](https://dotnet.microsoft.com/download/dotnet/10.0), at the version in [global.json](global.json) | Builds, runs, and tests the app. | Local |
+| [Visual Studio 2026](https://visualstudio.microsoft.com/downloads/) or [Visual Studio Code](https://code.visualstudio.com/download) with [C# Dev Kit](https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csdevkit) | Editing and debugging. Visual Studio Code runs and debugs with F5 from [.vscode](.vscode). | Local, optional |
+| C#, Blazor Server, and MudBlazor | Language and UI. Packages are versioned in [Directory.Packages.props](Directory.Packages.props) and restored automatically. | Included |
+| [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite) | Stands in for Azure Table Storage. | Local |
+| OpenID Connect identity provider | Sign-in. Any provider that publishes a discovery document and supports the authorization code flow with a client secret, such as [Kinde](https://kinde.com). | Local and hosted |
+| [Azure subscription](https://azure.microsoft.com/free/) | Hosts the app on Azure Container Apps with Azure Table Storage, all defined in [infra/main.bicep](infra/main.bicep). **Owner** or **User Access Administrator** is needed once, to grant the pipeline its role. Using a custom domain assumes familiarity with Azure Container Apps custom domains and DNS. | Hosted |
+| [Azure DevOps](https://learn.microsoft.com/azure/devops/pipelines/get-started/what-is-azure-pipelines) project | Pipelines build, test, and deploy; variable groups hold the deployment settings and secrets. | Hosted |
+| [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) | Grants the pipeline its role from the command line. [Azure Cloud Shell](https://learn.microsoft.com/azure/cloud-shell/overview) includes it. | Hosted, optional |
+| GitHub repository admin rights | Applies branch policy; see [Development and Support](#development-and-support). | Optional |
+| AI coding assistant | Assistive development. | |
 
-## Configuration
+# <a id="architecture-summary">📐</a> Architecture Summary
 
-The release stage creates the resource group, then deploys the platform resources, then builds the image straight into the registry it just created, then deploys the app. The only one-time setup in Azure DevOps is:
+```mermaid
+flowchart LR
+    User["Browser or<br/>browser-installed app"]
+    IdP["Identity provider"]
+    subgraph DevOps["Azure DevOps"]
+        Groups["Variable groups<br/>settings and secrets"]
+        Pipeline["Pipeline"]
+    end
+    subgraph Azure["Azure resource group"]
+        App["Container app<br/>StandFast"]
+        Storage["Storage account<br/>data and audit log"]
+        Vault["Key Vault<br/>secrets"]
+        Logs["Log Analytics<br/>logs"]
+    end
 
-1. An **Azure Resource Manager** service connection named `StandFast-Azure`. The name lives in `azure-pipelines.yaml` rather than a variable group, because Azure DevOps resolves service connection references while compiling the pipeline, before any variable group has been read.
+    User -- HTTPS --> App
+    User -- signs in --> IdP
+    App -- trusts --> IdP
+    App --> Storage
+    App --> Vault
+    App --> Logs
+    Groups --> Pipeline
+    Pipeline -- creates and deploys --> Azure
+```
 
-2. **Role Based Access Control Administrator** on that service connection's principal, at subscription scope. The Bicep gives the app's managed identity its four data-plane roles (otherwise yields `Authorization failed for template resource … Microsoft.Authorization/roleAssignments` in the pipeline). 
+| Part | Role | Locally |
+| ---- | ---- | ------- |
+| Container app | Runs StandFast, a Blazor Server app: pages are rendered on the server and kept live in the browser over a persistent connection. | `dotnet run` or the editor. |
+| Storage account | Tables hold every record and the audit log. A blob container holds the Data Protection key ring that every replica shares. | Azurite. |
+| Variable groups | Hold every deployment setting and secret, which the pipeline passes to the deployment. A group can instead be [linked to an existing Key Vault](https://learn.microsoft.com/azure/devops/pipelines/library/link-variable-groups-to-key-vaults). | `appsettings.json` and user secrets. |
+| Key Vault | Created by the deployment. Secrets passed in by the pipeline reach the app from here, not as plain environment variables. | User secrets. |
+| Log Analytics | Collects the app's console logs. | The console. |
+| Identity provider | Signs users in; StandFast never sees a password. | The same provider, with the local address registered. |
+| Pipeline | Builds and tests every change to a release branch, then creates or updates every Azure resource and deploys the app. | Not used. |
 
-   **OPTION 1: Command Line**
-
-   Run the following in an Azure Cloud Shell (PowerShell) with **Owner** or **User Access Administrator** on the Azure Subscription:
-
-   ```powershell
-   az devops service-endpoint list --organization https://dev.azure.com/sbp-cloud --project Dev --query "[?name=='StandFast-Azure'].authorization.parameters.serviceprincipalid" -o tsv
-   ```
-
-   This returns the <Application (client) ID>. Use this to run the following command:
-
-   ```
-   az ad sp show --id <Application (client) ID> --query id -o tsv
-   ```
-
-   This returns the <service principal object id> to use in the following below:
-
-   ```powershell
-   az role assignment create --assignee-object-id <service principal object id> --assignee-principal-type ServicePrincipal --role "Role Based Access Control Administrator" --scope /subscriptions/<subscription id>
-   ```
-
-   **OPTION 2: Azure Portal**
-
-   Open the Azure DevOps Project-based Service Connection. Note the service connection ID (GUID) under the name. Click **Manage service connection roles**. This opens **Access control (IAM)** for the subscription On the top bar, click **+ Add** → **Add role assignment**. In the Role tab, click **Privileged administrator roles** tab. Click on **Role Based Access Control Administrator**. Click **Next** button, In the Members tab, verify **User, group, or service principal** is selected within **Assign access to**. click **+ Select members**. Search for the service connection ID (GUID) previously noted. By default, it is prefixed with the Azure DevOps Organization Name with a hyphen and the Azure DevOps Project name, followed by a hyphen and the service connection ID (GUID). select the member, click **Select** button, and click **Next** button. In the Conditions tab, choose **Allow user to assign all roles (highly privileged)**. Click the **Review + Assign** button.
-
-3. The two variable groups below, with both authorized for the pipeline. A group that exists but is not authorized fails the run identically to one that does not exist.
-
-4. Azure DevOps Pipelines Environment (e.g., `StandFast PRD`).
-
-### Everything you set
-
-Local development on the left, a deployed environment on the right. `<env>` is the lower-cased environment code of a cloud environment, so the group is `standfast-prd-vars` for production. `azure-pipelines.yaml` currently includes one release stage, PRD; a `dev` environment is a second template block plus its own `standfast-dev-vars` group.
-
-| Local Development Setting Location | Local Development Key                                        | Local Development Value                  | Cloud ENV  Setting Location                        | Cloud ENV Key                                                | Cloud ENV Value             | Notes                                                        |
-| ---------------------------------- | ------------------------------------------------------------ | ---------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------ | --------------------------- | ------------------------------------------------------------ |
-| `secrets.json`                     | `Oidc:Authority`                                             | (HTTPS Url)                              | `standfast-<env>-vars` group                       | `a_OidcAuthority`                                            | (HTTPS Url)                 | Your provider's issuer URL, for example `https://yourbusiness.kinde.com`. Every endpoint is read from its discovery document, so none is configured individually. |
-| `secrets.json`                     | `Oidc:ClientId`                                              | (Client ID)                              | `standfast-<env>-vars` group                       | `a_OidcClientId`                                             | (Client ID)                 | Confidential client id from the provider.                    |
-| `secrets.json`                     | `Oidc:ClientSecret`                                          | (Client Secret)                          | `standfast-<env>-vars` group                       | `a_OidcClientSecret`                                         | (Client Secret)             | Client secret from the provider. Mark the group variable as secret. Bicep always stores it in Key Vault as `oidc-client-secret` and gives the container app a Key Vault reference, so the value never becomes a plain environment variable. |
-| `secrets.json`, optional           | `StandFastUi:DisplayTimeZoneId`                              | (e.g., `Central Standard Time`)          | `standfast-<env>-vars` group                       | `a_DisplayTimeZoneId`                                        | (e.g., `Central Standard Time`) | The [time zone id](#time-zones) for times that belong to no standup, such as on the Backup screen, and for a standup whose own time zone the server cannot resolve. The board and reports use the standup's own time zone. The group variable must exist, because the pipeline passes it on every run; leave its value empty and the app falls back to the server time zone, which in the container is UTC. Locally, omitting it falls back to your machine's zone. |
-| (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-<env>-vars` group                       | `a_CustomDomain`                                             | (e.g., `standup.yourbusiness.com`) | The [custom domain](#custom-domain) the app answers on. The group variable must exist, because the pipeline passes it on every run; leave its value empty and the app is reachable only on its generated Container Apps URL. |
-| (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-<env>-vars` group                       | `a_AllowedBranches`                                          | (e.g., `release/`)|release/`) | Pipe-delimited list of the branches that may release to this environment; see [Branch filtering](#branch-filtering). Leave it unset and every branch that triggers the pipeline releases here, which for a production environment is rarely what you want. |
-| (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-<env>-vars` group                       | `a_RegionToken`                                              | (e.g., `usnorth`)           | Region segment of every resource name                        |
-| (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-<env>-vars` group                       | `a_Location`                                                 | (e.g., `northcentralus`)    | Azure region everything is created in                        |
-| (n/a)                              | (n/a)                                                        | (n/a)                                    | `standfast-vars` group                             | `a_AppBase`                                                  | `standfast`                 | First segment of every resource name and the `Product` tag. Identical across environments |
-| `secrets.json`                     | `AzureTableStorage:ConnectionString`                         | `UseDevelopmentStorage=true` for Azurite | (n/a)                                              | (n/a)                                                        | (n/a)                       | Table storage for data records. Required locally: no committed file sets it, and startup fails unless either this or `ServiceUri` is present. Left empty in the cloud, where `ServiceUri` and the managed identity are used instead. |
-| `appsettings.Development.json`     | `AzureTableStorage:TablePrefix`                              | `StandFastDev`                           | (n/a)                                              | (n/a)                                                        | (n/a)                       | Prefix on every table name, so one storage account can hold several environments. Committed, and overridable in `secrets.json` if you want your own. Letters and digits only, starting with a letter, 21 characters at most. Set by Bicep in the cloud. |
-| `appsettings.json`, optional       | `AzureTableStorage:CreateTablesOnStartup`                    | `true`                                   | `appsettings.json`, optional                       | `AzureTableStorage:CreateTablesOnStartup`                    | `true`                      | Already `true` in the committed file, so there is nothing to do unless you are turning it off where the identity has no table-create rights. |
-| `appsettings.json`, optional       | `BoardLock:GraceMinutes`                                     | `60`                                     | `standfast-<env>-vars` group, optional             | `a_BoardLockGraceMinutes`                                    | (e.g., `90`)                | Minutes after a day's last turn within which locking its board records the moment you pressed Lock. Past it the lock is dated from that turn instead. The committed value applies everywhere; define the group variable only in an environment that wants its own, since an undefined one leaves the shipped value alone. |
-| `appsettings.json`, optional       | `BoardLock:MinutesAfterLastTurn`                             | `5`                                      | `standfast-<env>-vars` group, optional             | `a_BoardLockMinutesAfterLastTurn`                            | (e.g., `10`)                | Minutes added to the day's last turn to date a lock applied past the grace window, which is what a board locked the next morning carries. Same rule: the group variable is optional. |
-| `appsettings.json`, optional       | `SignInSession:IdleDays`                                     | `7`                                      | `standfast-<env>-vars` group, optional             | `a_SignInIdleDays`                                           | (e.g., `14`)                | Days a sign-in lasts without the app being opened. Every visit restarts the count and the sign-in survives closing the browser, so regular use, weekends included, never asks you to sign in again. Same rule: the group variable is optional. |
-| `appsettings.json`                 | `Oidc:CallbackPath`, `Oidc:SignedOutCallbackPath`, `Oidc:SignedOutRedirectUri` | (See file)                               | `appsettings.json`                                 | `Oidc:CallbackPath`, `Oidc:SignedOutCallbackPath`, `Oidc:SignedOutRedirectUri` | (See file)                  | Standard ASP.NET Core paths. Both callback paths must be registered with the provider; the release stage prints the exact URLs to register. |
-| `appsettings.json`, optional       | `Oidc:Scopes`                                                | `openid`, `profile`, `email`             | `appsettings.json`, optional                       | `Oidc:Scopes`                                                | `openid`, `profile`, `email` | Anything listed is added to those three rather than replacing them. Only needed if your provider requires an extra scope. |
-
-#### Set for you
-
-Nothing here is yours to fill in. It is listed so a value you find in the deployed app can be traced back to what produced it.
-
-| Key                                   | Where it comes from                                          |
-| ------------------------------------- | ------------------------------------------------------------ |
-| `AzureTableStorage:ServiceUri`        | Bicep, from the storage account it creates. The app then authenticates with `DefaultAzureCredential` and no key is involved. Empty locally, which is what makes the connection string take over. |
-| `AzureTableStorage:TablePrefix`       | Bicep, as `a_AppBase` + the environment code, so `standfastPRD`. Overrides the committed `appsettings.json` value in the cloud. |
-| `StandFastUi:DataProtectionBlobUri`   | Bicep, from the same storage account. Holds the shared Data Protection key ring, which more than one replica requires. |
-| `StandFastUi:EnvironmentLabel`       | Bicep, as the environment code for every environment except PRD, where it is empty. Drives the navigation menu's environment tag. Unset locally, where the tag falls back to the `ASPNETCORE_ENVIRONMENT` name. |
-| `ASPNETCORE_ENVIRONMENT`              | Bicep, always `Production`, in every cloud environment including DEV. `appsettings.Development.json` is therefore a local-only file and never applies to a deployed environment. |
-| Resource group, registry login server, image tag | The release stage, from `a_AppBase`, `a_RegionToken` and the build number. |
-| `p_MinReplicas`, `p_MaxReplicas`      | `infra/main.bicep` defaults of 1 and 3. No variable group feeds them; change the defaults to change the scale range, and read [Azure Container Apps](#azure-container-apps) before dropping the minimum to zero. |
-
-The `g_` variables declared in `azure-pipelines.yaml` and the `v_` values the release stage computes are part of the pipeline rather than settings, and need nothing from you.
-
-### Naming by location
-
-The same setting is spelled differently depending on where it lives.
-
-| Location | Used by | Naming | Example |
-| -------- | ------- | ------ | ------- |
-| `appsettings.json` | Every environment. Committed defaults, never secrets. | Nested JSON: section object, then key. | `"Oidc": { "CallbackPath": "/signin-oidc" }` |
-| `appsettings.Development.json` | Local only. Committed. | Same nesting, merged over the base file. Arrays merge by index, so an entry replaces the base array's entry rather than adding to it. | `"AzureTableStorage": { "TablePrefix": "StandFastDev" }` |
-| User secrets | Local only, for anything sensitive. Never committed; stored outside the repo and keyed by the `UserSecretsId` in `StandFast.Ui.csproj`. | Flat, colon separated (can also be nested JSON like `appsettings.json`) | `"Oidc:ClientId": "…"` |
-| Container environment variables | Azure only. Set on the container app by `infra/main.bicep`. | Section and key joined by a double underscore, because a colon is not portable across shells. | `Oidc__ClientId` |
-| Key Vault | Azure only, for secrets. Referenced by the container app and resolved with the user-assigned managed identity. | Lower case, hyphen separated. | `oidc-client-secret` |
-| Bicep parameters | Deployment inputs in `infra/main.bicep`. | `p_` prefix, Pascal case. Locals are `v_`, outputs are `o_`. | `p_OidcClientId` |
-| Azure DevOps variable groups | Pipeline inputs that supply the Bicep parameters. | `a_` prefix, Pascal case. Variables declared in the pipeline YAML itself use `g_`. | `a_OidcClientId` |
-
-Later sources override earlier ones: `appsettings.json` is the base, `appsettings.Development.json` merges over it locally, and user secrets and environment variables win over both.
-
-#### Time Zones
-
-`DisplayTimeZoneId` accepts a Windows id or an IANA id, and .NET resolves both on Windows and on the Linux container, so `Central Standard Time` and `America/Chicago` are equivalent. The US zones are:
-
-| Windows id | IANA id | Covers |
-| ---------- | ------- | ------ |
-| `Hawaiian Standard Time` | `Pacific/Honolulu` | Hawaii, no daylight saving |
-| `Alaskan Standard Time` | `America/Anchorage` | Alaska |
-| `Pacific Standard Time` | `America/Los_Angeles` | Pacific |
-| `US Mountain Standard Time` | `America/Phoenix` | Arizona, no daylight saving |
-| `Mountain Standard Time` | `America/Denver` | Mountain |
-| `Central Standard Time` | `America/Chicago` | Central, the Bicep default |
-| `Eastern Standard Time` | `America/New_York` | Eastern |
-| `US Eastern Standard Time` | `America/Indiana/Indianapolis` | Indiana (East) |
-
-For anywhere else, `TimeZoneInfo.GetSystemTimeZones()` lists every id the .NET C# runtime accepts.
-
-A time zone picked for a standup or a person is saved as its IANA id whichever host the app runs on, because `TimeZoneIds` in the Domain project converts a Windows id on the way in. The standup and person dialogs share one picker, `TimeZoneSelect`, and saving rejects any id the host cannot resolve.
-
-# 📐 Architecture Summary
-
-## Layering
-
-Each arrow is a project reference, pointing from the project that uses another to the one it uses. The Domain references nothing, and Infrastructure points inward to implement the interfaces declared by the Domain and the Application, so the Application and Domain never touch Azure Table Storage.
+The code is four projects, and each arrow is a project reference. Only Infrastructure knows about Azure Table Storage.
 
 ```mermaid
 flowchart TB
@@ -309,233 +149,141 @@ flowchart TB
     Infrastructure -- implements repositories --> Domain
 ```
 
-| Reference | Why it exists |
-| --------- | ------------- |
-| Ui → Application | Pages and components call Application services and receive DTOs. |
-| Ui → Infrastructure | Startup only: `Program.cs` calls `AddStandFastInfrastructure` to register the storage services, and `LoggingSetup.cs` reads the storage settings to send audit records to their own table. No page or component uses Infrastructure. |
-| Application → Domain | Services work with domain entities and the repository interfaces. |
-| Infrastructure → Application | `TableBackupStore` implements `IBackupStore`. |
-| Infrastructure → Domain | The Table Storage repositories implement the Domain's repository interfaces. |
-
-The UI never sees a domain entity and never sees an `ITableEntity`. Services return DTOs; the Application layer is the only place a mapping happens; Infrastructure owns a parallel set of table entity classes because Azure Tables has no enum, `DateOnly`, or `TimeOnly` type and those encodings are a storage concern, not a domain one.
-
-Ids are version 7 GUIDs. They sort by creation time, which keeps row keys from fragmenting, and they are safe to put in a URL.
-
-## Data model and Azure Table Storage
-
-Nine tables, all prefixed with `AzureTableStorage:TablePrefix`:
-
-| Table | Partition key | Row key | Holds |
-| ----- | ------------- | ------- | ----- |
-| `People` | `Person` | Person id | The directory. One partition because it is small and always listed whole. The start date is a `yyyyMMdd` string, since Table Storage has no date-only column type. |
-| `PersonPhotos` | `Person` | Person id | Each person's profile photo, scaled in the browser to at most 256 pixels a side and stored as a JPEG under the 64 KiB a binary column may hold. Kept apart from `People` so listing the directory never reads the images; the photo endpoint reads one row at a time, and its address carries the save time so browsers cache it until the photo changes. |
-| `Standups` | `Standup` | Standup id | Meeting definitions. Same reasoning. |
-| `StandupMembers` | Standup id | Person id | The Presenter Roster. One partition per standup, which is exactly how the board reads it. The People screen's role columns are the one query that crosses partitions; see below. |
-| `StandupLeaders` | Standup id | Person id | The Leader Roster, in the same shape. A role gets its own table rather than a column on `StandupMembers`, so the person id stays the whole row key and one person can hold both roles on one standup. |
-| `StandupMeetings` | Standup id | Meeting date | What is recorded about a standup on one date apart from any participant: who led it, and when the date was locked. A row exists only once something has been set, so a date with no row is a meeting nobody annotated. |
-| `StandupEntries` | Standup id + person id | Inverted meeting date | Attendance state (roster, present, presented, or guest), the update, and the blockers. A guest has an entry on the dates they attended and no roster membership. |
-| `UserPreferences` | `UserPreferences` | OpenID Connect subject | One row per signed-in user, holding their chosen appearance, whether they left the navigation menu expanded or collapsed, and the address the provider reports for them. Always read one user at a time, so one partition and a point read. Outside backup and restore; see [Backup and restore](#backup-and-restore). |
-| `AuditLog` | Date bucket | Timestamp | Written by Serilog, not by the repositories. Outside backup and restore; see [Backup and restore](#backup-and-restore). |
-
-Settings are keyed by the provider's subject identifier rather than by a person record, because signing in and being on a roster are independent: anyone who can sign in gets settings, whether or not they appear on a board. That identifier comes from outside the app, so `StorageKeys` folds the characters Azure Table keys reject onto the separator and the row keeps the original value in its own column.
-
-The address stored beside those settings is what bridges the two sides. A signed-in user and a person on a roster are separate records with nothing in common but an email address, so the address the provider reports is written through on every sign-in that changes it, and the board marks the card whose person record carries the same one. `EmailAddress` holds the stored form and the comparison, so a roster address and a claim are normalized and matched on the same terms. Nothing matches when either side has no address, which is what makes an anonymous session mark nobody.
-
-### Tables and keys
-
-The board needs two things for each person: their record for the selected date, and their most recent record before it. Storing the row key as the date subtracted from `99999999` makes ascending row-key order the same as descending date order, which collapses both lookups into one range query.
-
-```text
-┌───────────────────────────────────────────────────────────────────┐
-│ StandFastEntries                                                  │
-│                                                                   │
-│ PartitionKey   {standupId}_{personId}                             │
-│ RowKey         99999999 - yyyyMMdd                                │
-│                                                                   │
-│ One participant's whole history is one partition, ordered         │
-│ newest first, so a single range query returns both rows the       │
-│ board needs:                                                      │
-│                                                                   │
-│   PartitionKey eq {pk} and RowKey ge {rowKey(date)}   take 2      │
-│     row 1  the requested date, when it exists                     │
-│     row 2  the most recent earlier date, the prior update         │
-└───────────────────────────────────────────────────────────────────┘
-```
-
-Rendering the board is then one range query per roster member, run in parallel. Guests are not on a roster to look up one by one, so a single query bounded to the standup's partitions and the selected date's row key returns every entry on that date, and the board reads each guest's state from it. For a standup of ten to twenty people that is ten to twenty point-ish reads of a few milliseconds each. The alternative, partitioning entries by standup and date so the whole board is a single partition scan, would make the board cheaper but would force a second, denormalized copy of every row to answer "what did this person say last time". One consistent copy beats a dual write here.
-
-`StorageKeys` is the only place a partition or row key is constructed, and its ordering guarantees are covered by tests, because getting this wrong fails silently by showing the wrong prior update rather than by throwing.
-
-"Which dates did this standup finish on" is answered from the same keys without touching a partition directly. Entry partition keys are the standup id followed by the person id, so bracketing the person half with the all-zero and all-ones guids covers exactly one standup's participants, and the inverted row keys bound the date range. Both keys are therefore constrained, the query reads one standup's slice of one week, and only the date column comes back. This is what marks the week strip.
-
-The presenting order report reads the same bounded range with a longer span and one more column, returning who presented and when rather than only the dates. Both queries build their filter from one place, so the range and the "has presented" test cannot drift apart. A year of a twenty-person standup is a few thousand rows of three columns, which is one query rather than the per-person round trips the board makes, because a report wants the whole slice at once while the board wants two rows per person.
-
-"Which standups is this person on" is the one question the key design cannot answer from a partition, because memberships are partitioned by standup. The People screen gets it from a single unfiltered query over each role's membership table, which is a table scan apiece. That is deliberate: a membership table holds one small row per person per standup, so scanning it costs less than maintaining a second index written on every roster change, and the alternative of one partition query per standup trades a scan for N round trips.
-
-Everything hanging off a standup uses that standup's id as its partition key, in `StandupMembers`, `StandupLeaders` and `StandupMeetings` alike. Deleting a standup therefore clears three named partitions and nothing has to be searched for.
-
-A date's lock is the timestamp on its meeting row and nothing else: there is no boolean beside it that could disagree, and when a standup closed is worth keeping on its own. The board disables its controls as soon as it knows about a lock, but `BoardService` is where the lock actually holds — every attendance tap, saved update and leader change reads the meeting row first and refuses a locked date, so a screen opened before somebody else locked it cannot write through. The board catches that refusal and reloads rather than dropping the circuit. What time the lock records is a rule of its own in `BoardLockPolicy`, in the Domain layer, with the two windows supplied from configuration. One range query over the meetings partition, bounded by the two date keys, serves both the week strip's orange dots and the activity report's Status column; it is the same shape as the query behind the green dots and reads one standup's slice of the period.
-
-### Why Table Storage and not SQL
-
-Every read this app performs is either "give me a small list" or "give me this participant's last two rows", which is exactly the access pattern Table Storage is good at. There are no joins, no reporting queries, no referential integrity worth enforcing in the database, and the write volume is a few rows per person per day. Azure SQL or PostgreSQL would add a server to size, patch, back up, and pay for around the clock, in exchange for query capabilities this app never uses.
-
-Limits:
-
-- **No cross-table transactions.** Deleting a standup removes its rosters and its meetings in a loop, not atomically. If that matters later, move them into the standup partition so the delete becomes one batch.
-- **No ad-hoc queries.** Reports work only where the keys already bound the answer. The presenting order report does, because it asks for one standup over a date range and both halves of the key constrain that. "Show me everyone who was blocked in August" does not: it filters on a column, which means a scan or a second index table written at the same time as the entry. A report of that shape is the point to revisit the store, and moving to SQL then is a contained change because the repository interfaces are the only seam that would move.
-
-## Markdown editing
-
-`MarkdownEditor` is one component used by all three boxes on the update panel, so the toolbar, the preview toggle, and the character limit cannot drift apart. Each editor owns its preview state unless the parent binds `Preview`, which is how the update panel switches its three boxes from one `MarkdownPreviewToggle` in its header. The toolbar itself is data: `MarkdownCommands.All` is a list of records describing each button, and the component renders whatever is in that list.
-
-Formatting runs through a small JavaScript helper, because wrapping a selection needs the caret position and the browser owns that. The helper computes the new text and hands it back to Blazor, which remains the owner of the value. Inline commands toggle: pressing bold on already-bold text unwraps it.
-
-Lists follow the same pattern. The indent button nests the selected items under the item above, aligned with its text, and the outdent button aligns them with their parent. Enter on a list item starts the next one with the same bullet, the next number, or an unchecked task box, carrying any text after the caret onto it; Enter on an empty item outdents it, or ends the list at the top level. Every list edit renumbers the numbered lists around it, each nesting level counting on its own from 1, since some markdown renderers ignore any other starting number, and so does any deletion (Backspace, Delete, cut, or drag) that leaves the caret in or just above a list. The Enter and deletion handling listens on the editor's container rather than the text box, because the preview toggle re-creates the text box.
-
-Rendering uses a single pre-built Markdig pipeline with advanced extensions on and raw HTML disabled. Update text is user-supplied and rendered into the page, so HTML is escaped rather than executed.
-
-Markdown collapses any run of blank lines into one paragraph break, so before rendering, `MarkdownRenderer` turns each blank line between content into its own `&nbsp;` paragraph, leaving fenced code blocks as typed. A blank line inside a list stays blank when the list carries on after it, as an indented line or another item of the same kind, since a spacer there would split the list. Rendered paragraphs and lists carry no vertical margin, so each blank line in the editor outside a list is exactly one empty line in the preview, and a list reads as one block.
-
-Task list items hide their bullet so the checkbox takes its place. In an editable box's preview the checkboxes are live: a click is sent to `MarkdownEditor`, which asks `MarkdownRenderer.ToggleTask` to flip the `[ ]` or `[x]` of the task at that position, located through Markdig's own parse so the count matches the rendered boxes. The changed text then marks the update unsaved, the same as typing, and Save stores it. Read-only boxes render their checkboxes disabled.
-
-Saving stores each box trimmed, with a blank box stored as empty, using the rule in `OptionalText`. The update panel compares its boxes with the stored update by that same rule, so leading or trailing spaces and blank lines never count as an unsaved change.
-
-## Charting
-
-Report charts are SVG written by the component rather than a charting package. The presenting order chart needs an axis whose last tick is a symbol instead of a number, and a separate dash pattern per series; both are a few lines of geometry to draw and a fight to configure. `ChartGeometry` holds every pixel position and nothing else, so the markup reads positions rather than computing them and the layout can be checked on its own.
-
-A chart fills the width the window gives it. The dates are spread across whatever space is reported, down to a floor of 34 pixels apart, which is where their rotated labels would start to overlap; a period long enough to hit that floor grows past the window and scrolls sideways instead. Only the browser knows how much room there is, so `chart-resize.js` reports the width on the first paint and on every resize after it, and the component rebuilds its geometry from the number. The chart draws at the floor until the first measurement arrives, which is what the prerendered HTML carries.
-
-`SeriesStyles` assigns each series its color and dash pattern. The eight hues are a palette validated for separation under simulated protanopia and deuteranopia and for lightness in both themes; the slot order is what makes neighboring hues separable, so slots are not reordered. Series fill every hue at one dash pattern before moving to the next, which keeps a chart of eight or fewer people entirely in solid lines and guarantees a repeated color always arrives with a different line.
-
-Three of the light steps and two of the dark ones fall below a 3:1 contrast ratio against the surface they are drawn on. The relief for that is the table of order numbers beneath the chart, which is why it is there rather than as a convenience.
-
-Series colors are picked in C# from the signed-in user's appearance setting, not by a stylesheet, because MudBlazor switches themes by rewriting its palette variables rather than by a selector a media query could match. Everything else the chart draws — grid, axis text, the ring around a marker — uses the MudBlazor palette variables and follows the theme on its own.
-
-## Auditing and logging
-
-Serilog handles both, separated by a property rather than by a second logger. `IAuditLog.Record` opens a logging scope containing `IsAuditEvent` plus the actor, the target, and the event name; a Serilog sub-logger filters on that property and writes those events to the `AuditLog` table with the audit properties promoted to real columns. Ordinary application logs go to the console, which is what Container Apps forwards to Log Analytics.
-
-The actor comes from `ICurrentUser`, an Application-layer abstraction implemented in the UI over the signed-in principal, so the Application layer attributes an action without referencing ASP.NET Core.
-
-Audit event names live in `AuditEvents` so a later report reads the same constants the writers use.
-
-## Backup and restore
-
-The Backup screen downloads every application table as one JSON file and restores one back, replacing all current data. Two tables are in neither direction. The audit log is out because Serilog owns it, it is the record of who changed what, and restoring an older copy over it would erase the trail explaining the restore itself. User settings are out because they belong to the people using the app rather than to the board data, so restoring last month's copy of the board leaves everyone's own settings alone. `StorageNames.DataTables` is the single list of what a backup covers; `StorageNames.AllTables` adds the two it leaves out, and the Azurite fixture cleans up from that.
-
-The file carries rows as columns rather than as typed entities, with each value tagged by its storage type:
-
-```text
-┌─────────────────────────────────────────────────────────────┐
-│ Backup file                                                 │
-│                                                             │
-│  formatVersion, createdUtc, application                     │
-│                                                             │
-│  tables[]                                                   │
-│   ├─ name    logical table name, no environment prefix      │
-│   └─ rows[]  column name → { kind, value }                  │
-│                                                             │
-│  kind is one of String, Boolean, Int32, Int64, Double,      │
-│  DateTimeOffset, Guid, Binary: the types Azure Tables       │
-│  stores, so a value goes back as the type it came out as.   │
-└─────────────────────────────────────────────────────────────┘
-```
-
-Two consequences follow from that shape. A column added to a table entity is backed up without touching the backup code, and a file taken before that column still restores. And because the table name stored is the logical one, a backup taken from one environment restores into another whatever its table prefix is.
-
-A restore is validated in full before a single row is touched: an unrecognized format version, a table the application does not own, a table listed twice, or a row that cannot be converted all stop the restore with the data untouched. Past that point each table is emptied and refilled, in batches of 100 within a partition, because Azure Tables has no transaction spanning tables or partitions. A failure mid-way therefore leaves the remaining tables as they were rather than half-merged; the file is still on disk, so the fix is to run the restore again.
-
-The download is a plain HTTP endpoint rather than something the Blazor circuit produces, so the file streams with its own content type and file name and never sits in circuit memory. It carries no authorization metadata, which means the fallback policy protects it exactly like a page. Both directions are audited.
-
-## OpenID Connect sign-in
-
-Authorization code flow with PKCE against the provider's discovery document, with the session held in a persistent cookie that outlives the browser. Its expiry is `SignInSession:IdleDays` from the last request, because every request renews it rather than only those past the halfway point, so the setting is exactly the idle time a sign-in tolerates. The cookie is encrypted with the Data Protection key ring, which in Azure lives in blob storage, so a release or a replica restart keeps everyone signed in. A fallback authorization policy requires an authenticated user, so a new page is protected unless it opts out; the health endpoint, the two auth endpoints, the web app manifest and the static assets are the deliberate exceptions.
-
-`MapStaticAssets` registers every stylesheet, script and Blazor framework file as an endpoint, and the fallback policy applies to endpoints, so without an explicit opt-out the browser is sent to the identity provider to fetch a CSS file. Nothing there is secret, and an asset request cannot complete an interactive redirect. The web app manifest at `/manifest.webmanifest` is anonymous for the same reason: browsers fetch it without cookies. `ManifestEndpoints` builds it once from `AppInfo` and `StandFastTheme`, so the installed app's name, icons and colors follow those.
-
-Nothing in the code names a provider. `AuthenticationSetup` reads an `Authority`, a client id and a secret, and discovers every endpoint from `{Authority}/.well-known/openid-configuration`, so swapping providers is a configuration change. StandFast is configured against Kinde.
-
-Inbound claim mapping is switched off, so claims stay under their OIDC names: `sub` is the audit actor and the key user settings are stored under, `email` is what ties a signed-in user to their person record, and `name` is for display. The legacy SOAP claim URIs never appear. `UserClaims` is the only place a claim name is read.
-
-Where that principal comes from depends on what is running. `ICurrentUser` reads the HTTP context, which is what an audited service call has. An interactive Blazor circuit has no HTTP context, so a component that needs the signed-in user takes the cascading authentication state instead; the main layout does exactly that. It loads the settings once, on the prerender and again on the circuit, and cascades them to every page, so a screen that marks the reader's own row does not fetch them for itself.
-
-`/auth/login` and `/auth/logout` replace what an identity-provider-specific UI package would otherwise supply. Sign-out ends both the local cookie session and the provider's own session, so the next sign-in is a real one rather than a silent re-issue. The login endpoint accepts a `returnUrl`, and only site-relative values are honored, so a crafted link cannot bounce a user to another host once authenticated.
-
-Two deployment details matter:
-
-- Container Apps terminates TLS at its ingress and forwards plain HTTP, so `UseForwardedHeaders` runs first in the pipeline. Without it the app builds `http://` redirect URIs, which the provider rejects as unregistered.
-- The client secret is a Key Vault reference on the container app, resolved with the user-assigned managed identity. Everything else, storage and blobs included, uses that identity directly and has no secret at all.
-
-## Azure Container Apps
-
-Blazor Server keeps a stateful SignalR circuit per browser tab, which makes it the least forgiving workload to put on an elastic, multi-replica platform. Three settings in this repo exist solely because of that:
-
-1. **Sticky sessions are on.** `ingress.stickySessions.affinity` is `sticky`. Without it a reconnecting browser can be routed to a different replica, which has never heard of its circuit, and the user gets the reconnect overlay followed by a full reload.
-2. **The Data Protection key ring is shared.** Circuit state and antiforgery tokens are encrypted with it. Left on local disk, each replica generates its own key ring and any request that lands on another replica fails to decrypt. The key ring lives in a blob, written through the managed identity.
-3. **Minimum replicas is one, not zero.** Scaling to zero terminates every live circuit. For an app whose whole job is to be open during a meeting, that is not a trade worth making, so the floor stays at one and the saving goes with it.
-
-## Deploying
-
-`azure-pipelines.yaml` restores, builds and tests, then includes `azure-pipelines-release.yaml` once per environment. Each release stage is self-contained: it creates the resource group, deploys `infra/main.bicep` with `p_DeployApp=false` to bring up the registry and the rest of the platform, runs `az acr build` to build the image inside that registry, then deploys the same Bicep again with `p_DeployApp=true` and the resulting image. Both deployments read one parameters file composed in PowerShell, so their inputs cannot drift apart.
-
-Building in the registry rather than on the agent means there is no Docker registry service connection and no Docker daemon in the pipeline. The cost is that each environment builds its own image rather than promoting one artifact; with a registry per environment that would need an import step either way.
-
-`Dockerfile` restores the project files in their own layer so a source-only change keeps the cached restore, and then publishes with the sources in place, restoring a second time. That second restore is what makes the image correct: a restore evaluated before the Razor components exist settles the project's static web assets without Blazor's framework files among them, and a publish reusing that result omits `wwwroot/_framework`. Such an image serves every page, stylesheet and package asset while returning 404 for `blazor.web.js`, which renders the app and leaves it unable to respond to a click. Nothing else about it looks wrong, which is why the build asserts that file exists.
-
-What you set up once in Azure DevOps is in [Configuration](#configuration).
-
-### Versions and branches
-
-`VersionPrefix` in `Directory.Build.props` is the only version. The About page shows it as `MM.mm`, plus `.pp` once a patch exists (`01.00.01`).
-
-| Branch | Holds | Created from | Merges into by pull request |
-| ------ | ----- | ------------ | --------------------------- |
-| `feature/*` | One change | The release branch it targets | `release/MM.mm` |
-| `release/MM.mm` | One version, e.g. `release/01.00`, with `VersionPrefix` matching; each fix after release raises the patch. Every merge into it deploys, and the newest is the default branch | The previous release branch | (none) |
-
-Branch policy lives in the repository as GitHub rulesets under [.github/rulesets](.github/rulesets), applied by the [Branch policy](.github/workflows/branch-policy.yml) workflow:
-
-| Ruleset | Applies to | Effect |
-| ------- | ---------- | ------ |
-| [Protected branches](.github/rulesets/protected-branches.json) | Every `release/*` | Changes only by pull request; no force-push or deletion. |
-| [Locked releases](.github/rulesets/locked-releases.json) | Every versioned release branch but the newest, filled in by the workflow | Read-only: no push, merge or deletion. Branches are ordered by version number, so `release/02.00` locks `release/01.25`; a `release/*` branch whose name is not a version is left alone. Changing a locked release means disabling this ruleset for the duration. |
-
-The workflow also makes the newest release branch the repository's default, so a new pull request targets it. It runs when a release branch is created, when a change to a ruleset file or its script is pushed to a release branch, and by hand from the Actions tab. Each ruleset is matched by name, so one that already exists is updated rather than duplicated, and one on the repository that no file defines is deleted. GitHub runs it from the triggering branch's own commit, so a policy change is in effect once it is on the release branch the next release is cut from. It needs one repository secret, `RULESET_ADMIN_TOKEN`: a fine-grained personal access token for this repository with **Administration: Read and write**.
-
-### Branch filtering
-
-Which branches may release to an environment is `a_AllowedBranches` in that environment's variable group, so tightening or loosening it is an edit in Azure DevOps rather than a pipeline change, and a new environment brings its own answer with it. The release stage's `condition` reads it directly; there is no extra stage, job or script behind it.
-
-Write the branches as a pipe-delimited list, without the `refs/heads/` prefix:
-
-| You write | It matches |
-| --------- | ---------- |
-| `release/01.02\|release/01.03` | Those two branches. |
-| `release/` | Every branch under `release/`, such as `release/01.00`. Matching ignores case. |
-| (unset or empty) | Every branch that triggers the pipeline. |
-
-### Custom domain
-
-`a_CustomDomain` in the environment's variable group is the domain the app answers on. The Bicep binds it to the container app's ingress, which is what keeps it in place: a deployment rewrites the app's whole ingress configuration, so a domain bound by hand in the portal lasts only until the next release.
-
-The certificate is a free Azure managed certificate. Before deploying the app, the release stage reads the environment's certificates, both uploaded and managed, and passes the id of the one whose subject is the domain, so an environment that already has a certificate keeps it rather than collecting a second one.
-
-Finding none, the stage deploys twice: once binding the domain with no certificate on it, then again to issue `<AppBase><Env><Region>mc` and bind it. Azure issues a managed certificate only for a hostname that an app in the environment already carries, so there is no single pass that can do both. Later releases find that certificate and deploy once. It renews itself.
-
-Two DNS records at your registrar have to exist before the domain is set, because the certificate is issued only after Azure resolves them:
-
-| Record | Name | Value |
-| ------ | ---- | ----- |
-| `CNAME` | The subdomain, for example `standup` | The app's generated host, `<app>.<region>.azurecontainerapps.io` |
-| `TXT` | `asuid.` plus the subdomain, for example `asuid.standup` | The domain verification id, which the release stage prints at the end of its log |
-
-The order for a new environment is therefore: release once with `a_CustomDomain` empty, take the generated URL and the verification id from the log, create the two records, then set `a_CustomDomain` and release again.
-
-Once the domain is set, the release log prints the callback URLs on the domain rather than the generated host, and those are the ones to register with the identity provider. The generated host keeps working, so a sign-in attempted there fails at the provider rather than at the app.
-
-# 🚧 Change Summary
+# <a id="run-locally">🚀</a> Run Locally
+
+Run every command from the repository root unless a step says otherwise.
+
+1. Install the .NET SDK and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite), and optionally an editor, from the [Technical Overview](#technical-overview).
+2. Get the source: `git clone https://github.com/geekfog/StandFast.git`, then `cd StandFast`.
+3. Trust the HTTPS development certificate with `dotnet dev-certs https --trust`. This works on Windows and macOS; on Linux, follow [Microsoft's instructions](https://learn.microsoft.com/aspnet/core/security/enforcing-ssl#trust-the-aspnet-core-https-development-certificate) for your distribution.
+4. Register an application with your identity provider as a server-side web app that uses the authorization code flow with a client secret:
+
+   | Provider setting | Value |
+   | ---------------- | ----- |
+   | Allowed callback URL | `https://localhost:7111/signin-oidc` |
+   | Allowed logout redirect URL | `https://localhost:7111/signout-callback-oidc` |
+
+   Copy the provider's issuer URL, the client id, and the client secret.
+5. Start Azurite as its documentation describes and leave it running. The `.azurite` folder in the repository root is ignored by Git, so it can hold Azurite's data.
+6. Store the connection and sign-in settings as [user secrets](https://learn.microsoft.com/aspnet/core/security/app-secrets), which stay outside the repository:
+
+   ```powershell
+   dotnet user-secrets set "AzureTableStorage:ConnectionString" "UseDevelopmentStorage=true" --project src/StandFast.Ui
+   dotnet user-secrets set "Oidc:Authority" "<issuer URL>" --project src/StandFast.Ui
+   dotnet user-secrets set "Oidc:ClientId" "<client id>" --project src/StandFast.Ui
+   dotnet user-secrets set "Oidc:ClientSecret" "<client secret>" --project src/StandFast.Ui
+   ```
+
+   Every other setting has a working default; [Settings](#settings) lists them all.
+7. Start the app with `dotnet run --project src/StandFast.Ui --launch-profile https`, or from your editor. The console shows `Now listening on: https://localhost:7111`, and the tables are created on first start.
+8. Open `https://localhost:7111` and sign in through your identity provider.
+9. The data starts empty. Set it up as in [Using StandFast](#using-standfast), or restore a backup file on the Backup screen.
+10. Check `https://localhost:7111/healthz`, which returns `Healthy` without signing in.
+11. To stop, press Ctrl+C in the app's terminal, then stop Azurite.
+
+# <a id="run-hosted">☁️</a> Run in Hosted Environment (Azure)
+
+An Azure DevOps pipeline builds the app on every change to a `release/*` branch and creates every Azure resource itself, so the only manual work is the one-time setup below.
+
+## Set up and deploy
+
+These steps set up the one environment the pipeline defines, PRD. Another environment is another `azure-pipelines-release.yaml` block in `azure-pipelines.yaml`, with its own variable group and Pipelines environment.
+
+1. Register an application with your identity provider as in [Run Locally](#run-locally) step 4, without callback URLs for now.
+2. In your Azure DevOps project, create an Azure Resource Manager [service connection](https://learn.microsoft.com/azure/devops/pipelines/library/service-endpoints) to the subscription, named `StandFast-Azure`. That name is set in [azure-pipelines.yaml](azure-pipelines.yaml).
+3. As someone with **Owner** or **User Access Administrator** on the subscription, give the service connection's principal the **Role Based Access Control Administrator** role at subscription scope, so the deployment can grant the app's managed identity its access. Without it the release fails with `Authorization failed for template resource … Microsoft.Authorization/roleAssignments`. Either:
+   - Run this in [Azure Cloud Shell](https://learn.microsoft.com/azure/cloud-shell/overview) (PowerShell):
+
+     ```powershell
+     $appId = az devops service-endpoint list --organization https://dev.azure.com/<organization> --project <project> --query "[?name=='StandFast-Azure'].authorization.parameters.serviceprincipalid" -o tsv
+     $objectId = az ad sp show --id $appId --query id -o tsv
+     az role assignment create --assignee-object-id $objectId --assignee-principal-type ServicePrincipal --role "Role Based Access Control Administrator" --scope /subscriptions/<subscription id>
+     ```
+
+   - Or, in the Azure portal: open the service connection in Azure DevOps and note its id, select **Manage service connection roles**, then **+ Add** → **Add role assignment** → **Privileged administrator roles** → **Role Based Access Control Administrator**. Select the member by searching for the service connection id, and on the Conditions tab choose **Allow user to assign all roles (highly privileged)**.
+4. Create the [variable groups](https://learn.microsoft.com/azure/devops/pipelines/library/variable-groups) `standfast-vars` and `standfast-prd-vars`, holding every variable [Settings](#settings) marks as required, and authorize both for the pipeline. Mark `a_OidcClientSecret` as secret, or link the group to a Key Vault that holds it.
+5. Create the [Pipelines environment](https://learn.microsoft.com/azure/devops/pipelines/process/environments) `StandFast PRD`.
+6. Create a pipeline from `azure-pipelines.yaml` in this repository, then push or merge to a `release/*` branch to run it.
+7. At the end of the release log, copy the app's address and the two callback URLs, and register the callback URLs with the identity provider.
+8. Open `<app address>/healthz`, which returns `Healthy`, then open the app's address and sign in.
+9. Set up the data as in [Using StandFast](#using-standfast), or restore a backup within the app, taken from another environment.
+
+## Optional settings
+
+Both are variables in the environment's variable group and take effect on the next release.
+
+**`a_AllowedBranches`** limits which branches may release to the environment. Write branch names without `refs/heads/`, separated by `|`; a top-level folder followed by `/` matches every branch in it, and matching ignores case. For example, `release/` allows every release branch, and `release/01.02|release/01.03` allows only those two. Left unset or empty, every branch that triggers the pipeline releases.
+
+**`a_CustomDomain`** serves the app on your own domain, such as `standup.example.com`, instead of the generated Container Apps address. The release binds the domain and issues a free managed certificate for it, once the domain's DNS records exist; the release log prints the domain verification id they need. Afterwards, register the callback URLs on the new domain with the identity provider.
+
+## Access an existing deployment
+
+Open the custom domain if one is set, or the container app's **Application Url** in the Azure portal, which the release log also prints. StandFast admits anyone the identity provider signs in for its application, so who can use it is controlled at the provider.
+
+# <a id="development-and-support">⚙️</a> Development and Support
+
+| Topic | Detail |
+| ----- | ------ |
+| Build | `dotnet build StandFast.slnx` |
+| Test | `dotnet test StandFast.slnx`. The Azurite integration tests skip themselves when Azurite is not running. The pipeline runs the same build and tests on every pull request. |
+| Contributing | Branch `feature/*` from the release branch you are targeting and open a pull request into it. Every merge into a release branch deploys. Add a line for the change under that version in the Change Summary below. |
+| Versions and branches | `VersionPrefix` in [Directory.Build.props](Directory.Build.props) is the only version. Each `release/MM.mm` branch is cut from the previous one, and the newest is the default branch. |
+| Branch policy | [GitHub rulesets](https://docs.github.com/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets) in [.github/rulesets](.github/rulesets) allow changes to release branches only by pull request and make every release branch but the newest read-only. The [Branch policy](.github/workflows/branch-policy.yml) workflow applies them and needs a repository secret `RULESET_ADMIN_TOKEN`: a fine-grained personal access token for this repository with **Administration: Read and write**. |
+| Ownership | Maintained by Hans Dickel ([geekfog](https://github.com/geekfog)). |
+| Support | [GitHub Issues](https://github.com/geekfog/StandFast/issues). |
+| License | [GNU General Public License v3.0](LICENSE). |
+
+## Settings
+
+Locally a setting is a key in a settings file or user secrets. In Azure it is a variable in an Azure DevOps variable group, which the release stage passes to the Bicep, which sets it on the container app. `<env>` is the lower-case environment code, so production reads `standfast-prd-vars`.
+
+| Setting | Purpose | Local: location and value | Azure: group and variable | Needed |
+| ------- | ------- | ------------------------- | ------------------------- | ------ |
+| `Oidc:Authority` | The identity provider's issuer URL. Every endpoint is read from its discovery document. | User secrets | `standfast-<env>-vars`: `a_OidcAuthority` | Required |
+| `Oidc:ClientId` | The confidential client id from the identity provider. | User secrets | `standfast-<env>-vars`: `a_OidcClientId` | Required |
+| `Oidc:ClientSecret` | The client secret from the identity provider. In Azure, mark the variable secret; the Bicep stores it in Key Vault as `oidc-client-secret` and the container app reads it through a Key Vault reference. | User secrets | `standfast-<env>-vars`: `a_OidcClientSecret` | Required |
+| `AzureTableStorage:ConnectionString` | Table Storage for all data. Startup fails unless this or `ServiceUri` is set. | User secrets: `UseDevelopmentStorage=true` for Azurite | Not used; see `ServiceUri` under [Values set for you](#values-set-for-you) | Required locally |
+| `StandFastUi:DisplayTimeZoneId` | The [time zone](#time-zones) for times that belong to no standup, such as on the Backup screen, and for a standup whose own time zone the server cannot resolve. The board and reports use the standup's own time zone. Empty falls back to the server's zone: your machine's locally, UTC in the container. | User secrets, optional | `standfast-<env>-vars`: `a_DisplayTimeZoneId` | Variable required, value may be empty |
+| (none) | The custom domain the app answers on; see [Optional settings](#optional-settings). Empty leaves only the generated Container Apps address. | (none) | `standfast-<env>-vars`: `a_CustomDomain` | Variable required, value may be empty |
+| (none) | Branches that may release to this environment; see [Optional settings](#optional-settings). | (none) | `standfast-<env>-vars`: `a_AllowedBranches` | Optional |
+| (none) | Region segment of every resource name, such as `usnorth`. | (none) | `standfast-<env>-vars`: `a_RegionToken` | Required |
+| (none) | Azure region everything is created in, such as `northcentralus`. | (none) | `standfast-<env>-vars`: `a_Location` | Required |
+| (none) | First segment of every resource name and the `Product` tag, identical across environments, such as `standfast`. | (none) | `standfast-vars`: `a_AppBase` | Required |
+| `AzureTableStorage:TablePrefix` | Prefix on every table name, so one storage account can hold several environments. Letters and digits only, starting with a letter, 21 characters at most. | `appsettings.Development.json`: `StandFastDev`, overridable in user secrets | Set by the Bicep; see [Values set for you](#values-set-for-you) | Committed |
+| `AzureTableStorage:CreateTablesOnStartup` | Creates missing tables at startup. Turn off only where the identity has no table-create rights. | `appsettings.json`: `true` | `appsettings.json`: `true` | Committed |
+| `BoardLock:GraceMinutes` | Minutes after a date's last presentation within which locking it records the moment Lock was pressed. A lock applied later is dated from the last presentation instead, so a date locked the next morning does not read as a meeting that ran all night. | `appsettings.json`: `60` | `standfast-<env>-vars`: `a_BoardLockGraceMinutes` | Optional; an undefined variable keeps the committed value |
+| `BoardLock:MinutesAfterLastTurn` | Minutes added to the last presentation to date a lock applied after the grace window. | `appsettings.json`: `5` | `standfast-<env>-vars`: `a_BoardLockMinutesAfterLastTurn` | Optional; an undefined variable keeps the committed value |
+| `SignInSession:IdleDays` | Days a sign-in lasts without the app being opened. Every visit restarts the count, and the sign-in survives closing the browser. | `appsettings.json`: `7` | `standfast-<env>-vars`: `a_SignInIdleDays` | Optional; an undefined variable keeps the committed value |
+| `Oidc:CallbackPath`, `Oidc:SignedOutCallbackPath`, `Oidc:SignedOutRedirectUri` | Sign-in and sign-out paths. The two callback paths, after the app's address, are what gets registered with the identity provider. | `appsettings.json` | `appsettings.json` | Committed |
+| `Oidc:Scopes` | Scopes added to `openid`, `profile`, and `email`. Only needed when the provider requires another. | `appsettings.json`, optional | `appsettings.json`, optional | Optional |
+
+### Values set for you
+
+Listed so a value found in a deployed app can be traced to what produced it. None of these is set by hand.
+
+| Value | Set by |
+| ----- | ------ |
+| `AzureTableStorage:ServiceUri` | The Bicep, from the storage account it creates. The app authenticates with `DefaultAzureCredential`, so no key is involved. Empty locally, which makes the connection string apply. |
+| `AzureTableStorage:TablePrefix` | The Bicep, as `a_AppBase` plus the environment code, such as `standfastPRD`. |
+| `StandFastUi:DataProtectionBlobUri` | The Bicep, from the same storage account. Holds the Data Protection key ring that every replica shares. |
+| `StandFastUi:EnvironmentLabel` | The Bicep, as the environment code everywhere except PRD, where it is empty. Drives the navigation menu's environment tag. Unset locally, where the tag shows the `ASPNETCORE_ENVIRONMENT` name. |
+
+### Time zones
+
+`DisplayTimeZoneId` accepts a Windows id or an IANA id, and .NET resolves both on Windows and in the Linux container, so `Central Standard Time` and `America/Chicago` are equivalent. `TimeZoneInfo.GetSystemTimeZones()` lists every id the runtime accepts. A time zone picked for a standup or person is saved as its IANA id on any host, and saving rejects an id the host cannot resolve. `TimeZoneIds` in the Domain project does the conversion, and the standup and person dialogs share the `TimeZoneSelect` picker.
+
+| Windows id | IANA id | Covers |
+| ---------- | ------- | ------ |
+| `Hawaiian Standard Time` | `Pacific/Honolulu` | Hawaii, no daylight saving |
+| `Alaskan Standard Time` | `America/Anchorage` | Alaska |
+| `Pacific Standard Time` | `America/Los_Angeles` | Pacific |
+| `US Mountain Standard Time` | `America/Phoenix` | Arizona, no daylight saving |
+| `Mountain Standard Time` | `America/Denver` | Mountain |
+| `Central Standard Time` | `America/Chicago` | Central, the Bicep default |
+| `Eastern Standard Time` | `America/New_York` | Eastern |
+| `US Eastern Standard Time` | `America/Indiana/Indianapolis` | Indiana (East) |
+
+# <a id="change-summary">🚧</a> Change Summary
 
 *Each entry is a specific version (release/\* branch), in descending order (newest version up top), with a plain bullet list summarizing each change without technical jargon.*
 
@@ -563,9 +311,7 @@ Once the domain is set, the release log prints the callback URLs on the domain r
 - Let guests record notes. A guest card has the notes icon, and its update panel shows a single Notes box without Blockers or Parking lot.
 - Made the People page list only active people, with a Show inactive switch to list everyone.
 - Kept inactive people off the board's roster, while still showing them on any date they were present, a guest, or presented.
-- Rewrote the opening of this document as a short summary of what StandFast is for and what it can do.
-- Redrew the layering diagram so GitHub renders it as a picture, and corrected it to show how the projects actually depend on each other.
-- Trimmed general background and side remarks from this document, keeping only what is specific to StandFast.
+- Reorganized the documentation so a newcomer can read what StandFast does, how to set it up and use it, and how to run it locally and deploy it, in that order, with every setting listed in one place.
 
 ### v01.02.00 — 2026-10-01
 
