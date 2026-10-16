@@ -38,7 +38,7 @@ StandFast does not host the call and does not connect to any meeting or chat ser
 | Guest | Someone attending a standup who is not on its Presenter Roster. A guest can have notes recorded but takes no turn. |
 | Board | One standup on one date, where attendance and updates are recorded. |
 | Turn | A presenter's position in the order people gave their updates on a date. |
-| Update | What a presenter said, in three parts: current update, blockers (what is in their way), and parking lot (topics to take up after the meeting). Each is written in [Markdown](https://www.markdownguide.org/basic-syntax/), a plain-text formatting syntax. |
+| Update | What a presenter said, in three parts: current update, blockers (what is in their way), and parking lot (topics to take up after the meeting). Each is edited as formatted text and saved as [Markdown](https://www.markdownguide.org/basic-syntax/), a plain-text formatting syntax, which can also be edited directly. |
 | Lock | Closing a date after the meeting, so what was recorded cannot be changed by accident. |
 | Identity provider | The external sign-in service StandFast trusts to say who a user is, using the [OpenID Connect](https://openid.net/developers/how-connect-works/) standard. |
 
@@ -88,6 +88,8 @@ People, standups, and rosters are set up once and changed as the team changes. B
 | [.NET SDK](https://dotnet.microsoft.com/download/dotnet/10.0), at the version in [global.json](global.json) | Builds, runs, and tests the app. | Local |
 | [Visual Studio 2026](https://visualstudio.microsoft.com/downloads/) or [Visual Studio Code](https://code.visualstudio.com/download) with [C# Dev Kit](https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csdevkit) | Editing and debugging. Visual Studio Code runs and debugs with F5 from [.vscode](.vscode). | Local, optional |
 | C#, Blazor Server, and MudBlazor | Language and UI. Packages are versioned in [Directory.Packages.props](Directory.Packages.props) and restored automatically. | Included |
+| [Milkdown](https://milkdown.dev) | The formatted text editor in the update, blockers, parking lot, and notes boxes. It is committed already built, under `src/StandFast.Ui/wwwroot/lib`; see Browser libraries under [Development and Support](#development-and-support). | Included |
+| [Node.js](https://nodejs.org) | Rebuilds the browser libraries after their versions change. | Optional |
 | [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite) | Stands in for Azure Table Storage. | Local |
 | OpenID Connect identity provider | Sign-in. Any provider that publishes a discovery document and supports the authorization code flow with a client secret, such as [Kinde](https://kinde.com). | Local and hosted |
 | [Azure subscription](https://azure.microsoft.com/free/) | Hosts the app on Azure Container Apps with Azure Table Storage, all defined in [infra/main.bicep](infra/main.bicep). **Owner** or **User Access Administrator** is needed once, to grant the pipeline its role. Using a custom domain assumes familiarity with Azure Container Apps custom domains and DNS. | Hosted |
@@ -228,6 +230,7 @@ Open the custom domain if one is set, or the container app's **Application Url**
 | Build | `dotnet build StandFast.slnx` |
 | Test | `dotnet test StandFast.slnx`. The Azurite integration tests skip themselves when Azurite is not running. The pipeline runs the same build and tests on every pull request. |
 | Contributing | Branch `feature/*` from the release branch you are targeting and open a pull request into it. Every merge into a release branch deploys. Add a line for the change under that version in the Change Summary below. |
+| Browser libraries | [src/StandFast.Ui.ClientLibs](src/StandFast.Ui.ClientLibs) pins the browser libraries in its `package.json` and bundles them into `src/StandFast.Ui/wwwroot/lib`, which is committed, so building and deploying need no Node.js. After changing a version, run `npm install` and then `npm run build` in that folder, and commit the rebuilt files. |
 | Versions and branches | `VersionPrefix` in [Directory.Build.props](Directory.Build.props) is the only version. Each `release/MM.mm` branch is cut from the previous one, and the newest is the default branch. |
 | Taking updates | Each version arrives as a new `release/MM.mm` branch in this repository. In your copy, run `git fetch upstream`, then push the new branch with `git push origin upstream/release/MM.mm:refs/heads/release/MM.mm`, which deploys it. GitHub's Sync fork button only updates the branch you are on. |
 | Branch policy | Maintainer only; a copy can skip it. [GitHub rulesets](https://docs.github.com/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets) in [.github/rulesets](.github/rulesets) allow changes to release branches only by pull request and make every release branch but the newest read-only. The [Branch policy](.github/workflows/branch-policy.yml) workflow applies them and needs a repository secret `RULESET_ADMIN_TOKEN`: a fine-grained personal access token for this repository with **Administration: Read and write**. GitHub turns Actions off in a fork until the owner enables them. |
@@ -298,6 +301,8 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 - Replaced the chart's colors with six that stay clearly different from each other in both light and dark mode, including for color-blind readers: blue, orange, teal, magenta, yellow, and violet. The seventh person onward gets the same colors again as dashed lines.
 - Added a third report, Attendance: one row per person on the presenter roster or who presented in the period, with how many of the days the standup ran they presented on and missed, their attendance as a percentage, and their average, shortest, and longest turn. Missed days count only from when the person joined the roster, and show a dash for someone no longer on it. A turn runs until the next person is marked, and the day's last turn until the lock. Clicking any column heading sorts by it; the table starts sorted by name.
 - Moved the build, deploy, and branch-policy pipelines to Ubuntu 26.04.
+- Made the update, blockers, parking lot, and notes boxes edit formatted text directly, as it reads once saved, so a long list item wraps under its own text instead of back to the edge of the box. The formatting buttons work on the formatted text, and task checkboxes can be checked off in it.
+- Replaced the Preview and Edit buttons with Markdown and Formatted, which switch the boxes between the formatted text and the markdown it is saved as.
 
 ### v01.03.00 — 2026-10-02
 

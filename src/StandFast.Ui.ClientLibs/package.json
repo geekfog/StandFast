@@ -1,0 +1,17 @@
+{
+  "name": "standfast-ui-clientlibs",
+  "private": true,
+  "description": "Bundles the browser libraries StandFast.Ui serves from wwwroot/lib.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@milkdown/crepe": "7.22.3",
+    "@milkdown/kit": "7.22.3",
+    "mdast-util-to-markdown": "2.2.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

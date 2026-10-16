@@ -1,5 +1,5 @@
-// Selection-aware markdown editing helpers. Blazor owns the text; this file only computes the new text and restores the caret,
-// so every toolbar button in the app behaves identically without each component re-implementing selection maths.
+// Selection-aware helpers for editing the markdown source. Blazor owns the text; this file only computes the new text and restores the caret,
+// so every toolbar button in the app behaves identically without each component re-implementing selection maths. Formatted editing lives in markdown-visual.js.
 window.standFastMarkdown = (() => {
     const resolveTextArea = (elementId) => {
         const element = document.getElementById(elementId);
@@ -24,8 +24,6 @@ window.standFastMarkdown = (() => {
     const editorHandlers = new Map();
     // Every kind of removal (Backspace, Delete, word and line deletes, cut, drag) reports an input type with this prefix.
     const deleteInputTypePrefix = 'delete';
-    const previewSelector = '.standfast-markdown';
-    const previewCheckboxSelector = `${previewSelector} input[type="checkbox"]`;
 
     const parseListItem = (line) => {
         const match = listItemPattern.exec(line);
@@ -297,23 +295,12 @@ window.standFastMarkdown = (() => {
             return commit(textArea, next, lineStartOffset(lines, firstLine), lineStartOffset(lines, lastLine) + lines[lastLine].length);
         },
 
-        // Continues lists on Enter, renumbers them after deletions, and toggles preview checkboxes. Listens on the editor container so it survives the preview toggle re-creating its contents.
-        attach(elementId, dotNetReference, methodName, taskToggledMethodName) {
+        // Continues lists on Enter and renumbers them after deletions in the markdown source. Listens on the editor container so it survives the source toggle re-creating its contents.
+        attach(elementId, dotNetReference, methodName) {
             const container = document.getElementById(elementId);
             if (!container || editorHandlers.has(elementId)) {
                 return;
             }
-
-            // Blazor owns the text, so the click is cancelled and the box shows its new state once the toggled text re-renders.
-            const click = (event) => {
-                const checkbox = event.target;
-                if (!(checkbox instanceof HTMLInputElement) || checkbox.type !== 'checkbox' || checkbox.disabled || !checkbox.closest(previewSelector)) {
-                    return;
-                }
-                event.preventDefault();
-                const checkboxes = [...container.querySelectorAll(previewCheckboxSelector)];
-                dotNetReference.invokeMethodAsync(taskToggledMethodName, checkboxes.indexOf(checkbox));
-            };
 
             const keydown = (event) => {
                 const textArea = event.target;
@@ -338,7 +325,7 @@ window.standFastMarkdown = (() => {
                 }
             };
 
-            const handlers = { click, input, keydown };
+            const handlers = { input, keydown };
             Object.entries(handlers).forEach(([type, handler]) => container.addEventListener(type, handler));
             editorHandlers.set(elementId, { container, handlers });
         },

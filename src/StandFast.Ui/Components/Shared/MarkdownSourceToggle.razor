@@ -1,0 +1,27 @@
+@* Switches markdown boxes between formatted editing and the markdown source. Shared by a single editor's toolbar and by the update panel, which switches all its boxes at once. *@
+<MudTooltip Text="@Description">
+    <MudButton Variant="Variant.Filled" Color="Color.Default" DropShadow="false" Size="@Size" StartIcon="@(ShowSource ? Icons.Material.Filled.Article : Icons.Material.Filled.DataObject)" OnClick="@(() => ShowSourceChanged.InvokeAsync(!ShowSource))" aria-label="@Description">
+        @Label
+    </MudButton>
+</MudTooltip>
+
+@code {
+    [Parameter]
+    public bool ShowSource { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> ShowSourceChanged { get; set; }
+
+    /// <summary>What the toggle switches, appended to its tooltip, for a toggle that switches more than one box.</summary>
+    [Parameter]
+    public string? Target { get; set; }
+
+    [Parameter]
+    public Size Size { get; set; } = Size.Small;
+
+    private string Label => ShowSource ? "Formatted" : "Markdown";
+
+    private string Action => ShowSource ? "Edit as formatted text" : "Edit the markdown source";
+
+    private string Description => Target is null ? Action : $"{Action} in {Target}";
+}
