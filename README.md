@@ -297,6 +297,7 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 - Made the Presenting Order vs Date chart pick out one person at a time. Hovering a line, dot, or name in the legend fades everyone else back and names the person in a popup, with the date and turn when over a dot. Clicking keeps that person highlighted until they or an empty part of the chart is clicked.
 - Replaced the chart's colors with six that stay clearly different from each other in both light and dark mode, including for color-blind readers: blue, orange, teal, magenta, yellow, and violet. The seventh person onward gets the same colors again as dashed lines.
 - Added a third report, Attendance: one row per person on the presenter roster or who presented in the period, with how many of the days the standup ran they presented on and missed, their attendance as a percentage, and their average, shortest, and longest turn. Missed days count only from when the person joined the roster, and show a dash for someone no longer on it. A turn runs until the next person is marked, and the day's last turn until the lock. Clicking any column heading sorts by it; the table starts sorted by name.
+- Moved the build, deploy, and branch-policy pipelines to Ubuntu 26.04.
 
 ### v01.03.00 — 2026-10-02
 

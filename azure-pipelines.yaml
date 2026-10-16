@@ -19,7 +19,7 @@ variables:
   - name: g_BuildConfiguration
     value: Release
   - name: g_VmImage
-    value: ubuntu-latest
+    value: ubuntu-26.04 # ubuntu-latest
   - name: g_ImageRepository
     value: standfast-ui
   # Matches the Microsoft.App version infra/main.bicep declares, so a certificate read over the management API sees the resource the same way the deployment does.
