@@ -62,6 +62,10 @@ else
         {
             <StandupActivityTable Report="@activity" TimeZone="@timeZone" />
         }
+        else if (attendance is not null)
+        {
+            <AttendanceTable Report="@attendance" />
+        }
         else if (timeline is not null)
         {
             <PresentingOrderTimelineChart Report="@timeline" IsDarkMode="@Preferences.IsDarkMode" />

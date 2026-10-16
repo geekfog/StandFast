@@ -26,6 +26,12 @@ public static class UiFormats
     /// <summary>Shown in place of a turn number for someone who was not at the previous standup, so they sort last in the reader's head.</summary>
     public const string NoPriorTurnSymbol = PresentationOrder.NoTurnSymbol;
 
+    /// <summary>A short span as minutes and seconds, for turn lengths, which run from seconds to a few minutes.</summary>
+    public const string MinutesAndSeconds = @"m\:ss";
+
+    /// <summary>A share from 0 to 1 as a whole percentage.</summary>
+    public const string WholePercent = "P0";
+
     /// <summary>Stands in for a figure that cannot be worked out yet, so a table cell reads as unanswerable rather than as zero.</summary>
     public const string UnavailableSymbol = "—";
 

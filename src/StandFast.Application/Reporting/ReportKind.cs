@@ -7,6 +7,7 @@ public enum ReportKind
 {
     PresentingOrderTimeline,
     StandupActivity,
+    Attendance,
 }
 
 /// <summary>Names the available reports for the report picker, so a report's title is written once rather than at every place it is shown.</summary>
@@ -23,14 +24,16 @@ public static class ReportCatalog
     {
         ReportKind.PresentingOrderTimeline => "Presenting Order vs Date",
         ReportKind.StandupActivity => "Standup Activity",
+        ReportKind.Attendance => "Attendance",
         _ => report.ToString(),
     };
 
     /// <summary>One line describing what the report answers, shown beneath its title.</summary>
     public static string Description(this ReportKind report) => report switch
     {
-        ReportKind.PresentingOrderTimeline => $"The turn each person took at every standup in the period. Anyone who did not present on a day drops to the {PresentationOrder.NoTurnSymbol} row.",
+        ReportKind.PresentingOrderTimeline => $"The turn each person took at every standup in the period. Anyone who did not present on a day drops to the {PresentationOrder.NoTurnSymbol} row. Hover a line or name to pick that person out, and click to keep them highlighted.",
         ReportKind.StandupActivity => "Every day in the period the standup actually ran, newest first, with how many people presented and how long it took.",
+        ReportKind.Attendance => "How many of the days the standup ran each person presented on, counted from when they joined the roster, and how long their turns took. A turn runs until the next person is marked, and the day's last turn until the lock.",
         _ => string.Empty,
     };
 

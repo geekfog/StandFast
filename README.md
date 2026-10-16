@@ -75,7 +75,7 @@ People, standups, and rosters are set up once and changed as the team changes. B
 | Context at a glance | Each card shows the person's photo, their time zone offset from the standup, and their time with the organization, with location, start date, and title or role on hover. | Shown only for details recorded in People. |
 | Updates | Each person's update, blockers, and parking lot are captured with formatting, and last time's entry can be copied in with one click. | Guests get one notes box. |
 | History | Any past date opens exactly as recorded, and a locked date cannot be changed by accident. | A locked date must be unlocked to change it. |
-| Reports | A chart of each person's turn over time, and a table of the days a standup ran, how many presented, and how long it took. | The period runs back from today, a year at most. |
+| Reports | A chart of each person's turn over time, a table of the days a standup ran, how many presented, and how long it took, and a table of how often each person presented and how long their turns ran. | The period runs back from today, a year at most. |
 | People directory | One list of everyone, with photo, title or role, organization, department, location, time zone, start date, and notes. | |
 | Backup and restore | The whole data set downloads as one file and can be restored into any StandFast environment. | Restoring replaces all data. The audit log and each user's own settings are not included. |
 | Appearance | Light or dark mode follows each user to any browser. | |
@@ -294,6 +294,9 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 ### v01.04.00 — 2026-10-15
 
 - Made marking the first person present on a date also mark you, when your own starred card is still on the roster.
+- Made the Presenting Order vs Date chart pick out one person at a time. Hovering a line, dot, or name in the legend fades everyone else back and names the person in a popup, with the date and turn when over a dot. Clicking keeps that person highlighted until they or an empty part of the chart is clicked.
+- Replaced the chart's colors with six that stay clearly different from each other in both light and dark mode, including for color-blind readers: blue, orange, teal, magenta, yellow, and violet. The seventh person onward gets the same colors again as dashed lines.
+- Added a third report, Attendance: one row per person on the presenter roster or who presented in the period, with how many of the days the standup ran they presented on and missed, their attendance as a percentage, and their average, shortest, and longest turn. Missed days count only from when the person joined the roster, and show a dash for someone no longer on it. A turn runs until the next person is marked, and the day's last turn until the lock. Clicking any column heading sorts by it; the table starts sorted by name.
 
 ### v01.03.00 — 2026-10-02
 

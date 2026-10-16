@@ -139,6 +139,49 @@
     stroke-width: 2;
 }
 
+/* Wide and transparent, so a line can be hovered without landing exactly on its stroke. */
+.standfast-chart-hit {
+    fill: none;
+    pointer-events: stroke;
+    stroke: transparent;
+    stroke-width: 12;
+}
+
+.standfast-chart-series,
+.standfast-chart-legend-item {
+    cursor: pointer;
+    transition: opacity 120ms ease;
+}
+
+/* While one person is highlighted, everyone else fades back so that person's line can be followed through the crossings. */
+.standfast-chart-focus[data-focus] .standfast-chart-series:not(.is-focused),
+.standfast-chart-focus[data-focus] .standfast-chart-legend-item:not(.is-focused) {
+    opacity: 0.15;
+}
+
+.standfast-chart-series.is-focused .standfast-chart-line {
+    stroke-width: 3.5;
+}
+
+.standfast-chart-series.is-focused .standfast-chart-dot {
+    r: 5.5;
+}
+
+.standfast-chart-tooltip {
+    background-color: var(--mud-palette-surface);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 4px;
+    box-shadow: var(--mud-elevation-4);
+    color: var(--mud-palette-text-primary);
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    padding: 0.375rem 0.625rem;
+    pointer-events: none;
+    position: fixed;
+    white-space: nowrap;
+    z-index: 2000;
+}
+
 .standfast-chart-legend {
     display: flex;
     flex-wrap: wrap;
@@ -147,8 +190,14 @@
 
 .standfast-chart-legend-item {
     align-items: center;
+    background: none;
+    border: 0;
+    border-radius: 4px;
+    color: inherit;
     display: flex;
+    font: inherit;
     gap: 0.5rem;
+    padding: 0.125rem 0.25rem;
 }
 
 .standfast-chart-table-order {

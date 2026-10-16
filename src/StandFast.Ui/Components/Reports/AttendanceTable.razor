@@ -1,0 +1,45 @@
+@* Sorting is MudTable's own, so a click on a heading reorders the rows in the browser without asking the server for the report again. *@
+<MudTable T="PersonAttendanceDto" Items="@Report.People" Dense="true" Hover="true" Striped="true" Elevation="0" Class="mt-3">
+    <HeaderContent>
+        <MudTh><MudTableSortLabel T="PersonAttendanceDto" SortBy="@ByName" InitialDirection="SortDirection.Ascending">Person</MudTableSortLabel></MudTh>
+        <MudTh Class="text-right"><MudTableSortLabel T="PersonAttendanceDto" SortBy="@(row => row.Presented)">Presented</MudTableSortLabel></MudTh>
+        <MudTh Class="text-right"><MudTableSortLabel T="PersonAttendanceDto" SortBy="@(row => row.Missed)">Missed</MudTableSortLabel></MudTh>
+        <MudTh Class="text-right"><MudTableSortLabel T="PersonAttendanceDto" SortBy="@(row => row.AttendanceRate)">Attendance</MudTableSortLabel></MudTh>
+        <MudTh Class="text-right"><MudTableSortLabel T="PersonAttendanceDto" SortBy="@(row => row.AverageTurn)">Average Turn (m:ss)</MudTableSortLabel></MudTh>
+        <MudTh Class="text-right"><MudTableSortLabel T="PersonAttendanceDto" SortBy="@(row => row.ShortestTurn)">Shortest Turn (m:ss)</MudTableSortLabel></MudTh>
+        <MudTh Class="text-right"><MudTableSortLabel T="PersonAttendanceDto" SortBy="@(row => row.LongestTurn)">Longest Turn (m:ss)</MudTableSortLabel></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Person">@context.DisplayName</MudTd>
+        <MudTd DataLabel="Presented" Class="text-right">@context.Presented</MudTd>
+        <MudTd DataLabel="Missed" Class="text-right">
+            @if (context.Missed is { } missed)
+            {
+                @missed
+            }
+            else
+            {
+                <MudTooltip Text="@NotOnRosterDescription">
+                    <span>@UiFormats.UnavailableSymbol</span>
+                </MudTooltip>
+            }
+        </MudTd>
+        <MudTd DataLabel="Attendance" Class="text-right">@(context.AttendanceRate?.ToString(UiFormats.WholePercent) ?? UiFormats.UnavailableSymbol)</MudTd>
+        <MudTd DataLabel="Average Turn" Class="text-right">@TurnLength(context.AverageTurn)</MudTd>
+        <MudTd DataLabel="Shortest Turn" Class="text-right">@TurnLength(context.ShortestTurn)</MudTd>
+        <MudTd DataLabel="Longest Turn" Class="text-right">@TurnLength(context.LongestTurn)</MudTd>
+    </RowTemplate>
+</MudTable>
+
+@code {
+    private const string NotOnRosterDescription = "Not on the presenter roster now, so the days they were expected cannot be counted.";
+
+    /// <summary>Case-insensitive, like the name order the report arrives in.</summary>
+    private static readonly Func<PersonAttendanceDto, object> ByName = row => row.DisplayName.ToUpperInvariant();
+
+    [Parameter]
+    [EditorRequired]
+    public AttendanceDto Report { get; set; } = default!;
+
+    private static string TurnLength(TimeSpan? length) => length?.ToString(UiFormats.MinutesAndSeconds) ?? UiFormats.UnavailableSymbol;
+}
