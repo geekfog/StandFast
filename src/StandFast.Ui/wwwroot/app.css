@@ -323,6 +323,63 @@
     min-height: calc(var(--standfast-markdown-lines) * 1lh);
 }
 
+/* The formatted editor (Milkdown) styles its text with the .standfast-markdown rules, so it reads like the rendered text. Its own pop-ups take the MudBlazor palette. */
+.standfast-markdown-visual {
+    --crepe-color-hover: var(--mud-palette-action-default-hover);
+    --crepe-color-on-background: var(--mud-palette-text-primary);
+    --crepe-color-outline: var(--mud-palette-text-secondary);
+    --crepe-color-surface: var(--mud-palette-surface);
+    --crepe-shadow-1: var(--mud-elevation-4);
+    --crepe-base-font-size: inherit;
+    --prosemirror-virtual-cursor-color: var(--mud-palette-text-primary);
+}
+
+.standfast-markdown-column .standfast-markdown-body > .standfast-markdown-visual,
+.standfast-markdown-column .standfast-markdown-visual > .milkdown {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+}
+
+.standfast-markdown-visual .ProseMirror {
+    flex: 1 1 auto;
+    min-height: calc(var(--standfast-markdown-lines) * 1lh);
+    outline: none;
+}
+
+.standfast-markdown-visual .crepe-placeholder::before {
+    color: var(--mud-palette-text-disabled);
+}
+
+/* Markdown needs a blank line after a list, quote or table, which the rendered text shows as an empty line; the editor shows it as the same space. */
+.standfast-markdown-visual :is(.standfast-markdown, blockquote) > :is(ul, ol, blockquote, table) + :not(p:has(> br.ProseMirror-trailingBreak:only-child)),
+.standfast-markdown-visual :is(.standfast-markdown, blockquote) > :not(p:has(> br.ProseMirror-trailingBreak:only-child)) + table {
+    margin-top: 1lh;
+}
+
+/* Each item's marker sits in its own column, so wrapped lines stay aligned with the item's text, as in the rendered list. */
+.standfast-markdown-visual .standfast-markdown :is(ul, ol) {
+    padding-left: 0;
+}
+
+.standfast-markdown-visual .milkdown-list-item-block li {
+    gap: 0.25rem;
+}
+
+.standfast-markdown-visual .milkdown-list-item-block li .label-wrapper,
+.standfast-markdown-visual .milkdown-list-item-block li .label-wrapper .label {
+    color: var(--mud-palette-text-primary);
+    height: 1lh;
+    padding: 0;
+    width: 1.25rem;
+}
+
+.standfast-markdown-visual .milkdown-list-item-block li .label-wrapper svg {
+    fill: currentColor;
+    height: 1.25em;
+    width: 1.25em;
+}
+
 .standfast-markdown > :first-child {
     margin-top: 0;
 }
@@ -344,7 +401,7 @@
     padding: 0.1rem 0.3rem;
 }
 
-/* Blocks carry no vertical margin: each blank line in the source renders as one spacer line, so the preview spacing matches the editor. */
+/* Blocks carry no vertical margin: each blank line in the source renders as one spacer line, so the rendered spacing matches the markdown source. */
 .standfast-markdown p,
 .standfast-markdown ul,
 .standfast-markdown ol {
@@ -378,10 +435,6 @@
 .standfast-markdown li.task-list-item input[type="checkbox"] {
     margin: 0 0.4rem 0 -1.4rem;
     vertical-align: middle;
-}
-
-.standfast-markdown li.task-list-item input[type="checkbox"]:enabled {
-    cursor: pointer;
 }
 
 /* MudBlazor's reset strips link color and underline, which leaves rendered links indistinguishable from text. */

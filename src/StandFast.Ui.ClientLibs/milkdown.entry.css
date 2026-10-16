@@ -1,0 +1,6 @@
+/* Only Milkdown's structural styles: app.css styles the text itself, so the visual editor matches the read-only rendering. */
+@import '@milkdown/kit/prose/view/style/prosemirror.css';
+@import '@milkdown/crepe/theme/common/cursor.css';
+@import '@milkdown/crepe/theme/common/link-tooltip.css';
+@import '@milkdown/crepe/theme/common/list-item.css';
+@import '@milkdown/crepe/theme/common/placeholder.css';

@@ -21,7 +21,7 @@
                 @if (!IsReadOnly)
                 {
                     <div>
-                        <MarkdownPreviewToggle @bind-Preview="isPreviewing" Target="all boxes" Size="Size.Medium" />
+                        <MarkdownSourceToggle @bind-ShowSource="isShowingSource" Target="all boxes" Size="Size.Medium" />
                         <MudTooltip Text="@CopyPriorDescription">
                             <MudButton Variant="Variant.Filled" Color="Color.Default" DropShadow="false" StartIcon="@Icons.Material.Filled.ContentCopy" Disabled="@(!CanCopyPriorForward)" OnClick="CopyPriorForward" aria-label="@CopyPriorDescription">Copy</MudButton>
                         </MudTooltip>
@@ -50,8 +50,8 @@
                                 @bind-Value="currentUpdate"
                                 ReadOnly="@IsReadOnly"
                                 Lines="@LinesFor(EditorField.Update)"
-                                @bind-Preview="isPreviewing"
-                                ShowPreviewToggle="@IsExpanded(EditorField.Update)"
+                                @bind-ShowSource="isShowingSource"
+                                ShowSourceToggle="@IsExpanded(EditorField.Update)"
                                 Expanded="@IsExpanded(EditorField.Update)"
                                 ExpandedChanged="@(expanded => SetExpanded(EditorField.Update, expanded))"
                                 Placeholder="@UpdatePlaceholder"
@@ -66,8 +66,8 @@
                                 @bind-Value="blockers"
                                 ReadOnly="@IsReadOnly"
                                 Lines="@LinesFor(EditorField.Blockers)"
-                                @bind-Preview="isPreviewing"
-                                ShowPreviewToggle="@IsExpanded(EditorField.Blockers)"
+                                @bind-ShowSource="isShowingSource"
+                                ShowSourceToggle="@IsExpanded(EditorField.Blockers)"
                                 Expanded="@IsExpanded(EditorField.Blockers)"
                                 ExpandedChanged="@(expanded => SetExpanded(EditorField.Blockers, expanded))"
                                 Placeholder="Anything in the way?"
@@ -82,8 +82,8 @@
                                 @bind-Value="parkingLot"
                                 ReadOnly="@IsReadOnly"
                                 Lines="@LinesFor(EditorField.ParkingLot)"
-                                @bind-Preview="isPreviewing"
-                                ShowPreviewToggle="@IsExpanded(EditorField.ParkingLot)"
+                                @bind-ShowSource="isShowingSource"
+                                ShowSourceToggle="@IsExpanded(EditorField.ParkingLot)"
                                 Expanded="@IsExpanded(EditorField.ParkingLot)"
                                 ExpandedChanged="@(expanded => SetExpanded(EditorField.ParkingLot, expanded))"
                                 Placeholder="Anything to take offline after the standup?"
@@ -120,8 +120,8 @@
     private DateOnly loadedDate;
     private bool isSaving;
 
-    // One preview state for all three boxes. An expanded box hides the panel header, so it shows its own toggle for the same state.
-    private bool isPreviewing;
+    // One source-or-formatted state for all three boxes. An expanded box hides the panel header, so it shows its own toggle for the same state.
+    private bool isShowingSource;
 
     private string CopyPriorDescription => CanCopyPriorForward
         ? "Copy the prior standup's update, blockers and parking lot into the empty boxes"

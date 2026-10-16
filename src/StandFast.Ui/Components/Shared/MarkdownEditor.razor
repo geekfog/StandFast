@@ -1,5 +1,4 @@
 @inject IJSRuntime JS
-@inject IMarkdownRenderer Markdown
 @implements IAsyncDisposable
 
 <MudPaper Outlined="true" Class="standfast-markdown-editor">
@@ -10,14 +9,14 @@
             @foreach (MarkdownCommand command in MarkdownCommands.All)
             {
                 <MudTooltip Text="@command.Tooltip">
-                    <MudIconButton Icon="@command.Icon" Size="Size.Small" Disabled="IsPreviewing"OnClick="@(() => ApplyAsync(command))" aria-label="@command.Tooltip" />
+                    <MudIconButton Icon="@command.Icon" Size="Size.Small" OnClick="@(() => ApplyAsync(command))" aria-label="@command.Tooltip" />
                 </MudTooltip>
             }
         }
         <MudSpacer />
-        @if (!ReadOnly && ShowPreviewToggle)
+        @if (!ReadOnly && ShowSourceToggle)
         {
-            <MarkdownPreviewToggle Preview="IsPreviewing" PreviewChanged="SetPreviewAsync" />
+            <MarkdownSourceToggle ShowSource="IsShowingSource" ShowSourceChanged="SetShowSourceAsync" />
         }
         @if (!HasToolbarButtons)
         {
@@ -32,11 +31,11 @@
     </MudToolBar>
 
     <div id="@editorId" class="pa-3 standfast-markdown-body" style="@($"{LinesCssProperty}: {Lines}")">
-        @if (IsPreviewing || ReadOnly)
+        @if (ReadOnly)
         {
-            <MarkdownView Value="@Value" EmptyText="@EmptyText" InteractiveTasks="@(!ReadOnly)" />
+            <MarkdownView Value="@Value" EmptyText="@EmptyText" />
         }
-        else
+        else if (IsShowingSource)
         {
             <MudTextField T="string"
                           Value="@Value"
@@ -48,6 +47,11 @@
                           Underline="false"
                           Placeholder="@Placeholder"
                           aria-label="@Label" />
+        }
+        else
+        {
+            @* The formatted editor owns everything inside this element, so Blazor renders it empty and never diffs into it. *@
+            <div id="@visualEditorId" class="standfast-markdown-visual" aria-label="@Label"></div>
         }
     </div>
 </MudPaper>
@@ -62,9 +66,22 @@
     private const string AttachFunction = "standFastMarkdown.attach";
     private const string DetachFunction = "standFastMarkdown.detach";
 
+    /// <summary>The formatted editor, loaded on first use since it is far larger than the rest of the page's script.</summary>
+    private const string VisualModulePath = "./js/markdown-visual.js";
+    private const string VisualCreateFunction = "create";
+    private const string VisualSetMarkdownFunction = "setMarkdown";
+    private const string VisualApplyFunction = "apply";
+    private const string VisualDestroyFunction = "destroy";
+
     private readonly string editorId = $"markdown-{Guid.NewGuid():N}";
+    private readonly string visualEditorId = $"markdown-visual-{Guid.NewGuid():N}";
     private DotNetObjectReference<MarkdownEditor>? selfReference;
-    private bool showPreview;
+    private IJSObjectReference? visualModule;
+    private bool showSource;
+    private bool isVisualEditorOpen;
+
+    // The text the formatted editor holds, so only text changed outside it is pushed back in.
+    private string? visualEditorValue;
 
     [Parameter]
     public string Label { get; set; } = string.Empty;
@@ -96,18 +113,20 @@
     [Parameter]
     public EventCallback<bool> ExpandedChanged { get; set; }
 
-    /// <summary>Whether the box shows rendered text. Owned by the parent when <see cref="PreviewChanged"/> is bound, so several boxes can switch together.</summary>
+    /// <summary>Whether the box shows the markdown source instead of formatted text. Owned by the parent when <see cref="ShowSourceChanged"/> is bound, so several boxes can switch together.</summary>
     [Parameter]
-    public bool Preview { get; set; }
+    public bool ShowSource { get; set; }
 
     [Parameter]
-    public EventCallback<bool> PreviewChanged { get; set; }
+    public EventCallback<bool> ShowSourceChanged { get; set; }
 
-    /// <summary>False when the parent offers its own preview toggle for this box.</summary>
+    /// <summary>False when the parent offers its own source toggle for this box.</summary>
     [Parameter]
-    public bool ShowPreviewToggle { get; set; } = true;
+    public bool ShowSourceToggle { get; set; } = true;
 
-    private bool IsPreviewing => PreviewChanged.HasDelegate ? Preview : showPreview;
+    private bool IsShowingSource => ShowSourceChanged.HasDelegate ? ShowSource : showSource;
+
+    private bool IsVisualEditorShown => !ReadOnly && !IsShowingSource;
 
     private bool HasToolbarButtons => !ReadOnly || ExpandedChanged.HasDelegate;
 
@@ -117,39 +136,71 @@
 
     private Task OnTextChangedAsync(string? value) => ValueChanged.InvokeAsync(value);
 
-    private Task SetPreviewAsync(bool preview)
+    private Task SetShowSourceAsync(bool value)
     {
-        if (PreviewChanged.HasDelegate)
+        if (ShowSourceChanged.HasDelegate)
         {
-            return PreviewChanged.InvokeAsync(preview);
+            return ShowSourceChanged.InvokeAsync(value);
         }
 
-        showPreview = preview;
+        showSource = value;
         return Task.CompletedTask;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender)
+        if (firstRender)
         {
-            return;
+            selfReference = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync(AttachFunction, editorId, selfReference, nameof(OnListEditedAsync));
         }
 
-        selfReference = DotNetObjectReference.Create(this);
-        await JS.InvokeVoidAsync(AttachFunction, editorId, selfReference, nameof(OnListEditedAsync), nameof(OnTaskToggledAsync));
+        await SyncVisualEditorAsync();
+    }
+
+    /// <summary>Opens or closes the formatted editor to match what the box shows, and hands it text that changed outside it, such as copied prior text or a cancel.</summary>
+    private async Task SyncVisualEditorAsync()
+    {
+        if (IsVisualEditorShown && !isVisualEditorOpen)
+        {
+            visualModule ??= await JS.InvokeAsync<IJSObjectReference>("import", VisualModulePath);
+            isVisualEditorOpen = true;
+            visualEditorValue = Value;
+            var options = new { PlaceholderText = Placeholder, MaxLength = DomainLimits.MarkdownMaxLength, MarkdownCommands.ItalicMarker };
+            await visualModule.InvokeVoidAsync(VisualCreateFunction, visualEditorId, Value, options, selfReference, nameof(OnVisualEditedAsync));
+        }
+        else if (!IsVisualEditorShown && isVisualEditorOpen)
+        {
+            isVisualEditorOpen = false;
+            await visualModule!.InvokeVoidAsync(VisualDestroyFunction, visualEditorId);
+        }
+        else if (isVisualEditorOpen && Value != visualEditorValue)
+        {
+            visualEditorValue = Value;
+            await visualModule!.InvokeVoidAsync(VisualSetMarkdownFunction, visualEditorId, Value);
+        }
     }
 
     /// <summary>Called by the browser after it edited a list: Enter continued or ended one, or a deletion renumbered one. Carries the text it produced.</summary>
     [JSInvokable]
     public Task OnListEditedAsync(string value) => ValueChanged.InvokeAsync(value);
 
-    /// <summary>Called by the browser when a preview checkbox is clicked, with its position among the preview's checkboxes.</summary>
+    /// <summary>Called by the formatted editor after every edit, with the markdown it now holds.</summary>
     [JSInvokable]
-    public Task OnTaskToggledAsync(int taskIndex) =>
-        ReadOnly || Markdown.ToggleTask(Value, taskIndex) is not { } updated ? Task.CompletedTask : ValueChanged.InvokeAsync(updated);
+    public Task OnVisualEditedAsync(string value)
+    {
+        visualEditorValue = value;
+        return ValueChanged.InvokeAsync(value);
+    }
 
     private async Task ApplyAsync(MarkdownCommand command)
     {
+        if (isVisualEditorOpen)
+        {
+            await visualModule!.InvokeVoidAsync(VisualApplyFunction, visualEditorId, command.VisualAction.ToString(), command.LinePrefix, command.Placeholder);
+            return;
+        }
+
         string? updated = command switch
         {
             { IsListShiftCommand: true } => await JS.InvokeAsync<string?>(ShiftLinesFunction, editorId, command.ListShift),
@@ -168,10 +219,19 @@
         try
         {
             await JS.InvokeVoidAsync(DetachFunction, editorId);
+            if (visualModule is not null)
+            {
+                if (isVisualEditorOpen)
+                {
+                    await visualModule.InvokeVoidAsync(VisualDestroyFunction, visualEditorId);
+                }
+
+                await visualModule.DisposeAsync();
+            }
         }
         catch (JSDisconnectedException)
         {
-            // The circuit closed before the component did, which takes the listener with it.
+            // The circuit closed before the component did, which takes the listener and the editor with it.
         }
 
         selfReference?.Dispose();
