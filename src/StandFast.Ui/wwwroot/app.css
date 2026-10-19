@@ -395,6 +395,14 @@
     padding: 0.75rem;
 }
 
+/* A wash of the theme's warning color under text that keeps its own color, so a highlight reads in both light and dark mode. */
+.standfast-markdown mark {
+    background-color: color-mix(in srgb, var(--mud-palette-warning) 35%, transparent);
+    border-radius: 3px;
+    color: inherit;
+    padding: 0 0.15rem;
+}
+
 .standfast-markdown code {
     background-color: var(--mud-palette-background-gray);
     border-radius: 3px;

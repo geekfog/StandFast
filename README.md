@@ -294,6 +294,10 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 
 *Each entry is a specific version (release/\* branch), in descending order (newest version up top), with a plain bullet list summarizing each change without technical jargon.*
 
+### v01.05.00 — 2026-10-19
+
+- Added a Highlight button to the markdown toolbar, after Strikethrough. Highlighted text is saved as `==text==` and shows with a soft yellow background that reads in both light and dark mode. Typing `==text==` in the formatted text highlights it too.
+
 ### v01.04.00 — 2026-10-15
 
 - Made marking the first person present on a date also mark you, when your own starred card is still on the roster.

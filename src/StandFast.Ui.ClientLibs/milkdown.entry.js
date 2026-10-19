@@ -5,6 +5,7 @@ export { cursor } from '@milkdown/crepe/feature/cursor';
 export { linkTooltip } from '@milkdown/crepe/feature/link-tooltip';
 export { listItem } from '@milkdown/crepe/feature/list-item';
 export { placeholder } from '@milkdown/crepe/feature/placeholder';
+export { highlight, toggleHighlightCommand } from './highlight.js';
 export { linkTooltipAPI } from '@milkdown/kit/component/link-tooltip';
 export { editorViewCtx, editorViewOptionsCtx, prosePluginsCtx, remarkPluginsCtx, remarkStringifyOptionsCtx, serializerCtx } from '@milkdown/kit/core';
 export { uploadConfig } from '@milkdown/kit/plugin/upload';
