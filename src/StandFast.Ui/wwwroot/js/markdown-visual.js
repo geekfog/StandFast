@@ -174,6 +174,7 @@ const actions = {
     Bold: callCommand(Milkdown.toggleStrongCommand),
     Italic: callCommand(Milkdown.toggleEmphasisCommand),
     Strikethrough: callCommand(Milkdown.toggleStrikethroughCommand),
+    Highlight: callCommand(Milkdown.toggleHighlightCommand),
     InlineCode: callCommand(Milkdown.toggleInlineCodeCommand),
     Heading: (editor, view, linePrefix) => isInside(view, nodeTypes.heading)
         ? run(editor, Milkdown.turnIntoTextCommand)
@@ -225,7 +226,7 @@ export function create(elementId, markdown, options, dotNetReference, changedMet
 
     const entry = { markdown: markdown ?? '', maxLength: options.maxLength, dotNetReference, changedMethodName, applying: false, serialize: null, markdownByDoc: new WeakMap() };
     const builder = new Milkdown.CrepeBuilder({ root, defaultValue: entry.markdown });
-    builder.editor.config(configure(entry, options.italicMarker));
+    builder.editor.config(configure(entry, options.italicMarker)).use(Milkdown.highlight);
     builder.addFeature(Milkdown.listItem).addFeature(Milkdown.linkTooltip).addFeature(Milkdown.cursor).addFeature(Milkdown.placeholder, { text: options.placeholderText, mode: 'doc' });
     entry.builder = builder;
     entry.ready = builder.create().then(() => {
