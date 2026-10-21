@@ -297,6 +297,9 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 ### v01.05.00 — 2026-10-19
 
 - Added a Highlight button to the markdown toolbar, after Strikethrough. Highlighted text is saved as `==text==` and shows with a soft yellow background that reads in both light and dark mode. Typing `==text==` in the formatted text highlights it too.
+- Made the roster, present, and presented columns on the board scroll independently on a wide window, so scrolling a long roster leaves the other two columns where they are.
+- Moved Save to the left of the update panel's other button, which is now Close while nothing is unsaved and closes the panel. Once there are unsaved edits it becomes Cancel, with an undo icon, which puts the boxes back to what was saved and keeps the panel open.
+- Moved the note explaining why the Leader dropdown is empty, such as no leader marked present or as a guest yet, out from under the dropdown and into a tooltip on it, so the dropdowns stay level.
 
 ### v01.04.00 — 2026-10-15
 

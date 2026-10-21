@@ -31,7 +31,7 @@
 }
 
 /*
- * From the md breakpoint up, the board fills the window below the app bar: the header and the update dock keep their size, and the columns between them scroll.
+ * From the md breakpoint up, the board fills the window below the app bar: the header and the update dock keep their size, and the columns between them scroll independently.
  * The dock's minimum height outranks its maximum share of the board, which CSS gives min-height over max-height.
  */
 @media (min-width: 960px) {
@@ -48,9 +48,25 @@
         flex: none;
     }
 
+    /* Each column scrolls on its own, so a long roster never moves the present or presented column out of view. */
     .standfast-board-body {
+        display: flex;
+        flex: 1 1 0;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .standfast-board-body > .mud-grid {
         flex: 1 1 0;
         min-height: 0;
+    }
+
+    .standfast-board-body > .mud-grid > .mud-grid-item {
+        max-height: 100%;
+    }
+
+    .standfast-board-body .standfast-column {
         overflow-x: hidden;
         overflow-y: auto;
     }
