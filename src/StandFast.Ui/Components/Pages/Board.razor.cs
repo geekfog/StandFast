@@ -84,8 +84,8 @@ public partial class Board
 
     private IReadOnlyList<StandupMemberDto> LeaderCandidates => board?.LeaderCandidates ?? [];
 
-    /// <summary>Says why the leader picker is empty, since an empty dropdown on its own reads as a standup with nobody available to lead.</summary>
-    private string? LeaderHelperText => LeaderCandidates.Count > 0 ? null : board?.Leaders.Count > 0
+    /// <summary>Says why the leader picker is empty, shown as its tooltip, since an empty dropdown on its own reads as a standup with nobody available to lead.</summary>
+    private string? LeaderEmptyReason => LeaderCandidates.Count > 0 ? null : board?.Leaders.Count > 0
         ? $"Mark someone on the {LeaderRosterName} present or as a guest to pick them."
         : $"Nobody is on the {LeaderRosterName} for this standup.";
 

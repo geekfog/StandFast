@@ -6,7 +6,7 @@ namespace StandFast.Ui.Common;
 public static class AppInfo
 {
     public const string Name = ApplicationInfo.Name;
-    public const string Tagline = "Daily scrum tracking";
+    public const string Tagline = "Daily standup tracking";
     public const string RepositoryUrl = "https://github.com/geekfog/StandFast";
 
     // The icon artwork is named after the product in Directory.Build.props and served at the site root under those file names.
