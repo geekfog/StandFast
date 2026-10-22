@@ -136,11 +136,12 @@
 
         @if (SelectedParticipant is { } participant)
         {
+            @* The date comes from the loaded board rather than the URL, so while a new date loads the panel keeps the date its participant belongs to. *@
             <div class="standfast-board-footer standfast-update-dock">
                 <ParticipantUpdatePanel @ref="updatePanel"
                                         Participant="@participant"
                                         StandupId="@SelectedStandupId"
-                                        MeetingDate="@SelectedDate"
+                                        MeetingDate="@board.MeetingDate"
                                         TimeZone="@timeZone"
                                         IsReadOnly="@IsLocked"
                                         OnSave="SaveUpdateAsync"

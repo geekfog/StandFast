@@ -129,6 +129,12 @@ public partial class Board
         loadedDate = SelectedDate;
 
         await LoadBoardAsync();
+
+        // An update left open across a date change stays open only while that person is on the new date's board.
+        if (SelectedParticipant is null)
+        {
+            selectedPersonId = null;
+        }
     }
 
     private async Task LoadBoardAsync()
@@ -166,7 +172,10 @@ public partial class Board
 
     private Task OnDateChangedAsync(DateOnly date) => NavigateAsync(SelectedStandupId, date);
 
-    /// <summary>Moves the board to another standup or date, once any unsaved edits in the open update have been confirmed as expendable. False when the reader chose to keep editing.</summary>
+    /// <summary>
+    /// Moves the board to another standup or date, once any unsaved edits in the open update have been confirmed as expendable. False when the reader chose to keep editing.
+    /// An open update follows a date change, so the same person's update can be read across days, and closes on a standup change.
+    /// </summary>
     private async Task<bool> NavigateAsync(Guid standupId, DateOnly date)
     {
         if (!await ConfirmLeaveUpdateAsync())
@@ -174,7 +183,11 @@ public partial class Board
             return false;
         }
 
-        selectedPersonId = null;
+        if (standupId != SelectedStandupId)
+        {
+            selectedPersonId = null;
+        }
+
         Navigation.NavigateTo(Navigation.GetUriWithQueryParameters(new Dictionary<string, object?>
         {
             [UiRoutes.StandupQueryKey] = standupId,
