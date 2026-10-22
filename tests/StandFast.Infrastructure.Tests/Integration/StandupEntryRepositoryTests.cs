@@ -188,6 +188,20 @@ public sealed class StandupEntryRepositoryTests : IClassFixture<AzuriteTableFixt
         Assert.Empty(await fixture.Entries.GetPresentationsAsync(standupId, Today.AddDays(-6), Today));
     }
 
+    [AzuriteFact]
+    public async Task DeleteAsync_RemovesOnlyThatDateAndIgnoresAMissingEntry()
+    {
+        await SeedAsync(Today.AddDays(-1), "Yesterday");
+        await SeedAsync(Today, "Today");
+
+        await fixture.Entries.DeleteAsync(standupId, personId, Today);
+        await fixture.Entries.DeleteAsync(standupId, personId, Today);
+        StandupEntryPair pair = await fixture.Entries.GetCurrentAndPriorAsync(standupId, personId, Today);
+
+        Assert.Null(pair.Current);
+        Assert.Equal("Yesterday", pair.Prior!.Update);
+    }
+
     private Task SeedPresentedAsync(Guid presenterId, DateOnly meetingDate, DateTimeOffset presentedUtc) =>
         fixture.Entries.UpsertAsync(new StandupEntry
         {

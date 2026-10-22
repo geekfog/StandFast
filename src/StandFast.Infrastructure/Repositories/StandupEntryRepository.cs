@@ -1,3 +1,4 @@
+using Azure;
 using Azure.Data.Tables;
 using StandFast.Domain.Abstractions;
 using StandFast.Domain.Common;
@@ -41,6 +42,12 @@ public sealed class StandupEntryRepository(ITableClientProvider tables) : IStand
     {
         TableClient client = await tables.GetAsync(StorageNames.StandupEntries, cancellationToken);
         await client.UpsertEntityAsync(entry.ToTableEntity(), TableUpdateMode.Replace, cancellationToken);
+    }
+
+    public async Task DeleteAsync(Guid standupId, Guid personId, DateOnly meetingDate, CancellationToken cancellationToken = default)
+    {
+        TableClient client = await tables.GetAsync(StorageNames.StandupEntries, cancellationToken);
+        await client.DeleteEntityAsync(StorageKeys.EntryPartitionKey(standupId, personId), StorageKeys.EntryRowKey(meetingDate), ETag.All, cancellationToken);
     }
 
     public async Task<IReadOnlyList<StandupEntry>> GetOnDateAsync(Guid standupId, DateOnly meetingDate, CancellationToken cancellationToken = default)

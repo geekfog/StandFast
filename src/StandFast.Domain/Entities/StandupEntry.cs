@@ -35,6 +35,9 @@ public sealed class StandupEntry
     /// <summary>True when the participant has typed anything worth carrying forward as a prior update.</summary>
     public bool HasContent => !string.IsNullOrWhiteSpace(Update) || !string.IsNullOrWhiteSpace(Blockers) || !string.IsNullOrWhiteSpace(ParkingLot);
 
+    /// <summary>True when the entry records neither attendance nor text, so storing it would keep a row that says nothing.</summary>
+    public bool IsBlank => State == AttendanceState.Roster && !HasContent;
+
     /// <summary>The completed turn this entry records, or null while the participant has not presented. Ordering and reporting work from this projection.</summary>
     public Presentation? CompletedTurn => PresentedUtc is null ? null : new Presentation(PersonId, MeetingDate, PresentedUtc.Value);
 }

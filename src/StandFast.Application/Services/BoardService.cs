@@ -138,10 +138,25 @@ public sealed class BoardService(
         entry.Update = OptionalText.Normalize(update.Update);
         entry.Blockers = recordsBlockersAndParkingLot ? OptionalText.Normalize(update.Blockers) : null;
         entry.ParkingLot = recordsBlockersAndParkingLot ? OptionalText.Normalize(update.ParkingLot) : null;
-        entry.UpdateSavedUtc = clock.UtcNow;
 
-        await entries.UpsertAsync(entry, cancellationToken);
-        audit.Record(AuditEvents.UpdateSaved, AuditTargetType, EntryTargetId(update.StandupId, update.PersonId, update.MeetingDate), $"Update saved for {attendee.Person.DisplayName}.");
+        // Saving every box empty deletes the update. The entry row goes too unless it still records attendance.
+        bool isDeleted = !entry.HasContent;
+        entry.UpdateSavedUtc = isDeleted ? null : clock.UtcNow;
+
+        if (entry.IsBlank)
+        {
+            await entries.DeleteAsync(update.StandupId, update.PersonId, update.MeetingDate, cancellationToken);
+        }
+        else
+        {
+            await entries.UpsertAsync(entry, cancellationToken);
+        }
+
+        audit.Record(
+            isDeleted ? AuditEvents.UpdateDeleted : AuditEvents.UpdateSaved,
+            AuditTargetType,
+            EntryTargetId(update.StandupId, update.PersonId, update.MeetingDate),
+            $"Update {(isDeleted ? "deleted" : "saved")} for {attendee.Person.DisplayName}.");
 
         return attendee.ToParticipantDto(new StandupEntryPair(entry, pair.Prior));
     }

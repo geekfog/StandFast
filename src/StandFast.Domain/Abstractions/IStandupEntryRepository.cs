@@ -10,6 +10,9 @@ public interface IStandupEntryRepository
 
     Task UpsertAsync(StandupEntry entry, CancellationToken cancellationToken = default);
 
+    /// <summary>Removes a participant's entry for one date. Nothing happens when no entry is stored.</summary>
+    Task DeleteAsync(Guid standupId, Guid personId, DateOnly meetingDate, CancellationToken cancellationToken = default);
+
     /// <summary>Every entry recorded for one standup on one date, whoever it belongs to. The board reads its guests from this, since guests are not on any roster to look up one by one.</summary>
     Task<IReadOnlyList<StandupEntry>> GetOnDateAsync(Guid standupId, DateOnly meetingDate, CancellationToken cancellationToken = default);
 
