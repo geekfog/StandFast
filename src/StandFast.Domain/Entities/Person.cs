@@ -58,9 +58,12 @@ public sealed class Person
     /// <summary>City and state as one label, for example "Austin, TX". Empty when neither is recorded.</summary>
     public string Location => string.Join(", ", new[] { City, StateOrRegion }.Where(part => !string.IsNullOrWhiteSpace(part)));
 
-    /// <summary>Initials used by avatars and compact board tiles. Derived from <see cref="DisplayName"/> so the avatar always matches the name beside it.</summary>
-    public string Initials => string.Concat(DisplayName
-        .Split(' ', StringSplitOptions.RemoveEmptyEntries)
-        .Take(2)
-        .Select(part => char.ToUpperInvariant(part[0])));
+    /// <summary>
+    /// Initials used by avatars and compact board tiles, from the first and last name, since <see cref="DisplayAs"/> can hold nicknames and punctuation such as quotes.
+    /// Falls back to the first two words of <see cref="DisplayName"/> only when neither name is recorded. Each initial is the first letter or digit of its part.
+    /// </summary>
+    public string Initials => string.Concat((FullName.Length > 0 ? [FirstName, LastName] : DisplayName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2))
+        .Select(part => part.FirstOrDefault(char.IsLetterOrDigit))
+        .Where(initial => initial != default)
+        .Select(char.ToUpperInvariant));
 }

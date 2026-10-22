@@ -300,6 +300,7 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 - Made the roster, present, and presented columns on the board scroll independently on a wide window, so scrolling a long roster leaves the other two columns where they are.
 - Moved Save to the left of the update panel's other button, which is now Close while nothing is unsaved and closes the panel. Once there are unsaved edits it becomes Cancel, with an undo icon, which puts the boxes back to what was saved and keeps the panel open.
 - Moved the note explaining why the Leader dropdown is empty, such as no leader marked present or as a guest yet, out from under the dropdown and into a tooltip on it, so the dropdowns stay level.
+- Changed the initials shown for a person with no photo to come from their first and last name instead of Display As, so a nickname or quotes in Display As no longer produce odd initials.
 
 ### v01.04.00 — 2026-10-15
 

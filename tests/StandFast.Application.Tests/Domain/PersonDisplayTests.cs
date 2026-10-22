@@ -17,13 +17,25 @@ public sealed class PersonDisplayTests
     }
 
     [Fact]
-    public void DisplayName_PrefersTheOverrideAndInitialsFollowIt()
+    public void DisplayName_PrefersTheOverrideWhileInitialsKeepTheRealName()
     {
         Person person = new() { FirstName = "Augusta", LastName = "King", DisplayAs = "Ada Lovelace" };
 
         Assert.Equal("Ada Lovelace", person.DisplayName);
         Assert.Equal("Augusta King", person.FullName);
-        Assert.Equal("AL", person.Initials);
+        Assert.Equal("AK", person.Initials);
+    }
+
+    [Theory]
+    [InlineData("Joe", "Doaks", "JD")]
+    [InlineData("Joe", "", "J")]
+    [InlineData("", "Doaks", "D")]
+    [InlineData("", "", "JB")]
+    public void Initials_ComeFromTheRecordedNamesAndSkipPunctuationInTheOverride(string firstName, string lastName, string expected)
+    {
+        Person person = new() { FirstName = firstName, LastName = lastName, DisplayAs = "Joe \"Bob\" Doaks" };
+
+        Assert.Equal(expected, person.Initials);
     }
 
     [Theory]
@@ -42,7 +54,7 @@ public sealed class PersonDisplayTests
         Person person = new() { FirstName = "Grace", LastName = "Hopper", DisplayAs = "Amazing" };
 
         Assert.Equal("Amazing", person.DisplayName);
-        Assert.Equal("A", person.Initials);
+        Assert.Equal("GH", person.Initials);
     }
 
     [Fact]
