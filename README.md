@@ -302,6 +302,7 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 - Moved the note explaining why the Leader dropdown is empty, such as no leader marked present or as a guest yet, out from under the dropdown and into a tooltip on it, so the dropdowns stay level.
 - Changed the initials shown for a person with no photo to come from their first and last name instead of Display As, so a nickname or quotes in Display As no longer produce odd initials.
 - Made Save on the update panel delete the update when every box has been emptied. The panel goes back to Not saved yet, and the person's attendance on that date is kept.
+- Kept the update panel open on the same person when picking another date, showing their update for the new date. It closes when that person is not on the board for the new date, or when another standup is picked.
 
 ### v01.04.00 — 2026-10-15
 
