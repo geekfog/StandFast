@@ -283,7 +283,7 @@ public partial class Board
     private Task SaveUpdateAsync(ParticipantUpdateDto update) => ApplyAsync(async () =>
     {
         BoardParticipantDto? saved = await BoardService.SaveUpdateAsync(update);
-        Snackbar.Add("Update saved.", Severity.Success);
+        Snackbar.Add(saved is { UpdateSavedUtc: null } ? "Update deleted." : "Update saved.", Severity.Success);
         return saved;
     });
 

@@ -134,6 +134,12 @@ public sealed class InMemoryStandupEntryRepository : IStandupEntryRepository
         return Task.CompletedTask;
     }
 
+    public Task DeleteAsync(Guid standupId, Guid personId, DateOnly meetingDate, CancellationToken cancellationToken = default)
+    {
+        entries.Remove((standupId, personId, meetingDate));
+        return Task.CompletedTask;
+    }
+
     public Task<IReadOnlyList<StandupEntry>> GetOnDateAsync(Guid standupId, DateOnly meetingDate, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<StandupEntry>>([.. entries.Values.Where(entry => entry.StandupId == standupId && entry.MeetingDate == meetingDate)]);
 

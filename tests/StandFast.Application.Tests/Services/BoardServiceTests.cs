@@ -100,6 +100,38 @@ public sealed class BoardServiceTests
     }
 
     [Fact]
+    public async Task SaveUpdateAsync_DeletesTheEntryWhenEveryBoxIsEmptyAndNoAttendanceIsRecorded()
+    {
+        BoardTestContext context = new();
+        Person person = await context.AddMemberAsync("Ada", "Lovelace");
+        await context.Service.SaveUpdateAsync(UpdateFor(context, person, "Done the migration."));
+
+        BoardParticipantDto? participant = await context.Service.SaveUpdateAsync(UpdateFor(context, person, "   "));
+        StandupEntryPair stored = await context.Entries.GetCurrentAndPriorAsync(context.Standup.Id, person.Id, BoardTestContext.Today);
+
+        Assert.Null(participant!.Update);
+        Assert.Null(participant.UpdateSavedUtc);
+        Assert.Null(stored.Current);
+    }
+
+    [Fact]
+    public async Task SaveUpdateAsync_KeepsAttendanceWhenEveryBoxIsEmpty()
+    {
+        BoardTestContext context = new();
+        Person person = await context.AddMemberAsync("Ada", "Lovelace");
+        await context.Service.AdvanceAsync(context.Standup.Id, BoardTestContext.Today, person.Id);
+        await context.Service.SaveUpdateAsync(UpdateFor(context, person, "Done the migration."));
+
+        BoardParticipantDto? participant = await context.Service.SaveUpdateAsync(UpdateFor(context, person, null));
+        StandupEntryPair stored = await context.Entries.GetCurrentAndPriorAsync(context.Standup.Id, person.Id, BoardTestContext.Today);
+
+        Assert.Equal(AttendanceState.Available, participant!.State);
+        Assert.Null(participant.UpdateSavedUtc);
+        Assert.Equal(AttendanceState.Available, stored.Current!.State);
+        Assert.False(stored.Current.HasContent);
+    }
+
+    [Fact]
     public async Task GetBoardAsync_NumbersParticipantsByTheirTurnAtThePreviousStandup()
     {
         BoardTestContext context = new();
@@ -116,6 +148,14 @@ public sealed class BoardServiceTests
         Assert.Equal(2, board.PriorTurnFor(late.Id));
         Assert.Null(board.PriorTurnFor(absent.Id));
     }
+
+    private static ParticipantUpdateDto UpdateFor(BoardTestContext context, Person person, string? update) => new()
+    {
+        StandupId = context.Standup.Id,
+        PersonId = person.Id,
+        MeetingDate = BoardTestContext.Today,
+        Update = update,
+    };
 
     private static Task PresentedYesterdayAsync(BoardTestContext context, Person person, DateTimeOffset presentedUtc) =>
         context.Entries.UpsertAsync(new StandupEntry
