@@ -67,7 +67,7 @@
             </MudTd>
         }
         <MudTd DataLabel="Status">
-            <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Default)">@(context.IsActive ? "Active" : "Inactive")</MudChip>
+            <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Default)">@PersonLabels.Status(context.IsActive)</MudChip>
         </MudTd>
         <MudTd>
             <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => EditAsync(context))" aria-label="@($"Edit {context.DisplayName}")" />
@@ -105,7 +105,7 @@
         // Existing people are re-fetched as an edit DTO so the entity-to-DTO mapping stays in the Application layer rather than being repeated here.
         PersonEditDto edit = person is null ? new PersonEditDto() : await PersonService.GetForEditAsync(person.Id) ?? new PersonEditDto();
 
-        DialogParameters<PersonDialog> parameters = new() { { dialog => dialog.Person, edit } };
+        DialogParameters<PersonDialog> parameters = new() { { dialog => dialog.Person, edit }, { dialog => dialog.People, people } };
 
         // Wider than the default, because the dialog carries a markdown editor with its own toolbar.
         DialogOptions options = new() { MaxWidth = MaxWidth.Medium, FullWidth = true };

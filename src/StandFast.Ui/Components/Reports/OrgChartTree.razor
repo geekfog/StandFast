@@ -1,0 +1,13 @@
+@* Every tree on one outline, each person indented under their supervisor, so a wide or deep organization grows downward rather than sideways. *@
+<ul class="standfast-org-tree mt-3">
+    @foreach (OrgChartNodeDto root in Report.Roots)
+    {
+        <li class="mb-3"><OrgChartNode Node="@root" /></li>
+    }
+</ul>
+
+@code {
+    [Parameter]
+    [EditorRequired]
+    public OrgChartDto Report { get; set; } = default!;
+}

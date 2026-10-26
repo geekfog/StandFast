@@ -40,6 +40,9 @@ public sealed class Person
     /// <summary>Date the person joined the organization. Null when not recorded.</summary>
     public DateOnly? StartDate { get; set; }
 
+    /// <summary>The person this person reports to. Null when not recorded. Never forms a loop, as <see cref="SupervisorChain"/> defines.</summary>
+    public Guid? SupervisorId { get; set; }
+
     public bool IsActive { get; set; } = true;
 
     public DateTimeOffset CreatedUtc { get; set; }

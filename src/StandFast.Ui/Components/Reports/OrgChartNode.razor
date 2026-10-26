@@ -1,0 +1,32 @@
+@* One person in the org chart, followed by the people who report to them. *@
+<div class="standfast-org-node">
+    <PersonAvatar Initials="@Node.Person.Initials" PhotoUrl="@PersonPhotoUrls.Saved(Node.Person.Id, Node.Person.PhotoSavedUtc)" Size="Size.Small" />
+    <div class="@(Node.Person.IsActive ? null : "mud-text-secondary")">
+        <MudText Typo="Typo.body2">
+            @Node.Person.DisplayName
+            @if (!Node.Person.IsActive)
+            {
+                <MudChip T="string" Size="Size.Small" Class="ma-0 ml-1">@PersonLabels.Status(Node.Person.IsActive)</MudChip>
+            }
+        </MudText>
+        @if (Node.Person.Title is not null)
+        {
+            <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">@Node.Person.Title</MudText>
+        }
+    </div>
+</div>
+@if (Node.Reports.Count > 0)
+{
+    <ul>
+        @foreach (OrgChartNodeDto report in Node.Reports)
+        {
+            <li><OrgChartNode Node="@report" /></li>
+        }
+    </ul>
+}
+
+@code {
+    [Parameter]
+    [EditorRequired]
+    public OrgChartNodeDto Node { get; set; } = default!;
+}

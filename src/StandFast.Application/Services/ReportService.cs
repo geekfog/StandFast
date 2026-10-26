@@ -1,4 +1,5 @@
 using StandFast.Application.Dtos;
+using StandFast.Application.Mapping;
 using StandFast.Application.Reporting;
 using StandFast.Domain.Abstractions;
 using StandFast.Domain.Common;
@@ -149,6 +150,44 @@ public sealed class ReportService(IStandupRepository standups, IPersonRepository
         ];
 
         return new AttendanceDto(standup.Id, standup.Name, from, to, meetingDates.Count, rows);
+    }
+
+    public async Task<OrgChartDto> GetOrgChartAsync(CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<Person> everyone = await people.GetAllAsync(cancellationToken);
+        Dictionary<Guid, Person> peopleById = everyone.ToDictionary(person => person.Id);
+
+        // Everyone active, and everyone above them, so an inactive supervisor keeps their active reports attached. The walk stops at anyone already shown.
+        HashSet<Guid> shown = [];
+        foreach (Person person in everyone.Where(person => person.IsActive))
+        {
+            for (Person? current = person; current is not null && shown.Add(current.Id); current = current.SupervisorId is { } supervisorId ? peopleById.GetValueOrDefault(supervisorId) : null)
+            {
+            }
+        }
+
+        ILookup<Guid?, Person> reportsOf = shown
+            .Select(id => peopleById[id])
+            .ToLookup(person => person.SupervisorId is { } supervisorId && shown.Contains(supervisorId) ? supervisorId : (Guid?)null);
+
+        HashSet<Guid> placed = [];
+        List<OrgChartNodeDto> roots = [.. ByName(reportsOf[null]).Select(Place)];
+
+        // Saving never lets supervisors loop, but a restored backup could hold a loop. A loop has no top, so its first member by name starts a tree.
+        foreach (Person person in ByName(shown.Select(id => peopleById[id])).Where(person => !placed.Contains(person.Id)))
+        {
+            roots.Add(Place(person));
+        }
+
+        return new OrgChartDto(roots, placed.Count);
+
+        OrgChartNodeDto Place(Person person)
+        {
+            placed.Add(person.Id);
+            return new OrgChartNodeDto(person.ToDto(), [.. ByName(reportsOf[person.Id]).Where(report => !placed.Contains(report.Id)).Select(Place)]);
+        }
+
+        static IEnumerable<Person> ByName(IEnumerable<Person> group) => group.OrderBy(person => person.DisplayName, StringComparer.CurrentCultureIgnoreCase).ThenBy(person => person.Id);
     }
 
     /// <summary>

@@ -221,6 +221,49 @@
     text-align: center;
 }
 
+/* Org chart outline. A nested list is indented so its connector runs down from the center of the supervisor's small avatar, and each person hangs off it at their own row's center. */
+.standfast-org-tree,
+.standfast-org-tree ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.standfast-org-tree ul {
+    margin-left: 0.75rem;
+    padding-left: 1.25rem;
+}
+
+.standfast-org-tree ul > li {
+    position: relative;
+}
+
+.standfast-org-tree ul > li::before,
+.standfast-org-tree ul > li:not(:last-child)::after {
+    border-left: 1px solid var(--mud-palette-lines-default);
+    content: "";
+    left: -1.25rem;
+    position: absolute;
+    top: 0;
+}
+
+.standfast-org-tree ul > li::before {
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+    height: 1.25rem;
+    width: 1rem;
+}
+
+.standfast-org-tree ul > li:not(:last-child)::after {
+    bottom: 0;
+}
+
+.standfast-org-node {
+    align-items: center;
+    display: flex;
+    gap: 0.5rem;
+    min-height: 2.5rem;
+}
+
 .standfast-markdown-toolbar {
     background-color: var(--mud-palette-background-gray);
     border-bottom: 1px solid var(--mud-palette-lines-default);
