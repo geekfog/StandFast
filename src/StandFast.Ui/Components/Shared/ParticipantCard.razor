@@ -27,27 +27,28 @@
                 </MudTooltip>
             }
         </div>
-        <MudText Typo="Typo.caption" Class="mud-text-secondary">
+        @* Each fact sits in its own tinted pill, which separates them without dividers and lets them wrap as whole units on a narrow card. *@
+        <MudText Typo="Typo.caption" Class="mud-text-secondary standfast-card-facts">
             @if (string.IsNullOrWhiteSpace(Participant.Title))
             {
-                @StatusCaption
+                <span class="standfast-card-fact">@StatusCaption</span>
             }
             else
             {
                 <MudTooltip Text="@($"{PersonLabels.Title}: {Participant.Title}")">
-                    <span>@StatusCaption</span>
+                    <span class="standfast-card-fact">@StatusCaption</span>
                 </MudTooltip>
             }
             @if (OffsetFromStandup is { } offset)
             {
                 <MudTooltip Text="@OffsetTooltip(offset)">
-                    <span class="ml-1">| @offset.ToOffsetLabel()</span>
+                    <span class="standfast-card-fact">@offset.ToOffsetLabel()</span>
                 </MudTooltip>
             }
             @if (TenureAtMeeting is { } tenure)
             {
                 <MudTooltip Text="@($"{PersonLabels.StartDate}: {Participant.StartDate!.Value.ToString(UiFormats.LongDate)}")">
-                    <span class="ml-1">| @tenure.ToTenureLabel()</span>
+                    <span class="standfast-card-fact">@tenure.ToTenureLabel()</span>
                 </MudTooltip>
             }
         </MudText>

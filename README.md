@@ -317,7 +317,8 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 - Made tapping a presenter who is off on the board's date show a warning instead of marking them present. The first tap of the day also leaves your own card on the roster when you are off that date.
 - Made Show inactive on the People screen list only inactive people instead of adding them to the active ones.
 - Added a fifth report, Days Since Last Presented: one row per active person on each active standup's presenter roster, with the last date they presented there and how many days ago that was, counted to today in the standup's time zone. Anyone who never presented is listed first as Never, then the longest gap. The standup and period pickers are hidden for this report, since it covers every standup and its whole history.
-- Added Presenters, Leaders, and Neither filters to the People screen, grouped in a box labeled Role. Selecting none lists everyone. Selecting several lists anyone matching at least one, so Presenters and Neither together, for example, lists everyone not on a leader roster alone.
+- Added Presenters, Leaders, and Neither filters to the People screen, grouped in a box labeled Role.
+- Replaced the `|` dividers under each name on the board with a small gray pill around each detail (status, time zone offset, and time with the organization), which separates them in both light and dark mode and keeps each detail whole when a narrow card wraps. Selecting none lists everyone. Selecting several lists anyone matching at least one, so Presenters and Neither together, for example, lists everyone not on a leader roster alone.
 
 ### v01.05.00 — 2026-10-19
 
