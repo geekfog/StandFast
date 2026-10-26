@@ -44,18 +44,22 @@
         <MudText Typo="Typo.h6">@SelectedReport.Title()</MudText>
         <MudText Typo="Typo.body2" Class="mud-text-secondary">@SelectedReport.Description()</MudText>
 
-        @if (orgChart is null)
+        @if (orgChart is null && lastPresented is null)
         {
             <MudProgressLinear Indeterminate="true" Class="mt-3" />
         }
-        else if (!orgChart.HasData)
+        else if (orgChart?.HasData == false || lastPresented?.HasData == false)
         {
             <MudAlert Severity="Severity.Normal" Dense="true" Class="mt-3">@SelectedReport.EmptyText()</MudAlert>
         }
-        else
+        else if (orgChart is not null)
         {
             <MudText Typo="Typo.caption" Class="mud-text-secondary">@orgChart.PersonCount people in @orgChart.Roots.Count @(orgChart.Roots.Count == 1 ? "tree" : "trees")</MudText>
             <OrgChartTree Report="@orgChart" />
+        }
+        else if (lastPresented is not null)
+        {
+            <LastPresentedTable Report="@lastPresented" />
         }
     </MudPaper>
 }

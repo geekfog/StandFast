@@ -26,4 +26,10 @@ public interface IReportService
     /// A person whose supervisor is not shown starts a tree of their own.
     /// </summary>
     Task<OrgChartDto> GetOrgChartAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Every active person on the presenter roster of every active standup, with the last date they presented there and how many days ago that was.
+    /// Those who never presented come first, then the longest gap. "Today" is in each standup's own time zone, or <paramref name="fallbackTimeZone"/> when it cannot be resolved.
+    /// </summary>
+    Task<LastPresentedDto> GetLastPresentedAsync(TimeZoneInfo fallbackTimeZone, CancellationToken cancellationToken = default);
 }
