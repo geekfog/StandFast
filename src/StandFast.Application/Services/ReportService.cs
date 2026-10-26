@@ -190,6 +190,46 @@ public sealed class ReportService(IStandupRepository standups, IPersonRepository
         static IEnumerable<Person> ByName(IEnumerable<Person> group) => group.OrderBy(person => person.DisplayName, StringComparer.CurrentCultureIgnoreCase).ThenBy(person => person.Id);
     }
 
+    public async Task<LastPresentedDto> GetLastPresentedAsync(TimeZoneInfo fallbackTimeZone, CancellationToken cancellationToken = default)
+    {
+        Task<IReadOnlyList<Standup>> standupTask = standups.GetAllAsync(cancellationToken);
+        Task<IReadOnlyList<Person>> peopleTask = people.GetAllAsync(cancellationToken);
+        await Task.WhenAll(standupTask, peopleTask);
+
+        Dictionary<Guid, Person> activePeople = peopleTask.Result.Where(person => person.IsActive).ToDictionary(person => person.Id);
+
+        LastPresentedRowDto[][] perStandup = await Task.WhenAll(standupTask.Result.Where(standup => standup.IsActive).Select(async standup =>
+        {
+            DateOnly today = clock.Today(TimeZoneIds.Resolve(standup.TimeZoneId) ?? fallbackTimeZone);
+            Task<IReadOnlyList<StandupMember>> membersTask = standups.GetMembersAsync(standup.Id, RosterRole.Presenter, cancellationToken);
+
+            // The whole history up to today, since a long gap is exactly what this report is for and could reach back past any report period.
+            Task<IReadOnlyList<Presentation>> presentationsTask = entries.GetPresentationsAsync(standup.Id, DateOnly.MinValue, today, cancellationToken);
+            await Task.WhenAll(membersTask, presentationsTask);
+
+            Dictionary<Guid, DateOnly> lastByPerson = presentationsTask.Result
+                .GroupBy(presentation => presentation.PersonId)
+                .ToDictionary(turns => turns.Key, turns => turns.Max(presentation => presentation.MeetingDate));
+
+            return membersTask.Result
+                .Where(member => member.IsActive && activePeople.ContainsKey(member.PersonId))
+                .Select(member =>
+                {
+                    DateOnly? last = lastByPerson.TryGetValue(member.PersonId, out DateOnly date) ? date : null;
+                    return new LastPresentedRowDto(standup.Id, standup.Name, member.PersonId, activePeople[member.PersonId].DisplayName, last, today.DayNumber - last?.DayNumber);
+                })
+                .ToArray();
+        }));
+
+        return new LastPresentedDto(
+        [
+            .. perStandup.SelectMany(rows => rows)
+                .OrderByDescending(row => row.DaysSince ?? int.MaxValue)
+                .ThenBy(row => row.StandupName, StringComparer.CurrentCultureIgnoreCase)
+                .ThenBy(row => row.DisplayName, StringComparer.CurrentCultureIgnoreCase),
+        ]);
+    }
+
     /// <summary>
     /// How long each turn of one meeting ran: from its start to the next turn's start, and for the last turn, to the lock. The last turn of a
     /// date still open has no end yet and is left out.

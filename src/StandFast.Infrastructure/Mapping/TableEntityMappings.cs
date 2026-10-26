@@ -204,5 +204,76 @@ public static class TableEntityMappings
         ETag = ToETag(entry.ETag),
     };
 
+    public static Holiday ToDomain(this HolidayTableEntity entity) => new()
+    {
+        Id = Guid.Parse(entity.RowKey),
+        Date = MeetingCalendar.FromDateKey(entity.Date),
+        Name = entity.Name,
+        Duration = (HolidayDuration)entity.Duration,
+        CreatedUtc = entity.CreatedUtc,
+        ModifiedUtc = entity.ModifiedUtc,
+        ETag = entity.ETag.ToString(),
+    };
+
+    public static HolidayTableEntity ToTableEntity(this Holiday holiday) => new()
+    {
+        PartitionKey = StorageKeys.HolidayPartition,
+        RowKey = StorageKeys.HolidayRowKey(holiday.Id),
+        Date = MeetingCalendar.ToDateKey(holiday.Date),
+        Name = holiday.Name,
+        Duration = (int)holiday.Duration,
+        CreatedUtc = holiday.CreatedUtc,
+        ModifiedUtc = holiday.ModifiedUtc,
+        ETag = ToETag(holiday.ETag),
+    };
+
+    public static Sprint ToDomain(this SprintTableEntity entity) => new()
+    {
+        Id = Guid.Parse(entity.RowKey),
+        StandupId = Guid.Parse(entity.PartitionKey),
+        Name = entity.Name,
+        StartDate = MeetingCalendar.FromDateKey(entity.StartDate),
+        EndDate = MeetingCalendar.FromDateKey(entity.EndDate),
+        CreatedUtc = entity.CreatedUtc,
+        ModifiedUtc = entity.ModifiedUtc,
+        ETag = entity.ETag.ToString(),
+    };
+
+    public static SprintTableEntity ToTableEntity(this Sprint sprint) => new()
+    {
+        PartitionKey = StorageKeys.StandupChildPartitionKey(sprint.StandupId),
+        RowKey = StorageKeys.SprintRowKey(sprint.Id),
+        Name = sprint.Name,
+        StartDate = MeetingCalendar.ToDateKey(sprint.StartDate),
+        EndDate = MeetingCalendar.ToDateKey(sprint.EndDate),
+        CreatedUtc = sprint.CreatedUtc,
+        ModifiedUtc = sprint.ModifiedUtc,
+        ETag = ToETag(sprint.ETag),
+    };
+
+    public static PersonDayOff ToDomain(this PersonDayOffTableEntity entity) => new()
+    {
+        Id = Guid.Parse(entity.RowKey),
+        PersonId = Guid.Parse(entity.PartitionKey),
+        StartDate = MeetingCalendar.FromDateKey(entity.StartDate),
+        EndDate = MeetingCalendar.FromDateKey(entity.EndDate),
+        Note = entity.Note,
+        CreatedUtc = entity.CreatedUtc,
+        ModifiedUtc = entity.ModifiedUtc,
+        ETag = entity.ETag.ToString(),
+    };
+
+    public static PersonDayOffTableEntity ToTableEntity(this PersonDayOff dayOff) => new()
+    {
+        PartitionKey = StorageKeys.PersonChildPartitionKey(dayOff.PersonId),
+        RowKey = StorageKeys.DayOffRowKey(dayOff.Id),
+        StartDate = MeetingCalendar.ToDateKey(dayOff.StartDate),
+        EndDate = MeetingCalendar.ToDateKey(dayOff.EndDate),
+        Note = dayOff.Note,
+        CreatedUtc = dayOff.CreatedUtc,
+        ModifiedUtc = dayOff.ModifiedUtc,
+        ETag = ToETag(dayOff.ETag),
+    };
+
     private static ETag ToETag(string? value) => string.IsNullOrWhiteSpace(value) ? ETag.All : new ETag(value);
 }

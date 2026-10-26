@@ -10,7 +10,14 @@
             @* Both header columns stack from the top and push their last block to the bottom, so the dropdowns and the week strip share a bottom edge; mb-0 clears the dense dropdowns' own bottom margin so that edge is exact. *@
             <MudItem xs="12" md="4" Class="d-flex flex-column">
                 <div class="d-flex align-center gap-4 mb-1">
-                    <h1 class="mud-typography mud-typography-h5 flex-grow-1">@SelectedDate.ToDateTime(TimeOnly.MinValue).ToString(UiFormats.LongDate)</h1>
+                    <h1 class="mud-typography mud-typography-h5">@SelectedDate.ToDateTime(TimeOnly.MinValue).ToString(UiFormats.LongDate)</h1>
+                    @if (board?.Sprint is { } sprint)
+                    {
+                        <MudTooltip Text="@CalendarLabels.SprintDescription(sprint)">
+                            <MudText Typo="Typo.body2" Color="Color.Primary" Class="text-nowrap">@CalendarLabels.SprintCaption(sprint)</MudText>
+                        </MudTooltip>
+                    }
+                    <MudSpacer />
                     @if (board is not null)
                     {
                         <MudTooltip Text="@LockActionDescription">
@@ -114,6 +121,8 @@
                                                      MeetingStart="@MeetingStart"
                                                      MeetingDate="@SelectedDate"
                                                      PriorTurn="@board.PriorTurnFor(participant.PersonId)"
+                                                     Availability="@board.AvailabilityFor(participant.PersonId)"
+                                                     Sprint="@board.Sprint"
                                                      ShowPriorTurn="@(state == AttendanceState.Available)"
                                                      IsSelected="@(participant.PersonId == selectedPersonId)"
                                                      IsSelf="@Preferences.IsSelf(participant.Email)"

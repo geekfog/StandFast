@@ -15,6 +15,7 @@ public partial class Reports
     private StandupActivityDto? activity;
     private AttendanceDto? attendance;
     private OrgChartDto? orgChart;
+    private LastPresentedDto? lastPresented;
     private TimeZoneInfo timeZone = TimeZoneInfo.Local;
     private ReportKind loadedReport;
     private Guid loadedStandupId;
@@ -64,19 +65,26 @@ public partial class Reports
     // The whole selection lives in the query string, so a report is reloaded from the URL rather than from component state and any view is shareable.
     protected override async Task OnParametersSetAsync()
     {
-        // A report of the whole directory has no standup or period, so it is loaded once each time it is chosen.
+        // A report across every standup or all of People has no standup or period, so it is loaded once each time it is chosen.
         if (!SelectedReport.IsPerStandup())
         {
-            if (orgChart is null)
+            (timeline, activity, attendance) = (null, null, null);
+
+            if (SelectedReport == ReportKind.LastPresented && lastPresented is null)
             {
-                (timeline, activity, attendance) = (null, null, null);
+                orgChart = null;
+                lastPresented = await ReportService.GetLastPresentedAsync(UiOptions.Value.ResolveTimeZone());
+            }
+            else if (SelectedReport == ReportKind.OrgChart && orgChart is null)
+            {
+                lastPresented = null;
                 orgChart = await ReportService.GetOrgChartAsync();
             }
 
             return;
         }
 
-        orgChart = null;
+        (orgChart, lastPresented) = (null, null);
 
         if (SelectedStandupId == Guid.Empty || (SelectedReport == loadedReport && SelectedStandupId == loadedStandupId && SelectedDays == loadedDays && Header is not null))
         {

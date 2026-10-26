@@ -10,6 +10,7 @@ public sealed class InMemoryPersonRepository : IPersonRepository
 {
     private readonly Dictionary<Guid, Person> people = [];
     private readonly Dictionary<Guid, PersonPhoto> photos = [];
+    private readonly List<PersonDayOff> daysOff = [];
 
     public Task<IReadOnlyList<Person>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Person>>([.. people.Values]);
 
@@ -25,6 +26,26 @@ public sealed class InMemoryPersonRepository : IPersonRepository
     {
         people.Remove(id);
         photos.Remove(id);
+        daysOff.RemoveAll(dayOff => dayOff.PersonId == id);
+        return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlyList<PersonDayOff>> GetDaysOffAsync(Guid personId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<PersonDayOff>>([.. daysOff.Where(dayOff => dayOff.PersonId == personId)]);
+
+    public Task<IReadOnlyList<PersonDayOff>> GetDaysOffAsync(DateRange dates, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<PersonDayOff>>([.. daysOff.Where(dayOff => dayOff.Dates.Overlaps(dates))]);
+
+    public Task UpsertDayOffAsync(PersonDayOff dayOff, CancellationToken cancellationToken = default)
+    {
+        daysOff.RemoveAll(other => other.Id == dayOff.Id);
+        daysOff.Add(dayOff);
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteDayOffAsync(Guid personId, Guid dayOffId, CancellationToken cancellationToken = default)
+    {
+        daysOff.RemoveAll(dayOff => dayOff.PersonId == personId && dayOff.Id == dayOffId);
         return Task.CompletedTask;
     }
 
@@ -48,6 +69,7 @@ public sealed class InMemoryStandupRepository : IStandupRepository
     private readonly Dictionary<Guid, Standup> standups = [];
     private readonly Dictionary<(Guid StandupId, Guid PersonId, RosterRole Role), StandupMember> members = [];
     private readonly Dictionary<(Guid StandupId, DateOnly MeetingDate), StandupMeeting> meetings = [];
+    private readonly List<Sprint> sprints = [];
 
     public Task<IReadOnlyList<Standup>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Standup>>([.. standups.Values]);
 
@@ -72,6 +94,23 @@ public sealed class InMemoryStandupRepository : IStandupRepository
             meetings.Remove(key);
         }
 
+        sprints.RemoveAll(sprint => sprint.StandupId == id);
+        return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlyList<Sprint>> GetSprintsAsync(Guid standupId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Sprint>>([.. sprints.Where(sprint => sprint.StandupId == standupId)]);
+
+    public Task UpsertSprintAsync(Sprint sprint, CancellationToken cancellationToken = default)
+    {
+        sprints.RemoveAll(other => other.Id == sprint.Id);
+        sprints.Add(sprint);
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteSprintAsync(Guid standupId, Guid sprintId, CancellationToken cancellationToken = default)
+    {
+        sprints.RemoveAll(sprint => sprint.StandupId == standupId && sprint.Id == sprintId);
         return Task.CompletedTask;
     }
 
@@ -164,6 +203,27 @@ public sealed class InMemoryStandupEntryRepository : IStandupEntryRepository
         ];
 
         return Task.FromResult(presentations);
+    }
+}
+
+public sealed class InMemoryHolidayRepository : IHolidayRepository
+{
+    private readonly Dictionary<Guid, Holiday> holidays = [];
+
+    public Task<IReadOnlyList<Holiday>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Holiday>>([.. holidays.Values]);
+
+    public Task<Holiday?> GetAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(holidays.GetValueOrDefault(id));
+
+    public Task UpsertAsync(Holiday holiday, CancellationToken cancellationToken = default)
+    {
+        holidays[holiday.Id] = holiday;
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        holidays.Remove(id);
+        return Task.CompletedTask;
     }
 }
 

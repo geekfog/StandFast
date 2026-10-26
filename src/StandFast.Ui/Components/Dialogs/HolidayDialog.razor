@@ -1,0 +1,77 @@
+@inject IHolidayService HolidayService
+@inject FluentValidation.IValidator<HolidayEditDto> Validator
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(Holiday.Id is null ? "Add holiday" : "Edit holiday")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="form" Model="Holiday" Validation="@FluentValidationAdapter.ForField(Validator)">
+            <MudDatePicker @bind-Date="Date" Label="Date" DateFormat="@UiFormats.ShortDate" Variant="Variant.Outlined" Class="mb-3"
+                           Error="@(saveError is not null)" ErrorText="@saveError" />
+            <MudTextField @bind-Value="Holiday.Name" For="@(() => Holiday.Name)" Label="Name" Variant="Variant.Outlined" Class="mb-3" />
+            <MudRadioGroup T="HolidayDuration" @bind-Value="Holiday.Duration">
+                @foreach (HolidayDuration duration in HolidayDurationExtensions.InDisplayOrder)
+                {
+                    <MudRadio T="HolidayDuration" Value="@duration" Color="Color.Primary">@CalendarLabels.Duration(duration)</MudRadio>
+                }
+            </MudRadioGroup>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="isSaving" OnClick="SaveAsync">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private MudForm form = default!;
+    private bool isSaving;
+
+    /// <summary>Set when saving refused the date: none picked, or another holiday already on it, which can only be found against what is stored.</summary>
+    private string? saveError;
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter]
+    [EditorRequired]
+    public HolidayEditDto Holiday { get; set; } = default!;
+
+    private DateTime? Date
+    {
+        get => Holiday.Date.ToPickerDate();
+        set
+        {
+            Holiday.Date = value.FromPickerDate();
+            saveError = null;
+        }
+    }
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task SaveAsync()
+    {
+        await form.ValidateAsync();
+        if (!form.IsValid)
+        {
+            return;
+        }
+
+        isSaving = true;
+
+        try
+        {
+            await HolidayService.SaveAsync(Holiday);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (FluentValidation.ValidationException exception)
+        {
+            saveError = exception.Describe();
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

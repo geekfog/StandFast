@@ -4,6 +4,7 @@ using StandFast.Application.Auditing;
 using StandFast.Application.Configuration;
 using StandFast.Application.Dtos;
 using StandFast.Application.Mapping;
+using StandFast.Application.Scheduling;
 using StandFast.Domain.Abstractions;
 using StandFast.Domain.Common;
 using StandFast.Domain.Entities;
@@ -15,6 +16,7 @@ public sealed class BoardService(
     IStandupRepository standups,
     IPersonRepository people,
     IStandupEntryRepository entries,
+    IHolidayRepository holidays,
     IClock clock,
     IValidator<ParticipantUpdateDto> validator,
     IOptions<BoardLockOptions> lockOptions,
@@ -36,7 +38,14 @@ public sealed class BoardService(
         Task<IReadOnlyList<Person>> peopleTask = people.GetAllAsync(cancellationToken);
         Task<StandupMeeting?> meetingTask = standups.GetMeetingAsync(standupId, meetingDate, cancellationToken);
         Task<IReadOnlyList<StandupEntry>> onDateTask = entries.GetOnDateAsync(standupId, meetingDate, cancellationToken);
-        await Task.WhenAll(presenterTask, leaderTask, peopleTask, meetingTask, onDateTask);
+        Task<IReadOnlyList<Sprint>> sprintTask = standups.GetSprintsAsync(standupId, cancellationToken);
+        Task<IReadOnlyList<Holiday>> holidayTask = holidays.GetAllAsync(cancellationToken);
+        await Task.WhenAll(presenterTask, leaderTask, peopleTask, meetingTask, onDateTask, sprintTask, holidayTask);
+
+        // How far days off reach depends on the sprint, so they are read once the sprint is known.
+        IReadOnlyDictionary<DateOnly, HolidayDuration> holidayDurations = holidayTask.Result.ToDurationByDate();
+        SprintStatusDto? sprint = BoardAvailability.ForSprint(sprintTask.Result, meetingDate, holidayDurations);
+        IReadOnlyList<PersonDayOff> daysOff = await people.GetDaysOffAsync(BoardAvailability.Period(meetingDate, sprint), cancellationToken);
 
         Dictionary<Guid, Person> peopleById = peopleTask.Result.ToDictionary(person => person.Id);
 
@@ -77,7 +86,9 @@ public sealed class BoardService(
             leaders,
             meetingTask.Result?.LeaderPersonId,
             meetingTask.Result?.LockedUtc,
-            priorTurns);
+            priorTurns,
+            sprint,
+            BoardAvailability.ForPeople(daysOff, meetingDate, sprint, holidayDurations));
     }
 
     public async Task<DateTimeOffset?> LockAsync(Guid standupId, DateOnly meetingDate, CancellationToken cancellationToken = default)
@@ -208,6 +219,12 @@ public sealed class BoardService(
         if (next == previous)
         {
             return attendee.ToParticipantDto(new StandupEntryPair(entry, pair.Prior));
+        }
+
+        if (previous == AttendanceState.Roster && next == AttendanceState.Available
+            && (await people.GetDaysOffAsync(personId, cancellationToken)).FirstOrDefault(dayOff => dayOff.Dates.Contains(meetingDate)) is { } dayOff)
+        {
+            throw new PersonOffException(attendee.Person.DisplayName, dayOff.Note);
         }
 
         bool attending = AttendanceTransitions.IsAttending(next);

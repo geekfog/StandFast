@@ -1,6 +1,7 @@
 using Azure;
 using Azure.Data.Tables;
 using StandFast.Domain.Abstractions;
+using StandFast.Domain.Common;
 using StandFast.Domain.Entities;
 using StandFast.Infrastructure.Mapping;
 using StandFast.Infrastructure.Storage;
@@ -41,6 +42,11 @@ public sealed class PersonRepository(ITableClientProvider tables) : IPersonRepos
         TableClient client = await tables.GetAsync(StorageNames.People, cancellationToken);
         await client.DeleteEntityAsync(StorageKeys.PersonPartition, StorageKeys.PersonRowKey(id), ETag.All, cancellationToken);
         await DeletePhotoAsync(id, cancellationToken);
+
+        foreach (PersonDayOff dayOff in await GetDaysOffAsync(id, cancellationToken))
+        {
+            await DeleteDayOffAsync(id, dayOff.Id, cancellationToken);
+        }
     }
 
     public async Task<PersonPhoto?> GetPhotoAsync(Guid personId, CancellationToken cancellationToken = default)
@@ -62,5 +68,37 @@ public sealed class PersonRepository(ITableClientProvider tables) : IPersonRepos
     {
         TableClient client = await tables.GetAsync(StorageNames.PersonPhotos, cancellationToken);
         await client.DeleteEntityAsync(StorageKeys.PersonPartition, StorageKeys.PersonRowKey(personId), ETag.All, cancellationToken);
+    }
+
+    public Task<IReadOnlyList<PersonDayOff>> GetDaysOffAsync(Guid personId, CancellationToken cancellationToken = default) =>
+        QueryDaysOffAsync(TableClient.CreateQueryFilter($"PartitionKey eq {StorageKeys.PersonChildPartitionKey(personId)}"), cancellationToken);
+
+    /// <summary>Crosses every person's partition. Date keys sort as dates, so the overlap test runs in storage and returns only the spans that touch the range.</summary>
+    public Task<IReadOnlyList<PersonDayOff>> GetDaysOffAsync(DateRange dates, CancellationToken cancellationToken = default) =>
+        QueryDaysOffAsync(TableClient.CreateQueryFilter($"StartDate le {MeetingCalendar.ToDateKey(dates.End)} and EndDate ge {MeetingCalendar.ToDateKey(dates.Start)}"), cancellationToken);
+
+    public async Task UpsertDayOffAsync(PersonDayOff dayOff, CancellationToken cancellationToken = default)
+    {
+        TableClient client = await tables.GetAsync(StorageNames.PersonDaysOff, cancellationToken);
+        await client.UpsertEntityAsync(dayOff.ToTableEntity(), TableUpdateMode.Replace, cancellationToken);
+    }
+
+    public async Task DeleteDayOffAsync(Guid personId, Guid dayOffId, CancellationToken cancellationToken = default)
+    {
+        TableClient client = await tables.GetAsync(StorageNames.PersonDaysOff, cancellationToken);
+        await client.DeleteEntityAsync(StorageKeys.PersonChildPartitionKey(personId), StorageKeys.DayOffRowKey(dayOffId), ETag.All, cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<PersonDayOff>> QueryDaysOffAsync(string filter, CancellationToken cancellationToken)
+    {
+        TableClient client = await tables.GetAsync(StorageNames.PersonDaysOff, cancellationToken);
+        List<PersonDayOff> daysOff = [];
+
+        await foreach (PersonDayOffTableEntity entity in client.QueryAsync<PersonDayOffTableEntity>(filter, cancellationToken: cancellationToken))
+        {
+            daysOff.Add(entity.ToDomain());
+        }
+
+        return daysOff;
     }
 }

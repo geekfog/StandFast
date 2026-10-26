@@ -16,7 +16,7 @@
         <MudTh>Runs on</MudTh>
         <MudTh>Start</MudTh>
         <MudTh>Status</MudTh>
-        <MudTh Style="width: 13rem;"></MudTh>
+        <MudTh Style="width: 15rem;"></MudTh>
     </HeaderContent>
     <RowTemplate>
         <MudTd DataLabel="Name">
@@ -33,6 +33,9 @@
             {
                 <MudIconButton Icon="@RosterLabels.RosterIcon(role)" Size="Size.Small" OnClick="@(() => ManageMembersAsync(context, role))" aria-label="@($"Manage the {RosterLabels.RosterTitle(role)} for {context.Name}")" />
             }
+            <MudTooltip Text="@CalendarLabels.Sprints">
+                <MudIconButton Icon="@CalendarLabels.SprintIcon" Size="Size.Small" OnClick="@(() => ManageSprintsAsync(context))" aria-label="@($"Manage the {CalendarLabels.Sprints.ToLowerInvariant()} for {context.Name}")" />
+            </MudTooltip>
             <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => EditAsync(context))" aria-label="@($"Edit {context.Name}")" />
             <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteAsync(context))" aria-label="@($"Delete {context.Name}")" />
         </MudTd>
@@ -85,6 +88,12 @@
         };
 
         await DialogService.ShowAsync<StandupMembersDialog>(null, parameters);
+    }
+
+    private async Task ManageSprintsAsync(StandupDto standup)
+    {
+        DialogParameters<SprintsDialog> parameters = new() { { dialog => dialog.StandupId, standup.Id }, { dialog => dialog.StandupName, standup.Name } };
+        await DialogService.ShowAsync<SprintsDialog>(null, parameters, new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
     }
 
     private async Task DeleteAsync(StandupDto standup)

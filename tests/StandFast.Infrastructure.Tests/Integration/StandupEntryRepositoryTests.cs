@@ -189,6 +189,15 @@ public sealed class StandupEntryRepositoryTests : IClassFixture<AzuriteTableFixt
     }
 
     [AzuriteFact]
+    public async Task GetPresentationsAsync_FromTheEarliestDate_ReturnsTheWholeHistoryUpToTheEnd()
+    {
+        await SeedPresentedAsync(personId, Today.AddDays(-900), NineAm.AddDays(-900));
+        await SeedPresentedAsync(personId, Today.AddDays(1), NineAm.AddDays(1));
+
+        Assert.Equal([Today.AddDays(-900)], (await fixture.Entries.GetPresentationsAsync(standupId, DateOnly.MinValue, Today)).Select(presentation => presentation.MeetingDate));
+    }
+
+    [AzuriteFact]
     public async Task DeleteAsync_RemovesOnlyThatDateAndIgnoresAMissingEntry()
     {
         await SeedAsync(Today.AddDays(-1), "Yesterday");

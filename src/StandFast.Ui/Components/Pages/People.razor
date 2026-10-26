@@ -8,6 +8,16 @@
 
 <div class="d-flex align-center mb-4">
     <h1 class="mud-typography mud-typography-h5 flex-grow-1">People</h1>
+    @* No chip selected lists everyone; each selected chip adds the people it matches. *@
+    <MudPaper Outlined="true" Class="d-flex align-center pl-3 pr-1 mr-4" role="group" aria-label="@PersonLabels.RoleFilter">
+        <MudText Typo="Typo.body2" Class="mud-text-secondary mr-2">@PersonLabels.RoleFilter</MudText>
+        <MudChipSet T="RosterFilter" @bind-SelectedValues="selectedFilters" SelectionMode="SelectionMode.MultiSelection" CheckMark="true" Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small">
+            @foreach (RosterFilter filter in RosterFilters)
+            {
+                <MudChip T="RosterFilter" Value="@filter" Text="@filter.Label" />
+            }
+        </MudChipSet>
+    </MudPaper>
     <MudSwitch @bind-Value="showInactive" Color="Color.Primary" Label="Show inactive" Class="mr-4" />
     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd" OnClick="@(() => EditAsync(null))">Add person</MudButton>
 </div>
@@ -16,7 +26,7 @@
     <HeaderContent>
         <MudTh>Name</MudTh>
         <MudTh>@PersonLabels.Title</MudTh>
-        <MudTh>Email</MudTh>
+        <MudTh>@PersonLabels.Email</MudTh>
         <MudTh>Location</MudTh>
         <MudTh>@PersonLabels.StartDate</MudTh>
         @foreach (RosterRole role in RosterRoleExtensions.InDisplayOrder)
@@ -24,7 +34,7 @@
             <MudTh>@RosterLabels.Plural(role)</MudTh>
         }
         <MudTh>Status</MudTh>
-        <MudTh Style="width: 7rem;"></MudTh>
+        <MudTh Style="width: 10rem;"></MudTh>
     </HeaderContent>
     <RowTemplate>
         <MudTd DataLabel="Name">
@@ -44,7 +54,7 @@
             </div>
         </MudTd>
         <MudTd DataLabel="@PersonLabels.Title">@context.Title</MudTd>
-        <MudTd DataLabel="Email">@context.Email</MudTd>
+        <MudTd DataLabel="@PersonLabels.Email">@context.Email</MudTd>
         <MudTd DataLabel="Location">
             @context.Location
             @if (context.TimeZoneId is not null)
@@ -70,11 +80,14 @@
             <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Default)">@PersonLabels.Status(context.IsActive)</MudChip>
         </MudTd>
         <MudTd>
+            <MudTooltip Text="@CalendarLabels.DaysOff">
+                <MudIconButton Icon="@CalendarLabels.DaysOffIcon" Size="Size.Small" OnClick="@(() => ManageDaysOffAsync(context))" aria-label="@($"{CalendarLabels.DaysOff} for {context.DisplayName}")" />
+            </MudTooltip>
             <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => EditAsync(context))" aria-label="@($"Edit {context.DisplayName}")" />
             <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteAsync(context))" aria-label="@($"Delete {context.DisplayName}")" />
         </MudTd>
     </RowTemplate>
-    <NoRecordsContent>@(people.Count == 0 ? "No people defined yet." : "Everyone in People is inactive. Turn on Show inactive to list them.")</NoRecordsContent>
+    <NoRecordsContent>@(people.Count == 0 ? "No people defined yet." : $"Nobody {(showInactive ? "inactive" : "active")} matches the filter.")</NoRecordsContent>
 </MudTable>
 
 @code {
@@ -83,7 +96,20 @@
     private bool isLoading = true;
     private bool showInactive;
 
-    private IEnumerable<PersonDto> ShownPeople => showInactive ? people : people.Where(person => person.IsActive);
+    private IReadOnlyCollection<RosterFilter> selectedFilters = [];
+
+    /// <summary>One chip per roster role, matching anyone on that roster of any standup, then one matching people on no roster at all.</summary>
+    private static readonly IReadOnlyList<RosterFilter> RosterFilters =
+    [
+        .. RosterRoleExtensions.InDisplayOrder.Select(role => new RosterFilter(RosterLabels.Plural(role), roles => roles.Contains(role))),
+        new RosterFilter("Neither", roles => roles.Count == 0),
+    ];
+
+    /// <summary>Active people, or only inactive ones while Show inactive is on, narrowed to those matching any selected roster filter.</summary>
+    private IEnumerable<PersonDto> ShownPeople => people.Where(person => person.IsActive != showInactive
+        && (selectedFilters.Count == 0 || selectedFilters.Any(filter => filter.Matches(standupNames.RolesFor(person.Id)))));
+
+    private sealed record RosterFilter(string Label, Func<IReadOnlyList<RosterRole>, bool> Matches);
 
     protected override Task OnInitializedAsync() => ReloadAsync();
 
@@ -117,9 +143,15 @@
         }
     }
 
+    private async Task ManageDaysOffAsync(PersonDto person)
+    {
+        DialogParameters<DaysOffDialog> parameters = new() { { dialog => dialog.PersonId, person.Id }, { dialog => dialog.PersonName, person.DisplayName } };
+        await DialogService.ShowAsync<DaysOffDialog>(null, parameters, new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+    }
+
     private async Task DeleteAsync(PersonDto person)
     {
-        bool? confirmed = await DialogService.ShowMessageBoxAsync("Remove person", $"Remove {person.DisplayName} from the directory? Their past standup entries are kept.", yesText: "Remove", cancelText: "Cancel");
+        bool? confirmed = await DialogService.ShowMessageBoxAsync("Remove person", $"Remove {person.DisplayName} from the directory, along with their days off? Their past standup entries are kept.", yesText: "Remove", cancelText: "Cancel");
         if (confirmed == true)
         {
             await PersonService.DeleteAsync(person.Id);

@@ -19,28 +19,38 @@
                     <MudIcon Icon="@Icons.Material.Filled.Star" Size="Size.Small" Class="standfast-self-marker ml-1" aria-label="@SelfDescription" />
                 </MudTooltip>
             }
-        </div>
-        <MudText Typo="Typo.caption" Class="mud-text-secondary">
-            @if (string.IsNullOrWhiteSpace(Participant.Title))
+            @if (Availability is { } availability)
             {
-                @StatusCaption
-            }
-            else
-            {
-                <MudTooltip Text="@($"{PersonLabels.Title}: {Participant.Title}")">
-                    <span>@StatusCaption</span>
+                string description = CalendarLabels.AvailabilityDescription(availability, Sprint);
+                <MudTooltip Text="@description">
+                    <MudIcon Icon="@CalendarLabels.DaysOffIcon" Size="Size.Small" Color="Color.Warning" Class="ml-1" aria-label="@description" />
                 </MudTooltip>
             }
+        </div>
+        @* Each fact sits in its own tinted pill, which separates them without dividers and lets them wrap as whole units on a narrow card. *@
+        <MudText Typo="Typo.caption" Class="mud-text-secondary standfast-card-facts">
+            <MudTooltip>
+                <TooltipContent>
+                    @if (!string.IsNullOrWhiteSpace(Participant.Title))
+                    {
+                        <div>@PersonLabels.Title: @Participant.Title</div>
+                    }
+                    <div>@PersonLabels.Email: @Participant.Email</div>
+                </TooltipContent>
+                <ChildContent>
+                    <span class="standfast-card-fact">@StatusCaption</span>
+                </ChildContent>
+            </MudTooltip>
             @if (OffsetFromStandup is { } offset)
             {
                 <MudTooltip Text="@OffsetTooltip(offset)">
-                    <span class="ml-1">| @offset.ToOffsetLabel()</span>
+                    <span class="standfast-card-fact">@offset.ToOffsetLabel()</span>
                 </MudTooltip>
             }
             @if (TenureAtMeeting is { } tenure)
             {
                 <MudTooltip Text="@($"{PersonLabels.StartDate}: {Participant.StartDate!.Value.ToString(UiFormats.LongDate)}")">
-                    <span class="ml-1">| @tenure.ToTenureLabel()</span>
+                    <span class="standfast-card-fact">@tenure.ToTenureLabel()</span>
                 </MudTooltip>
             }
         </MudText>
@@ -106,6 +116,14 @@
     /// <summary>The turn this person took at the previous standup, or null when they were not there.</summary>
     [Parameter]
     public int? PriorTurn { get; set; }
+
+    /// <summary>How the person's days off bear on this date and the rest of its sprint, or null when they have none that do. Marks the card when set.</summary>
+    [Parameter]
+    public PersonAvailabilityDto? Availability { get; set; }
+
+    /// <summary>The sprint covering this date, which the days off marker measures against.</summary>
+    [Parameter]
+    public SprintStatusDto? Sprint { get; set; }
 
     /// <summary>Shown only where the turn is actionable, which is the column you are choosing the next speaker from.</summary>
     [Parameter]

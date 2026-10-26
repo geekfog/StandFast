@@ -1,0 +1,24 @@
+@* Sorting is MudTable's own, so a click on a heading reorders the rows in the browser without asking the server for the report again. *@
+<MudTable T="LastPresentedRowDto" Items="@Report.Rows" Dense="true" Hover="true" Striped="true" Elevation="0" Class="mt-3">
+    <HeaderContent>
+        <MudTh><MudTableSortLabel T="LastPresentedRowDto" SortBy="@(row => row.StandupName.ToUpperInvariant())">Standup</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="LastPresentedRowDto" SortBy="@(row => row.DisplayName.ToUpperInvariant())">Person</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="LastPresentedRowDto" SortBy="@(row => row.LastPresented ?? DateOnly.MinValue)">Last Presented</MudTableSortLabel></MudTh>
+        @* Never presented sorts as the longest gap, matching the order the report arrives in. *@
+        <MudTh Class="text-right"><MudTableSortLabel T="LastPresentedRowDto" SortBy="@(row => row.DaysSince ?? int.MaxValue)" InitialDirection="SortDirection.Descending">Days Since</MudTableSortLabel></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Standup">@context.StandupName</MudTd>
+        <MudTd DataLabel="Person">@context.DisplayName</MudTd>
+        <MudTd DataLabel="Last Presented">@(context.LastPresented?.ToString(UiFormats.ShortDateWithWeekday) ?? NeverPresented)</MudTd>
+        <MudTd DataLabel="Days Since" Class="text-right">@(context.DaysSince?.ToString() ?? UiFormats.UnavailableSymbol)</MudTd>
+    </RowTemplate>
+</MudTable>
+
+@code {
+    private const string NeverPresented = "Never";
+
+    [Parameter]
+    [EditorRequired]
+    public LastPresentedDto Report { get; set; } = default!;
+}

@@ -32,4 +32,10 @@ public interface IStandupRepository
     /// what the week strip's locked markers and the activity report both read.
     /// </summary>
     Task<IReadOnlyList<StandupMeeting>> GetMeetingsAsync(Guid standupId, DateOnly from, DateOnly to, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<Sprint>> GetSprintsAsync(Guid standupId, CancellationToken cancellationToken = default);
+
+    Task UpsertSprintAsync(Sprint sprint, CancellationToken cancellationToken = default);
+
+    Task DeleteSprintAsync(Guid standupId, Guid sprintId, CancellationToken cancellationToken = default);
 }

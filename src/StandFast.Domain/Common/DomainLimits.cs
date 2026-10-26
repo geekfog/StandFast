@@ -14,6 +14,9 @@ public static class DomainLimits
     public const int TitleMaxLength = 100;
     public const int OrganizationMaxLength = 100;
     public const int DepartmentMaxLength = 100;
+    public const int HolidayNameMaxLength = 100;
+    public const int SprintNameMaxLength = 100;
+    public const int DayOffNoteMaxLength = 200;
 
     /// <summary>Largest stored profile photo. Azure Table Storage caps a single binary property at 64 KiB.</summary>
     public const int PhotoMaxBytes = 64 * 1024;

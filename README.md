@@ -40,43 +40,54 @@ StandFast does not host the call and does not connect to any meeting or chat ser
 | Turn | A presenter's position in the order people gave their updates on a date. |
 | Update | What a presenter said, in three parts: current update, blockers (what is in their way), and parking lot (topics to take up after the meeting). Each is edited as formatted text and saved as [Markdown](https://www.markdownguide.org/basic-syntax/), a plain-text formatting syntax, which can also be edited directly. |
 | Lock | Closing a date after the meeting, so what was recorded cannot be changed by accident. |
+| Sprint | A named stretch of dates a standup's team works to, such as "Sprint 29". Each standup has its own sprints, and they never overlap. |
+| Holiday | A date the whole organization has off, as a full day or a half day. |
+| Days off | A span of whole days one person is away, with an optional note. |
+| Working day | A Monday to Friday date, counted as a full day, less a holiday on it: none left for a full-day holiday, half for a half-day one. |
 | Identity provider | The external sign-in service StandFast trusts to say who a user is, using the [OpenID Connect](https://openid.net/developers/how-connect-works/) standard. |
 
 ## Using StandFast
 
 ```mermaid
 flowchart TB
-    People["<b>People</b><br/>Add everyone who attends, with the email they sign in with"]
+    People["<b>People</b><br/>Add everyone who attends, with the email they sign in with, and their days off"]
+    Organization["<b>Organization</b><br/>Record holidays"]
     Standup["<b>Standups</b><br/>Create a standup: days, start time, time zone"]
     Presenters["<b>Presenter Roster</b><br/>Who gives an update"]
     Leaders["<b>Leader Roster</b><br/>Who may run the meeting"]
+    Sprints["<b>Sprints</b><br/>Name each sprint and its dates"]
     Board["<b>Board</b><br/>Pick the standup and date"]
     Run["Mark people as they join and as they present,<br/>pick the leader, record each update"]
     Lock["<b>Lock</b> the date when the meeting ends"]
     Reports["<b>Reports</b><br/>Review speaking order, meeting history, and the org chart"]
 
     People --> Standup
+    Organization --> Standup
     Standup --> Presenters
     Standup --> Leaders
+    Standup --> Sprints
     Presenters --> Board
     Leaders --> Board
+    Sprints --> Board
     Board --> Run --> Lock --> Reports
 ```
 
-People, standups, and rosters are set up once and changed as the team changes. Board through Lock repeats at every meeting.
+People, holidays, standups, rosters, and sprints are set up ahead of time and changed as the team and calendar change. Board through Lock repeats at every meeting.
 
 ## Capabilities
 
 | Capability | Outcome | Limitations |
 | ---------- | ------- | ----------- |
 | Multiple standups | Each standup keeps its own schedule, time zone, rosters, and history. | |
-| Attendance and speaking order | One tap marks someone as joined and a second as having presented, so the board shows who is still waiting. Each card shows the turn the person took last time, so the order can be varied. Marking the first person on a date also marks you, when your own card is still on the roster. | Guests cannot be marked as presented. |
+| Attendance and speaking order | One tap marks someone as joined and a second as having presented, so the board shows who is still waiting. Each card shows the turn the person took last time, so the order can be varied. Marking the first person on a date also marks you, when your own card is still on the roster and you are not off that date. | Guests cannot be marked as presented. A presenter with days off covering the date cannot be marked present; tapping them shows a warning instead. |
+| Sprints and time off | The board shows the sprint covering its date, in green beside the date, with the working days left in it counting that date. A card is marked when the person is off that date or has days off in the rest of the sprint; hovering shows their days off and the working days they have left to contribute. | Working days are Monday to Friday, whatever days the standup runs. Holidays apply to everyone. Days off are whole days. |
 | Leader | Records who ran the standup on each date. | Only people on the Leader Roster who are attending that date can be picked. |
-| Context at a glance | Each card shows the person's photo, their time zone offset from the standup, and their time with the organization, with location, start date, and title or role on hover. | Shown only for details recorded in People. |
+| Context at a glance | Each card shows the person's photo, their time zone offset from the standup, and their time with the organization, with location, start date, title or role, and email address on hover. | Shown only for details recorded in People. |
 | Updates | Each person's update, blockers, and parking lot are captured with formatting, and last time's entry can be copied in with one click. | Guests get one notes box. |
 | History | Any past date opens exactly as recorded, and a locked date cannot be changed by accident. | A locked date must be unlocked to change it. |
-| Reports | A chart of each person's turn over time, a table of the days a standup ran, how many presented, and how long it took, a table of how often each person presented and how long their turns ran, and an org chart of everyone under their supervisor. | A standup's reports cover a period running back from today, a year at most. The org chart covers all of People and shows an inactive person only when someone active reports up through them. |
-| People directory | One list of everyone, with photo, title or role, supervisor, organization, department, location, time zone, start date, and notes. | A supervisor is optional, and a save is refused when following supervisors upward would loop back. Removing a person leaves their direct reports with no supervisor. |
+| Reports | A chart of each person's turn over time, a table of the days a standup ran, how many presented, and how long it took, a table of how often each person presented and how long their turns ran, an org chart of everyone under their supervisor, and a table of how many days it has been since each presenter last presented at each standup. | A standup's reports cover a period running back from today, a year at most. The org chart covers all of People and shows an inactive person only when someone active reports up through them. Days Since Last Presented covers every active standup and its whole history, listing only active people on a presenter roster. |
+| People directory | One list of everyone, with photo, title or role, supervisor, organization, department, location, time zone, start date, notes, and days off. It lists active people, or only inactive people while Show inactive is on, and can be narrowed to presenters, leaders, people on neither roster, or any combination of those. | A supervisor is optional, and a save is refused when following supervisors upward would loop back. Removing a person leaves their direct reports with no supervisor and removes their days off. |
+| Organization | Holidays the whole organization takes, each a full or half day, on one Holidays tab. | One holiday per date. |
 | Backup and restore | The whole data set downloads as one file and can be restored into any StandFast environment. | Restoring replaces all data. The audit log and each user's own settings are not included. |
 | Appearance | Light or dark mode follows each user to any browser. | |
 | Browser-installed app | StandFast can be installed from the browser to open in its own window with its own icon. | Offered by Edge and Chrome. |
@@ -298,6 +309,17 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 
 - Added an optional supervisor to each person, picked from anyone else in People. Saving is refused when following supervisors upward would loop back to someone already in the chain, and the message names everyone in the loop so you can see which link to change. Removing a person leaves their direct reports with no supervisor.
 - Added a fourth report, Org Chart: everyone active in People shown under their supervisor, with one tree for each person who has no supervisor, sorted by name at every level. An inactive person appears, marked inactive, only when someone active reports up through them. The standup and period pickers are hidden for this report, since it covers all of People.
+- Added an Organization menu with a Holidays tab, where each holiday is a date, a name, and a full or half day off. Only one holiday can be recorded on a date. Past holidays are hidden until Show past is turned on.
+- Added days off to each person, as start and end dates with an optional note, opened from a new icon on their row in People. Removing a person removes their days off.
+- Added sprints to each standup, as a name such as Sprint 29 with start and end dates, opened from a new icon on its row in Standups. Sprints of the same standup cannot overlap.
+- Made the board show the sprint covering its date beside the date, in green, with the working days left in it counting that date. Working days are Monday to Friday less holidays, and a half-day holiday counts as half a day.
+- Marked a card on the board when the person is off that date or has days off later in the sprint. Hovering the marker shows their days off and the working days they have left to contribute.
+- Made tapping a presenter who is off on the board's date show a warning instead of marking them present. The first tap of the day also leaves your own card on the roster when you are off that date.
+- Made Show inactive on the People screen list only inactive people instead of adding them to the active ones.
+- Added a fifth report, Days Since Last Presented: one row per active person on each active standup's presenter roster, with the last date they presented there and how many days ago that was, counted to today in the standup's time zone. Anyone who never presented is listed first as Never, then the longest gap. The standup and period pickers are hidden for this report, since it covers every standup and its whole history.
+- Added Presenters, Leaders, and Neither filters to the People screen, grouped in a box labeled Role.
+- Replaced the `|` dividers under each name on the board with a small gray pill around each detail (status, time zone offset, and time with the organization), which separates them in both light and dark mode and keeps each detail whole when a narrow card wraps.
+- Added the person's email address to the popup on the status detail of their board card, on its own line under their title or role. Selecting none lists everyone. Selecting several lists anyone matching at least one, so Presenters and Neither together, for example, lists everyone not on a leader roster alone.
 
 ### v01.05.00 — 2026-10-19
 

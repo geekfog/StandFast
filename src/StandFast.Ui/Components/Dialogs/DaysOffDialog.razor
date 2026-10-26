@@ -1,0 +1,147 @@
+@using StandFast.Application.Mapping
+@inject IDayOffService DayOffService
+@inject IDialogService DialogService
+@inject FluentValidation.IValidator<DayOffEditDto> Validator
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@CalendarLabels.DaysOff for @PersonName</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="form" Model="edit" Validation="@FluentValidationAdapter.ForField(Validator)">
+            <MudGrid Spacing="3" Class="mb-3">
+                <MudItem xs="12" sm="5">
+                    <MudDateRangePicker DateRange="@Dates" DateRangeChanged="OnDatesChanged" Label="Dates" DateFormat="@UiFormats.ShortDate" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudTextField @bind-Value="edit.Note" For="@(() => edit.Note)" Label="Note" Placeholder="Optional" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="3" Class="d-flex align-center gap-1">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="isSaving" OnClick="SaveAsync">@(edit.Id is null ? "Add" : "Save")</MudButton>
+                    @if (edit.Id is not null)
+                    {
+                        <MudButton OnClick="StartNew">Cancel</MudButton>
+                    }
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+
+        @if (saveError is not null)
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mb-3">@saveError</MudAlert>
+        }
+
+        <MudTable Items="daysOff" Hover="true" Dense="true" Loading="isLoading" Elevation="0">
+            <HeaderContent>
+                <MudTh>Dates</MudTh>
+                <MudTh>Note</MudTh>
+                <MudTh Style="width: 7rem;"></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Dates">@CalendarLabels.Range(context.StartDate, context.EndDate)</MudTd>
+                <MudTd DataLabel="Note">@context.Note</MudTd>
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => StartEdit(context))" aria-label="Edit these days off" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteAsync(context))" aria-label="Delete these days off" />
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent>No days off recorded for @PersonName.</NoRecordsContent>
+        </MudTable>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private MudForm form = default!;
+    private IReadOnlyList<DayOffDto> daysOff = [];
+    private DayOffEditDto edit = new();
+    private bool isLoading = true;
+    private bool isSaving;
+    private string? saveError;
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter]
+    [EditorRequired]
+    public Guid PersonId { get; set; }
+
+    [Parameter]
+    [EditorRequired]
+    public string PersonName { get; set; } = string.Empty;
+
+    private MudBlazor.DateRange Dates => new(edit.StartDate.ToPickerDate(), edit.EndDate.ToPickerDate());
+
+    protected override async Task OnInitializedAsync()
+    {
+        StartNew();
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        isLoading = true;
+        daysOff = await DayOffService.GetForPersonAsync(PersonId);
+        isLoading = false;
+    }
+
+    private void OnDatesChanged(MudBlazor.DateRange? dates)
+    {
+        edit.StartDate = dates?.Start.FromPickerDate();
+        edit.EndDate = dates?.End.FromPickerDate();
+        saveError = null;
+    }
+
+    private void StartNew()
+    {
+        edit = new DayOffEditDto { PersonId = PersonId };
+        saveError = null;
+    }
+
+    private void StartEdit(DayOffDto dayOff)
+    {
+        edit = dayOff.ToEditDto();
+        saveError = null;
+    }
+
+    private async Task SaveAsync()
+    {
+        await form.ValidateAsync();
+        if (!form.IsValid)
+        {
+            return;
+        }
+
+        isSaving = true;
+
+        try
+        {
+            await DayOffService.SaveAsync(edit);
+            StartNew();
+            await ReloadAsync();
+        }
+        catch (FluentValidation.ValidationException exception)
+        {
+            saveError = exception.Describe();
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task DeleteAsync(DayOffDto dayOff)
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync("Remove days off", $"Remove {CalendarLabels.Range(dayOff.StartDate, dayOff.EndDate)} for {PersonName}?", yesText: "Remove", cancelText: "Cancel");
+        if (confirmed == true)
+        {
+            await DayOffService.DeleteAsync(PersonId, dayOff.Id);
+            StartNew();
+            await ReloadAsync();
+        }
+    }
+
+    private void Close() => Dialog.Close(DialogResult.Ok(true));
+}

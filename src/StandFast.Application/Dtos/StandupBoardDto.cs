@@ -11,6 +11,8 @@ namespace StandFast.Application.Dtos;
 /// Turn each participant took at the most recent earlier meeting, keyed by person id, starting at one. A participant missing from the map did not
 /// present then. This is a property of the board rather than of a participant, so replacing one participant after a tap cannot make it go stale.
 /// </param>
+/// <param name="Sprint">The standup's sprint covering this date, or null when none does.</param>
+/// <param name="Availability">Days off bearing on this date or the rest of its sprint, keyed by person id. Anyone missing is available throughout.</param>
 public sealed record StandupBoardDto(
     Guid StandupId,
     string StandupName,
@@ -20,9 +22,15 @@ public sealed record StandupBoardDto(
     IReadOnlyList<StandupMemberDto> Leaders,
     Guid? LeaderPersonId,
     DateTimeOffset? LockedUtc,
-    IReadOnlyDictionary<Guid, int> PriorPresentationOrder)
+    IReadOnlyDictionary<Guid, int> PriorPresentationOrder,
+    SprintStatusDto? Sprint,
+    IReadOnlyDictionary<Guid, PersonAvailabilityDto> Availability)
 {
-    public static StandupBoardDto Empty(DateOnly meetingDate) => new(Guid.Empty, string.Empty, meetingDate, false, [], [], null, null, new Dictionary<Guid, int>());
+    public static StandupBoardDto Empty(DateOnly meetingDate) =>
+        new(Guid.Empty, string.Empty, meetingDate, false, [], [], null, null, new Dictionary<Guid, int>(), null, new Dictionary<Guid, PersonAvailabilityDto>());
+
+    /// <summary>The participant's days off as they bear on this board, or null when they have none that do.</summary>
+    public PersonAvailabilityDto? AvailabilityFor(Guid personId) => Availability.GetValueOrDefault(personId);
 
     public bool IsLocked => LockedUtc is not null;
 
