@@ -7,6 +7,8 @@ public static class PersonLabels
 
     public const string StartDate = "Start date";
 
+    public const string Email = "Email";
+
     public const string Supervisor = "Supervisor";
 
     /// <summary>Heading of the People screen's filter by roster: presenters, leaders, or neither.</summary>

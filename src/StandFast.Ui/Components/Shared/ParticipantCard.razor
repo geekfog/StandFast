@@ -29,16 +29,18 @@
         </div>
         @* Each fact sits in its own tinted pill, which separates them without dividers and lets them wrap as whole units on a narrow card. *@
         <MudText Typo="Typo.caption" Class="mud-text-secondary standfast-card-facts">
-            @if (string.IsNullOrWhiteSpace(Participant.Title))
-            {
-                <span class="standfast-card-fact">@StatusCaption</span>
-            }
-            else
-            {
-                <MudTooltip Text="@($"{PersonLabels.Title}: {Participant.Title}")">
+            <MudTooltip>
+                <TooltipContent>
+                    @if (!string.IsNullOrWhiteSpace(Participant.Title))
+                    {
+                        <div>@PersonLabels.Title: @Participant.Title</div>
+                    }
+                    <div>@PersonLabels.Email: @Participant.Email</div>
+                </TooltipContent>
+                <ChildContent>
                     <span class="standfast-card-fact">@StatusCaption</span>
-                </MudTooltip>
-            }
+                </ChildContent>
+            </MudTooltip>
             @if (OffsetFromStandup is { } offset)
             {
                 <MudTooltip Text="@OffsetTooltip(offset)">
