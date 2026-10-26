@@ -68,13 +68,29 @@
             </MudGrid>
 
             <MudGrid Spacing="3" Class="mb-3">
-                <MudItem xs="12" sm="4">
+                <MudItem xs="12" sm="3">
                     <MudTextField @bind-Value="Person.Title" For="@(() => Person.Title)" Label="@PersonLabels.Title" Variant="Variant.Outlined" />
                 </MudItem>
-                <MudItem xs="12" sm="4">
+                <MudItem xs="12" sm="3">
+                    <MudSelect T="Guid?"
+                               Value="Person.SupervisorId"
+                               ValueChanged="OnSupervisorChanged"
+                               ToStringFunc="SupervisorName"
+                               Label="@PersonLabels.Supervisor"
+                               Clearable="true"
+                               Error="@(supervisorError is not null)"
+                               ErrorText="@supervisorError"
+                               Variant="Variant.Outlined">
+                        @foreach (PersonDto candidate in SupervisorCandidates)
+                        {
+                            <MudSelectItem T="Guid?" Value="@candidate.Id">@candidate.DisplayName</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="3">
                     <MudTextField @bind-Value="Person.Organization" For="@(() => Person.Organization)" Label="Organization" Variant="Variant.Outlined" />
                 </MudItem>
-                <MudItem xs="12" sm="4">
+                <MudItem xs="12" sm="3">
                     <MudTextField @bind-Value="Person.Department" For="@(() => Person.Department)" Label="Department" Variant="Variant.Outlined" />
                 </MudItem>
             </MudGrid>
@@ -112,6 +128,24 @@
     [Parameter]
     [EditorRequired]
     public PersonEditDto Person { get; set; } = default!;
+
+    /// <summary>Everyone in People, which the supervisor list is drawn from.</summary>
+    [Parameter]
+    [EditorRequired]
+    public IReadOnlyList<PersonDto> People { get; set; } = [];
+
+    /// <summary>Set when saving refused the supervisor, since a loop can only be found against everyone else's stored supervisor.</summary>
+    private string? supervisorError;
+
+    private IEnumerable<PersonDto> SupervisorCandidates => People.Where(candidate => candidate.Id != Person.Id);
+
+    private string SupervisorName(Guid? supervisorId) => People.FirstOrDefault(candidate => candidate.Id == supervisorId)?.DisplayName ?? string.Empty;
+
+    private void OnSupervisorChanged(Guid? supervisorId)
+    {
+        Person.SupervisorId = supervisorId;
+        supervisorError = null;
+    }
 
     /// <summary>Largest file the picker accepts. The browser scales it down before anything is sent, so this only turns away files that are not plausibly a photo.</summary>
     private const long PhotoSourceMaxBytes = 50L * 1024 * 1024;
@@ -184,6 +218,10 @@
         {
             await PersonService.SaveAsync(Person);
             Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (FluentValidation.ValidationException exception) when (exception.Errors.Any(error => error.PropertyName == nameof(PersonEditDto.SupervisorId)))
+        {
+            supervisorError = exception.Errors.First(error => error.PropertyName == nameof(PersonEditDto.SupervisorId)).ErrorMessage;
         }
         finally
         {

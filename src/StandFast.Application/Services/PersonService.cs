@@ -1,8 +1,11 @@
 using FluentValidation;
+using FluentValidation.Results;
 using StandFast.Application.Auditing;
 using StandFast.Application.Dtos;
 using StandFast.Application.Mapping;
+using StandFast.Application.Validation;
 using StandFast.Domain.Abstractions;
+using StandFast.Domain.Common;
 using StandFast.Domain.Entities;
 
 namespace StandFast.Application.Services;
@@ -41,6 +44,7 @@ public sealed class PersonService(IPersonRepository people, IClock clock, IValid
         bool isNew = existing is null;
         Person entity = existing ?? new Person { CreatedUtc = clock.UtcNow };
 
+        await EnsureSupervisorChainEndsAsync(entity.Id, person.SupervisorId, cancellationToken);
         person.ApplyTo(entity);
         entity.ModifiedUtc = isNew ? null : clock.UtcNow;
 
@@ -73,7 +77,40 @@ public sealed class PersonService(IPersonRepository people, IClock clock, IValid
             return;
         }
 
+        // Their direct reports are left with no supervisor rather than pointing at someone who is no longer in People.
+        foreach (Person report in (await people.GetAllAsync(cancellationToken)).Where(person => person.SupervisorId == id))
+        {
+            report.SupervisorId = null;
+            report.ModifiedUtc = clock.UtcNow;
+            await people.UpsertAsync(report, cancellationToken);
+            audit.Record(AuditEvents.PersonUpdated, AuditTargetType, report.Id.ToString(), $"{report.DisplayName} <{report.Email}>");
+        }
+
         await people.DeleteAsync(id, cancellationToken);
         audit.Record(AuditEvents.PersonDeleted, AuditTargetType, id.ToString(), $"{existing.DisplayName} <{existing.Email}>");
+    }
+
+    /// <summary>Refuses a supervisor who is not in People, or one whose chain upward, with this save applied, loops anywhere rather than ending.</summary>
+    private async Task EnsureSupervisorChainEndsAsync(Guid personId, Guid? supervisorId, CancellationToken cancellationToken)
+    {
+        if (supervisorId is not { } supervisor)
+        {
+            return;
+        }
+
+        Dictionary<Guid, Person> peopleById = (await people.GetAllAsync(cancellationToken)).ToDictionary(person => person.Id);
+        Dictionary<Guid, Guid?> supervisorOf = peopleById.Values.ToDictionary(person => person.Id, person => person.SupervisorId);
+        supervisorOf[personId] = supervisor;
+
+        string? failure = !peopleById.ContainsKey(supervisor)
+            ? ValidationMessages.SupervisorNotFound
+            : SupervisorChain.FindLoop(personId, supervisor, supervisorOf) is { Count: > 0 } loop
+                ? ValidationMessages.SupervisorLoop(loop.Select(id => peopleById[id].DisplayName))
+                : null;
+
+        if (failure is not null)
+        {
+            throw new ValidationException([new ValidationFailure(nameof(PersonEditDto.SupervisorId), failure)]);
+        }
     }
 }

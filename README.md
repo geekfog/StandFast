@@ -53,7 +53,7 @@ flowchart TB
     Board["<b>Board</b><br/>Pick the standup and date"]
     Run["Mark people as they join and as they present,<br/>pick the leader, record each update"]
     Lock["<b>Lock</b> the date when the meeting ends"]
-    Reports["<b>Reports</b><br/>Review speaking order and meeting history"]
+    Reports["<b>Reports</b><br/>Review speaking order, meeting history, and the org chart"]
 
     People --> Standup
     Standup --> Presenters
@@ -75,8 +75,8 @@ People, standups, and rosters are set up once and changed as the team changes. B
 | Context at a glance | Each card shows the person's photo, their time zone offset from the standup, and their time with the organization, with location, start date, and title or role on hover. | Shown only for details recorded in People. |
 | Updates | Each person's update, blockers, and parking lot are captured with formatting, and last time's entry can be copied in with one click. | Guests get one notes box. |
 | History | Any past date opens exactly as recorded, and a locked date cannot be changed by accident. | A locked date must be unlocked to change it. |
-| Reports | A chart of each person's turn over time, a table of the days a standup ran, how many presented, and how long it took, and a table of how often each person presented and how long their turns ran. | The period runs back from today, a year at most. |
-| People directory | One list of everyone, with photo, title or role, organization, department, location, time zone, start date, and notes. | |
+| Reports | A chart of each person's turn over time, a table of the days a standup ran, how many presented, and how long it took, a table of how often each person presented and how long their turns ran, and an org chart of everyone under their supervisor. | A standup's reports cover a period running back from today, a year at most. The org chart covers all of People and shows an inactive person only when someone active reports up through them. |
+| People directory | One list of everyone, with photo, title or role, supervisor, organization, department, location, time zone, start date, and notes. | A supervisor is optional, and a save is refused when following supervisors upward would loop back. Removing a person leaves their direct reports with no supervisor. |
 | Backup and restore | The whole data set downloads as one file and can be restored into any StandFast environment. | Restoring replaces all data. The audit log and each user's own settings are not included. |
 | Appearance | Light or dark mode follows each user to any browser. | |
 | Browser-installed app | StandFast can be installed from the browser to open in its own window with its own icon. | Offered by Edge and Chrome. |
@@ -293,6 +293,11 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 # <a id="change-summary">🚧</a> Change Summary
 
 *Each entry is a specific version (release/\* branch), in descending order (newest version up top), with a plain bullet list summarizing each change without technical jargon.*
+
+### v01.06.00 — 2026-10-26
+
+- Added an optional supervisor to each person, picked from anyone else in People. Saving is refused when following supervisors upward would loop back to someone already in the chain, and the message names everyone in the loop so you can see which link to change. Removing a person leaves their direct reports with no supervisor.
+- Added a fourth report, Org Chart: everyone active in People shown under their supervisor, with one tree for each person who has no supervisor, sorted by name at every level. An inactive person appears, marked inactive, only when someone active reports up through them. The standup and period pickers are hidden for this report, since it covers all of People.
 
 ### v01.05.00 — 2026-10-19
 

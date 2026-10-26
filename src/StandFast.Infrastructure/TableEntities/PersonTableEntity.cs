@@ -41,6 +41,8 @@ public sealed class PersonTableEntity : ITableEntity
     /// <summary>Start date as a date key, since Table Storage has no date-only column type.</summary>
     public string? StartDate { get; set; }
 
+    public Guid? SupervisorId { get; set; }
+
     public bool IsActive { get; set; } = true;
 
     public DateTimeOffset CreatedUtc { get; set; }

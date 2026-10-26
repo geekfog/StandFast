@@ -40,5 +40,8 @@ public sealed class PersonEditDto
 
     public DateOnly? StartDate { get; set; }
 
+    /// <summary>Optional. Any other person; saving is refused when it would make supervisors loop.</summary>
+    public Guid? SupervisorId { get; set; }
+
     public bool IsActive { get; set; } = true;
 }

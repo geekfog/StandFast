@@ -16,26 +16,50 @@
             }
         </MudSelect>
     </MudItem>
-    <MudItem xs="12" md="4">
-        <MudSelect T="Guid" Value="@SelectedStandupId" ValueChanged="OnStandupChangedAsync" Label="Standup" Variant="Variant.Outlined" Dense="true" Disabled="@(standups.Count == 0)">
-            @foreach (StandupDto standup in standups)
+    @if (SelectedReport.IsPerStandup())
+    {
+        <MudItem xs="12" md="4">
+            <MudSelect T="Guid" Value="@SelectedStandupId" ValueChanged="OnStandupChangedAsync" Label="Standup" Variant="Variant.Outlined" Dense="true" Disabled="@(standups.Count == 0)">
+                @foreach (StandupDto standup in standups)
+                {
+                    <MudSelectItem T="Guid" Value="@standup.Id">@standup.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="4" Class="d-flex align-center flex-wrap gap-1">
+            @foreach (ReportWindow window in ReportWindow.All)
             {
-                <MudSelectItem T="Guid" Value="@standup.Id">@standup.Name</MudSelectItem>
+                <MudButton Variant="@(window.Days == SelectedDays ? Variant.Filled : Variant.Outlined)"
+                           Color="@(window.Days == SelectedDays ? Color.Primary : Color.Default)"
+                           Size="Size.Small"
+                           OnClick="@(() => OnDaysChangedAsync(window.Days))">@window.Label</MudButton>
             }
-        </MudSelect>
-    </MudItem>
-    <MudItem xs="12" md="4" Class="d-flex align-center flex-wrap gap-1">
-        @foreach (ReportWindow window in ReportWindow.All)
-        {
-            <MudButton Variant="@(window.Days == SelectedDays ? Variant.Filled : Variant.Outlined)"
-                       Color="@(window.Days == SelectedDays ? Color.Primary : Color.Default)"
-                       Size="Size.Small"
-                       OnClick="@(() => OnDaysChangedAsync(window.Days))">@window.Label</MudButton>
-        }
-    </MudItem>
+        </MudItem>
+    }
 </MudGrid>
 
-@if (standups.Count == 0)
+@if (!SelectedReport.IsPerStandup())
+{
+    <MudPaper Outlined="true" Class="pa-4 mt-4">
+        <MudText Typo="Typo.h6">@SelectedReport.Title()</MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">@SelectedReport.Description()</MudText>
+
+        @if (orgChart is null)
+        {
+            <MudProgressLinear Indeterminate="true" Class="mt-3" />
+        }
+        else if (!orgChart.HasData)
+        {
+            <MudAlert Severity="Severity.Normal" Dense="true" Class="mt-3">@SelectedReport.EmptyText()</MudAlert>
+        }
+        else
+        {
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">@orgChart.PersonCount people in @orgChart.Roots.Count @(orgChart.Roots.Count == 1 ? "tree" : "trees")</MudText>
+            <OrgChartTree Report="@orgChart" />
+        }
+    </MudPaper>
+}
+else if (standups.Count == 0)
 {
     <MudAlert Severity="Severity.Info" Class="mt-4">
         No standups defined yet. <MudLink Href="@UiRoutes.Standups">Create one</MudLink> and add people to its roster.
