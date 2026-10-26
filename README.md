@@ -86,7 +86,7 @@ People, holidays, standups, rosters, and sprints are set up ahead of time and ch
 | Updates | Each person's update, blockers, and parking lot are captured with formatting, and last time's entry can be copied in with one click. | Guests get one notes box. |
 | History | Any past date opens exactly as recorded, and a locked date cannot be changed by accident. | A locked date must be unlocked to change it. |
 | Reports | A chart of each person's turn over time, a table of the days a standup ran, how many presented, and how long it took, a table of how often each person presented and how long their turns ran, and an org chart of everyone under their supervisor. | A standup's reports cover a period running back from today, a year at most. The org chart covers all of People and shows an inactive person only when someone active reports up through them. |
-| People directory | One list of everyone, with photo, title or role, supervisor, organization, department, location, time zone, start date, notes, and days off. | A supervisor is optional, and a save is refused when following supervisors upward would loop back. Removing a person leaves their direct reports with no supervisor and removes their days off. |
+| People directory | One list of everyone, with photo, title or role, supervisor, organization, department, location, time zone, start date, notes, and days off. It lists active people, or only inactive people while Show inactive is on, and can be narrowed to presenters, leaders, people on neither roster, or any combination of those. | A supervisor is optional, and a save is refused when following supervisors upward would loop back. Removing a person leaves their direct reports with no supervisor and removes their days off. |
 | Organization | Holidays the whole organization takes, each a full or half day, on one Holidays tab. | One holiday per date. |
 | Backup and restore | The whole data set downloads as one file and can be restored into any StandFast environment. | Restoring replaces all data. The audit log and each user's own settings are not included. |
 | Appearance | Light or dark mode follows each user to any browser. | |
@@ -315,6 +315,8 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 - Made the board show the sprint covering its date beside the date, in green, with the working days left in it counting that date. Working days are Monday to Friday less holidays, and a half-day holiday counts as half a day.
 - Marked a card on the board when the person is off that date or has days off later in the sprint. Hovering the marker shows their days off and the working days they have left to contribute.
 - Made tapping a presenter who is off on the board's date show a warning instead of marking them present. The first tap of the day also leaves your own card on the roster when you are off that date.
+- Made Show inactive on the People screen list only inactive people instead of adding them to the active ones.
+- Added Presenters, Leaders, and Neither filters to the People screen, grouped in a box labeled Role. Selecting none lists everyone. Selecting several lists anyone matching at least one, so Presenters and Neither together, for example, lists everyone not on a leader roster alone.
 
 ### v01.05.00 — 2026-10-19
 

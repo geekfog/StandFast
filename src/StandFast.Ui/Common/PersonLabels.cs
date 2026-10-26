@@ -9,5 +9,8 @@ public static class PersonLabels
 
     public const string Supervisor = "Supervisor";
 
+    /// <summary>Heading of the People screen's filter by roster: presenters, leaders, or neither.</summary>
+    public const string RoleFilter = "Role";
+
     public static string Status(bool isActive) => isActive ? "Active" : "Inactive";
 }

@@ -8,6 +8,16 @@
 
 <div class="d-flex align-center mb-4">
     <h1 class="mud-typography mud-typography-h5 flex-grow-1">People</h1>
+    @* No chip selected lists everyone; each selected chip adds the people it matches. *@
+    <MudPaper Outlined="true" Class="d-flex align-center pl-3 pr-1 mr-4" role="group" aria-label="@PersonLabels.RoleFilter">
+        <MudText Typo="Typo.body2" Class="mud-text-secondary mr-2">@PersonLabels.RoleFilter</MudText>
+        <MudChipSet T="RosterFilter" @bind-SelectedValues="selectedFilters" SelectionMode="SelectionMode.MultiSelection" CheckMark="true" Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small">
+            @foreach (RosterFilter filter in RosterFilters)
+            {
+                <MudChip T="RosterFilter" Value="@filter" Text="@filter.Label" />
+            }
+        </MudChipSet>
+    </MudPaper>
     <MudSwitch @bind-Value="showInactive" Color="Color.Primary" Label="Show inactive" Class="mr-4" />
     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd" OnClick="@(() => EditAsync(null))">Add person</MudButton>
 </div>
@@ -77,7 +87,7 @@
             <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteAsync(context))" aria-label="@($"Delete {context.DisplayName}")" />
         </MudTd>
     </RowTemplate>
-    <NoRecordsContent>@(people.Count == 0 ? "No people defined yet." : "Everyone in People is inactive. Turn on Show inactive to list them.")</NoRecordsContent>
+    <NoRecordsContent>@(people.Count == 0 ? "No people defined yet." : $"Nobody {(showInactive ? "inactive" : "active")} matches the filter.")</NoRecordsContent>
 </MudTable>
 
 @code {
@@ -86,7 +96,20 @@
     private bool isLoading = true;
     private bool showInactive;
 
-    private IEnumerable<PersonDto> ShownPeople => showInactive ? people : people.Where(person => person.IsActive);
+    private IReadOnlyCollection<RosterFilter> selectedFilters = [];
+
+    /// <summary>One chip per roster role, matching anyone on that roster of any standup, then one matching people on no roster at all.</summary>
+    private static readonly IReadOnlyList<RosterFilter> RosterFilters =
+    [
+        .. RosterRoleExtensions.InDisplayOrder.Select(role => new RosterFilter(RosterLabels.Plural(role), roles => roles.Contains(role))),
+        new RosterFilter("Neither", roles => roles.Count == 0),
+    ];
+
+    /// <summary>Active people, or only inactive ones while Show inactive is on, narrowed to those matching any selected roster filter.</summary>
+    private IEnumerable<PersonDto> ShownPeople => people.Where(person => person.IsActive != showInactive
+        && (selectedFilters.Count == 0 || selectedFilters.Any(filter => filter.Matches(standupNames.RolesFor(person.Id)))));
+
+    private sealed record RosterFilter(string Label, Func<IReadOnlyList<RosterRole>, bool> Matches);
 
     protected override Task OnInitializedAsync() => ReloadAsync();
 

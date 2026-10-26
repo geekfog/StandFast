@@ -15,4 +15,7 @@ public sealed record StandupNamesByPersonDto(IReadOnlyDictionary<RosterRole, IRe
     /// <summary>Names of the standups this person holds <paramref name="role"/> on, alphabetically, or an empty list when they hold it nowhere.</summary>
     public IReadOnlyList<string> For(RosterRole role, Guid personId) =>
         ByRole.TryGetValue(role, out IReadOnlyDictionary<Guid, IReadOnlyList<string>>? byPerson) && byPerson.TryGetValue(personId, out IReadOnlyList<string>? names) ? names : NoStandups;
+
+    /// <summary>The roles this person holds on at least one standup, in display order. Empty when they are on no roster.</summary>
+    public IReadOnlyList<RosterRole> RolesFor(Guid personId) => [.. RosterRoleExtensions.InDisplayOrder.Where(role => For(role, personId).Count > 0)];
 }
