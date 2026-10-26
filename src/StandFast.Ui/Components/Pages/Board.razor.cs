@@ -278,7 +278,8 @@ public partial class Board
 
         await AdvanceOneAsync(personId);
 
-        if (!wasAnyoneAttending && IsAnyoneAttending && SelfOnRoster is { } self && self.PersonId != personId)
+        // Someone off today is not at the meeting, so the reader is not brought along when it is their own day off.
+        if (!wasAnyoneAttending && IsAnyoneAttending && SelfOnRoster is { } self && self.PersonId != personId && board?.AvailabilityFor(self.PersonId)?.IsOffOnDate != true)
         {
             await AdvanceOneAsync(self.PersonId);
         }
@@ -312,6 +313,11 @@ public partial class Board
         catch (BoardLockedException)
         {
             await ReloadLockedBoardAsync();
+            return;
+        }
+        catch (PersonOffException exception)
+        {
+            Snackbar.Add(exception.Message, Severity.Warning);
             return;
         }
 

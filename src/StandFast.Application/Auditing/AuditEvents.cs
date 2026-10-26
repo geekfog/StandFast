@@ -18,6 +18,15 @@ public static class AuditEvents
     public const string UpdateSaved = "Board.UpdateSaved";
     public const string UpdateDeleted = "Board.UpdateDeleted";
     public const string PriorUpdateCopied = "Board.PriorUpdateCopied";
+    public const string HolidayCreated = "Holiday.Created";
+    public const string HolidayUpdated = "Holiday.Updated";
+    public const string HolidayDeleted = "Holiday.Deleted";
+    public const string SprintCreated = "Sprint.Created";
+    public const string SprintUpdated = "Sprint.Updated";
+    public const string SprintDeleted = "Sprint.Deleted";
+    public const string DayOffCreated = "DayOff.Created";
+    public const string DayOffUpdated = "DayOff.Updated";
+    public const string DayOffDeleted = "DayOff.Deleted";
     public const string BackupCreated = "Backup.Created";
     public const string BackupRestored = "Backup.Restored";
 }

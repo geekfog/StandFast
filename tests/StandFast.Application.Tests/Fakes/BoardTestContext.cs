@@ -18,7 +18,7 @@ public sealed class BoardTestContext
     public BoardTestContext()
     {
         Clock = new FixedClock(Now);
-        Service = new BoardService(Standups, People, Entries, Clock, new ParticipantUpdateDtoValidator(), Options.Create(LockOptions), Audit);
+        Service = new BoardService(Standups, People, Entries, Holidays, Clock, new ParticipantUpdateDtoValidator(), Options.Create(LockOptions), Audit);
     }
 
     /// <summary>The shipped lock windows. A test that cares about the boundary sets its own values before calling the service.</summary>
@@ -29,6 +29,8 @@ public sealed class BoardTestContext
     public InMemoryStandupRepository Standups { get; } = new();
 
     public InMemoryStandupEntryRepository Entries { get; } = new();
+
+    public InMemoryHolidayRepository Holidays { get; } = new();
 
     public FixedClock Clock { get; }
 

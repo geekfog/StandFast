@@ -159,8 +159,8 @@
     /// <summary>The date picker works in <see cref="DateTime"/>; the person holds a date only.</summary>
     private DateTime? StartDate
     {
-        get => Person.StartDate?.ToDateTime(TimeOnly.MinValue);
-        set => Person.StartDate = value is { } date ? DateOnly.FromDateTime(date) : null;
+        get => Person.StartDate.ToPickerDate();
+        set => Person.StartDate = value.FromPickerDate();
     }
 
     private void Cancel() => Dialog.Cancel();

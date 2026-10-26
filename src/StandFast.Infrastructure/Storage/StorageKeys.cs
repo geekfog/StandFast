@@ -37,7 +37,19 @@ public static class StorageKeys
 
     public static string StandupRowKey(Guid standupId) => standupId.ToString("D");
 
-    /// <summary>Rosters and meetings both hang off a standup, so each of their tables holds one standup's rows in a single partition.</summary>
+    /// <summary>Holidays are few and read all at once, so they share one partition like people and standups.</summary>
+    public const string HolidayPartition = "Holiday";
+
+    public static string HolidayRowKey(Guid holidayId) => holidayId.ToString("D");
+
+    /// <summary>Days off hang off a person, so one person's are a single partition.</summary>
+    public static string PersonChildPartitionKey(Guid personId) => personId.ToString("D");
+
+    public static string DayOffRowKey(Guid dayOffId) => dayOffId.ToString("D");
+
+    public static string SprintRowKey(Guid sprintId) => sprintId.ToString("D");
+
+    /// <summary>Rosters, meetings, and sprints all hang off a standup, so each of their tables holds one standup's rows in a single partition.</summary>
     public static string StandupChildPartitionKey(Guid standupId) => standupId.ToString("D");
 
     public static string MemberRowKey(Guid personId) => personId.ToString("D");

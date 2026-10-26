@@ -42,8 +42,8 @@ public sealed class StandupRepository(ITableClientProvider tables) : IStandupRep
         TableClient standupClient = await tables.GetAsync(StorageNames.Standups, cancellationToken);
         await standupClient.DeleteEntityAsync(StorageKeys.StandupPartition, StorageKeys.StandupRowKey(id), ETag.All, cancellationToken);
 
-        // Every roster and the meeting record are child partitions of the standup, so they are removed with it rather than left orphaned.
-        foreach (string childTable in RosterRoleExtensions.InDisplayOrder.Select(StorageNames.MemberTable).Append(StorageNames.StandupMeetings))
+        // Every roster, the meeting record, and the sprints are child partitions of the standup, so they are removed with it rather than left orphaned.
+        foreach (string childTable in RosterRoleExtensions.InDisplayOrder.Select(StorageNames.MemberTable).Append(StorageNames.StandupMeetings).Append(StorageNames.Sprints))
         {
             await ClearPartitionAsync(childTable, StorageKeys.StandupChildPartitionKey(id), cancellationToken);
         }
@@ -122,6 +122,31 @@ public sealed class StandupRepository(ITableClientProvider tables) : IStandupRep
         }
 
         return meetings;
+    }
+
+    public async Task<IReadOnlyList<Sprint>> GetSprintsAsync(Guid standupId, CancellationToken cancellationToken = default)
+    {
+        TableClient client = await tables.GetAsync(StorageNames.Sprints, cancellationToken);
+        List<Sprint> sprints = [];
+
+        await foreach (SprintTableEntity entity in client.QueryAsync<SprintTableEntity>(TableClient.CreateQueryFilter($"PartitionKey eq {StorageKeys.StandupChildPartitionKey(standupId)}"), cancellationToken: cancellationToken))
+        {
+            sprints.Add(entity.ToDomain());
+        }
+
+        return sprints;
+    }
+
+    public async Task UpsertSprintAsync(Sprint sprint, CancellationToken cancellationToken = default)
+    {
+        TableClient client = await tables.GetAsync(StorageNames.Sprints, cancellationToken);
+        await client.UpsertEntityAsync(sprint.ToTableEntity(), TableUpdateMode.Replace, cancellationToken);
+    }
+
+    public async Task DeleteSprintAsync(Guid standupId, Guid sprintId, CancellationToken cancellationToken = default)
+    {
+        TableClient client = await tables.GetAsync(StorageNames.Sprints, cancellationToken);
+        await client.DeleteEntityAsync(StorageKeys.StandupChildPartitionKey(standupId), StorageKeys.SprintRowKey(sprintId), ETag.All, cancellationToken);
     }
 
     private async Task ClearPartitionAsync(string logicalTableName, string partitionKey, CancellationToken cancellationToken)

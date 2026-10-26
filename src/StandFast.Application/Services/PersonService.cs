@@ -1,5 +1,4 @@
 using FluentValidation;
-using FluentValidation.Results;
 using StandFast.Application.Auditing;
 using StandFast.Application.Dtos;
 using StandFast.Application.Mapping;
@@ -110,7 +109,7 @@ public sealed class PersonService(IPersonRepository people, IClock clock, IValid
 
         if (failure is not null)
         {
-            throw new ValidationException([new ValidationFailure(nameof(PersonEditDto.SupervisorId), failure)]);
+            throw ValidationMessages.Failure(nameof(PersonEditDto.SupervisorId), failure);
         }
     }
 }

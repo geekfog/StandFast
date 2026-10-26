@@ -24,7 +24,7 @@
             <MudTh>@RosterLabels.Plural(role)</MudTh>
         }
         <MudTh>Status</MudTh>
-        <MudTh Style="width: 7rem;"></MudTh>
+        <MudTh Style="width: 10rem;"></MudTh>
     </HeaderContent>
     <RowTemplate>
         <MudTd DataLabel="Name">
@@ -70,6 +70,9 @@
             <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Default)">@PersonLabels.Status(context.IsActive)</MudChip>
         </MudTd>
         <MudTd>
+            <MudTooltip Text="@CalendarLabels.DaysOff">
+                <MudIconButton Icon="@CalendarLabels.DaysOffIcon" Size="Size.Small" OnClick="@(() => ManageDaysOffAsync(context))" aria-label="@($"{CalendarLabels.DaysOff} for {context.DisplayName}")" />
+            </MudTooltip>
             <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => EditAsync(context))" aria-label="@($"Edit {context.DisplayName}")" />
             <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteAsync(context))" aria-label="@($"Delete {context.DisplayName}")" />
         </MudTd>
@@ -117,9 +120,15 @@
         }
     }
 
+    private async Task ManageDaysOffAsync(PersonDto person)
+    {
+        DialogParameters<DaysOffDialog> parameters = new() { { dialog => dialog.PersonId, person.Id }, { dialog => dialog.PersonName, person.DisplayName } };
+        await DialogService.ShowAsync<DaysOffDialog>(null, parameters, new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+    }
+
     private async Task DeleteAsync(PersonDto person)
     {
-        bool? confirmed = await DialogService.ShowMessageBoxAsync("Remove person", $"Remove {person.DisplayName} from the directory? Their past standup entries are kept.", yesText: "Remove", cancelText: "Cancel");
+        bool? confirmed = await DialogService.ShowMessageBoxAsync("Remove person", $"Remove {person.DisplayName} from the directory, along with their days off? Their past standup entries are kept.", yesText: "Remove", cancelText: "Cancel");
         if (confirmed == true)
         {
             await PersonService.DeleteAsync(person.Id);

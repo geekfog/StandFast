@@ -26,7 +26,10 @@ public sealed class AzuriteTableFixture : IDisposable
         Standups = new StandupRepository(Tables);
         Entries = new StandupEntryRepository(Tables);
         Backups = new TableBackupStore(Tables);
+        Holidays = new HolidayRepository(Tables);
     }
+
+    public HolidayRepository Holidays { get; }
 
     public ITableClientProvider Tables { get; }
 

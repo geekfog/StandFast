@@ -14,4 +14,7 @@ public static class FluentValidationAdapter
         ValidationResult result = await validator.ValidateAsync(ValidationContext<T>.CreateWithOptions((T)model, options => options.IncludeProperties(propertyName)));
         return result.IsValid ? [] : result.Errors.Select(failure => failure.ErrorMessage);
     };
+
+    /// <summary>Every message a save was refused with, as one line to show beside the form, for rules only the service can check.</summary>
+    public static string Describe(this ValidationException exception) => string.Join(' ', exception.Errors.Select(failure => failure.ErrorMessage).Distinct());
 }

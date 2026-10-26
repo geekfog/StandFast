@@ -144,6 +144,22 @@ public sealed class TableEntityMappingsTests
     }
 
     [Fact]
+    public void CalendarEntries_RoundTripTheirDatesAndDuration()
+    {
+        Holiday holiday = new() { Date = new DateOnly(2026, 12, 24), Name = "Christmas Eve", Duration = HolidayDuration.HalfDay };
+        Sprint sprint = new() { StandupId = Guid.CreateVersion7(), Name = "Sprint 29", StartDate = new DateOnly(2026, 9, 14), EndDate = new DateOnly(2026, 9, 25) };
+        PersonDayOff dayOff = new() { PersonId = Guid.CreateVersion7(), StartDate = new DateOnly(2026, 9, 21), EndDate = new DateOnly(2026, 9, 22), Note = "Vacation" };
+
+        Holiday restoredHoliday = holiday.ToTableEntity().ToDomain();
+        Sprint restoredSprint = sprint.ToTableEntity().ToDomain();
+        PersonDayOff restoredDayOff = dayOff.ToTableEntity().ToDomain();
+
+        Assert.Equal((holiday.Id, holiday.Date, holiday.Name, holiday.Duration), (restoredHoliday.Id, restoredHoliday.Date, restoredHoliday.Name, restoredHoliday.Duration));
+        Assert.Equal((sprint.Id, sprint.StandupId, sprint.Name, sprint.Dates), (restoredSprint.Id, restoredSprint.StandupId, restoredSprint.Name, restoredSprint.Dates));
+        Assert.Equal((dayOff.Id, dayOff.PersonId, dayOff.Dates, dayOff.Note), (restoredDayOff.Id, restoredDayOff.PersonId, restoredDayOff.Dates, restoredDayOff.Note));
+    }
+
+    [Fact]
     public void StandupMeeting_RoundTripsWithNobodyLeadingAndTheDateOpen()
     {
         StandupMeeting meeting = new() { StandupId = Guid.CreateVersion7(), MeetingDate = new DateOnly(2026, 9, 15), CreatedUtc = DateTimeOffset.UnixEpoch };

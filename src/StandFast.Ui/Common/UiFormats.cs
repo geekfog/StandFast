@@ -35,6 +35,17 @@ public static class UiFormats
     /// <summary>Stands in for a figure that cannot be worked out yet, so a table cell reads as unanswerable rather than as zero.</summary>
     public const string UnavailableSymbol = "—";
 
+    /// <summary>A count of working days, which can end in a half for a half-day holiday.</summary>
+    public const string DayCount = "0.#";
+
+    /// <summary>A count of working days with its unit, for example "1 day" or "6.5 days".</summary>
+    public static string ToDayCount(this decimal days) => $"{days.ToString(DayCount)} {(days == 1 ? "day" : "days")}";
+
+    /// <summary>The value a date picker works in, which is a <see cref="DateTime"/> at midnight.</summary>
+    public static DateTime? ToPickerDate(this DateOnly? date) => date?.ToDateTime(TimeOnly.MinValue);
+
+    public static DateOnly? FromPickerDate(this DateTime? date) => date is { } value ? DateOnly.FromDateTime(value) : null;
+
     /// <summary>Ordinal form of a turn number, for example 1st or 23rd. Used in the board's prior-turn tooltips.</summary>
     public static string ToOrdinal(this int value)
     {

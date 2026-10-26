@@ -19,6 +19,13 @@
                     <MudIcon Icon="@Icons.Material.Filled.Star" Size="Size.Small" Class="standfast-self-marker ml-1" aria-label="@SelfDescription" />
                 </MudTooltip>
             }
+            @if (Availability is { } availability)
+            {
+                string description = CalendarLabels.AvailabilityDescription(availability, Sprint);
+                <MudTooltip Text="@description">
+                    <MudIcon Icon="@CalendarLabels.DaysOffIcon" Size="Size.Small" Color="Color.Warning" Class="ml-1" aria-label="@description" />
+                </MudTooltip>
+            }
         </div>
         <MudText Typo="Typo.caption" Class="mud-text-secondary">
             @if (string.IsNullOrWhiteSpace(Participant.Title))
@@ -106,6 +113,14 @@
     /// <summary>The turn this person took at the previous standup, or null when they were not there.</summary>
     [Parameter]
     public int? PriorTurn { get; set; }
+
+    /// <summary>How the person's days off bear on this date and the rest of its sprint, or null when they have none that do. Marks the card when set.</summary>
+    [Parameter]
+    public PersonAvailabilityDto? Availability { get; set; }
+
+    /// <summary>The sprint covering this date, which the days off marker measures against.</summary>
+    [Parameter]
+    public SprintStatusDto? Sprint { get; set; }
 
     /// <summary>Shown only where the turn is actionable, which is the column you are choosing the next speaker from.</summary>
     [Parameter]

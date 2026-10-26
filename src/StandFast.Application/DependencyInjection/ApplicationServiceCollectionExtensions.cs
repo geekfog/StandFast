@@ -26,6 +26,9 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IReportService, ReportService>();
         services.AddScoped<IBackupService, BackupService>();
         services.AddScoped<IUserPreferencesService, UserPreferencesService>();
+        services.AddScoped<IHolidayService, HolidayService>();
+        services.AddScoped<ISprintService, SprintService>();
+        services.AddScoped<IDayOffService, DayOffService>();
 
         return services;
     }

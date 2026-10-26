@@ -8,7 +8,7 @@ public interface IBoardService
 
     /// <summary>
     /// Tap forward: a presenter goes roster to available to presented, and anyone else in the directory goes roster to guest. Throws
-    /// <see cref="BoardLockedException"/> once the date has been locked.
+    /// <see cref="BoardLockedException"/> once the date has been locked, and <see cref="PersonOffException"/> when a presenter scheduled to be off on the date is marked present.
     /// </summary>
     Task<BoardParticipantDto?> AdvanceAsync(Guid standupId, DateOnly meetingDate, Guid personId, CancellationToken cancellationToken = default);
 
