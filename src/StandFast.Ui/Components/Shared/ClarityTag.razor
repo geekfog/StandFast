@@ -1,0 +1,21 @@
+@using Microsoft.Extensions.Options
+@inject IOptions<StandFastUiOptions> UiOptions
+
+@* Microsoft Clarity's tracking tag, loaded only when a project id is configured. The stub queues calls made before the tag arrives, as Clarity's own snippet does. *@
+@if (tagUrl is not null)
+{
+    <script>window.clarity = window.clarity || function () { (window.clarity.q = window.clarity.q || []).push(arguments); };</script>
+    <script async src="@tagUrl"></script>
+}
+
+@code {
+    private const string TagBaseUrl = "https://www.clarity.ms/tag/";
+
+    private string? tagUrl;
+
+    protected override void OnInitialized()
+    {
+        string? projectId = UiOptions.Value.ClarityProjectId?.Trim();
+        tagUrl = string.IsNullOrEmpty(projectId) ? null : TagBaseUrl + Uri.EscapeDataString(projectId);
+    }
+}

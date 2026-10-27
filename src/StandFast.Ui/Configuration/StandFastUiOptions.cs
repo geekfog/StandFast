@@ -20,6 +20,9 @@ public sealed class StandFastUiOptions
     /// <summary>Name shown on the navigation menu's environment tag. Deployed environments run as Production, so the deployment supplies their code here; unset falls back to the host environment name outside Production.</summary>
     public string? EnvironmentLabel { get; set; }
 
+    /// <summary>Microsoft Clarity project id, which loads Clarity's tracking tag on every page. Unset loads no tag.</summary>
+    public string? ClarityProjectId { get; set; }
+
     /// <summary>The label for the environment tag, or null in production, where no tag is shown.</summary>
     public string? ResolveEnvironmentLabel(IHostEnvironment host) =>
         !string.IsNullOrWhiteSpace(EnvironmentLabel) ? EnvironmentLabel : host.IsProduction() ? null : host.EnvironmentName;
