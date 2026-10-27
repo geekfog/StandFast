@@ -224,11 +224,13 @@ These steps set up the one environment the pipeline defines, PRD. Another enviro
 
 ## Optional settings
 
-Both are variables in the environment's variable group and take effect on the next release.
+Each is a variable in the environment's variable group and takes effect on the next release.
 
 **`a_AllowedBranches`** limits which branches may release to the environment. Write branch names without `refs/heads/`, separated by `|`; a top-level folder followed by `/` matches every branch in it, and matching ignores case. For example, `release/` allows every release branch, and `release/01.02|release/01.03` allows only those two. Left unset or empty, every branch that triggers the pipeline releases.
 
 **`a_CustomDomain`** serves the app on your own domain, such as `standup.example.com`, instead of the generated Container Apps address. The release binds the domain and issues a free managed certificate for it, once the domain's DNS records exist; the release log prints the domain verification id they need. Afterwards, register the callback URLs on the new domain with the identity provider.
+
+**`a_ClarityProjectId`** turns on [Microsoft Clarity](https://clarity.microsoft.com/) session recordings and heatmaps for the environment. Create a project in Clarity for the environment's address and copy its project id from the project's settings. Left unset or empty, no Clarity tag loads.
 
 ## Access an existing deployment
 
@@ -261,6 +263,7 @@ Locally a setting is a key in a settings file or user secrets. In Azure it is a 
 | `AzureTableStorage:ConnectionString` | Table Storage for all data. Startup fails unless this or `ServiceUri` is set. | User secrets: `UseDevelopmentStorage=true` for Azurite | Not used; see `ServiceUri` under [Values set for you](#values-set-for-you) | Required locally |
 | `StandFastUi:DisplayTimeZoneId` | The [time zone](#time-zones) for times that belong to no standup, such as on the Backup screen, and for a standup whose own time zone the server cannot resolve. The board and reports use the standup's own time zone. Empty falls back to the server's zone: your machine's locally, UTC in the container. | User secrets, optional | `standfast-<env>-vars`: `a_DisplayTimeZoneId` | Variable required, value may be empty |
 | (none) | The custom domain the app answers on; see [Optional settings](#optional-settings). Empty leaves only the generated Container Apps address. | (none) | `standfast-<env>-vars`: `a_CustomDomain` | Variable required, value may be empty |
+| `StandFastUi:ClarityProjectId` | The [Microsoft Clarity](https://clarity.microsoft.com/) project that every page reports to; see [Optional settings](#optional-settings). Empty loads no Clarity tag. | User secrets, optional | `standfast-<env>-vars`: `a_ClarityProjectId` | Optional |
 | (none) | Branches that may release to this environment; see [Optional settings](#optional-settings). | (none) | `standfast-<env>-vars`: `a_AllowedBranches` | Optional |
 | (none) | Region segment of every resource name, such as `<region>`; see the [resource naming rule](#resource-naming). | (none) | `standfast-<env>-vars`: `a_RegionToken` | Required |
 | (none) | Azure region everything is created in, such as `northcentralus`. | (none) | `standfast-<env>-vars`: `a_Location` | Required |
@@ -320,6 +323,7 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 - Added Presenters, Leaders, and Neither filters to the People screen, grouped in a box labeled Role.
 - Replaced the `|` dividers under each name on the board with a small gray pill around each detail (status, time zone offset, and time with the organization), which separates them in both light and dark mode and keeps each detail whole when a narrow card wraps.
 - Added the person's email address to the popup on the status detail of their board card, on its own line under their title or role. Selecting none lists everyone. Selecting several lists anyone matching at least one, so Presenters and Neither together, for example, lists everyone not on a leader roster alone.
+- Added optional Microsoft Clarity tracking. When an environment has a Clarity project id, every page loads Clarity's tag for that project; without one, nothing is loaded.
 
 ### v01.05.00 — 2026-10-19
 

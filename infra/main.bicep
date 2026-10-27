@@ -47,6 +47,9 @@ param p_BoardLockMinutesAfterLastTurn int = 0
 @description('Days a signed-in session survives without the app being opened. 0 keeps the value in appsettings.json.')
 param p_SignInIdleDays int = 0
 
+@description('Microsoft Clarity project id. Empty loads no Clarity tracking tag.')
+param p_ClarityProjectId string = ''
+
 @description('Custom domain the app answers on, for example standup.yourbusiness.com. Empty leaves the app reachable only on its generated Container Apps URL.')
 param p_CustomDomain string = ''
 
@@ -82,9 +85,10 @@ var v_CustomDomains = !v_BindCustomDomain ? [] : [
     : { bindingType: 'Disabled' })
 ]
 
-// The board lock windows and the sign-in idle days ship in appsettings.json, so an environment that has nothing to say about them sets no environment
-// variable and the shipped value stands. Only a non-zero parameter reaches the container.
+// The board lock windows, the sign-in idle days, and the Clarity project id ship in appsettings.json, so an environment that has nothing to say about
+// them sets no environment variable and the shipped value stands. Only a non-zero or non-empty parameter reaches the container.
 var v_OptionalEnvironment = concat(
+  !empty(p_ClarityProjectId) ? [ { name: 'StandFastUi__ClarityProjectId', value: p_ClarityProjectId } ] : [],
   p_BoardLockGraceMinutes > 0 ? [ { name: 'BoardLock__GraceMinutes', value: string(p_BoardLockGraceMinutes) } ] : [],
   p_BoardLockMinutesAfterLastTurn > 0 ? [ { name: 'BoardLock__MinutesAfterLastTurn', value: string(p_BoardLockMinutesAfterLastTurn) } ] : [],
   p_SignInIdleDays > 0 ? [ { name: 'SignInSession__IdleDays', value: string(p_SignInIdleDays) } ] : [])

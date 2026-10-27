@@ -77,19 +77,20 @@ stages:
                         }
                       }
 
-                      # The board lock windows and the sign-in idle days ship with the application, so an environment overrides them only if it wants to.
-                      # A variable its group does not define arrives as its own unexpanded macro, which is what tells a genuine override from an absent one.
-                      function Add-OptionalInteger([string] $p_Name, [string] $p_Value)
+                      # The board lock windows, the sign-in idle days, and the Clarity project id ship with the application, so an environment overrides them only
+                      # if it wants to. A variable its group does not define arrives as its own unexpanded macro, which is what tells a genuine override from an absent one.
+                      function Add-Optional([string] $p_Name, [string] $p_Value, [type] $p_Type = [string])
                       {
                         if ($p_Value -and $p_Value -notmatch '^\$\(.+\)$')
                         {
-                          $deploymentParameters.parameters[$p_Name] = @{ value = [int]$p_Value }
+                          $deploymentParameters.parameters[$p_Name] = @{ value = $p_Value -as $p_Type }
                         }
                       }
 
-                      Add-OptionalInteger 'p_BoardLockGraceMinutes' '$(a_BoardLockGraceMinutes)'
-                      Add-OptionalInteger 'p_BoardLockMinutesAfterLastTurn' '$(a_BoardLockMinutesAfterLastTurn)'
-                      Add-OptionalInteger 'p_SignInIdleDays' '$(a_SignInIdleDays)'
+                      Add-Optional 'p_BoardLockGraceMinutes' '$(a_BoardLockGraceMinutes)' ([int])
+                      Add-Optional 'p_BoardLockMinutesAfterLastTurn' '$(a_BoardLockMinutesAfterLastTurn)' ([int])
+                      Add-Optional 'p_SignInIdleDays' '$(a_SignInIdleDays)' ([int])
+                      Add-Optional 'p_ClarityProjectId' '$(a_ClarityProjectId)'
 
                       $deploymentParameters.Add('$schema', 'https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#')
                       $deploymentParameters | ConvertTo-Json -Depth 6 | Set-Content '$(Pipeline.Workspace)/parameters.json'
