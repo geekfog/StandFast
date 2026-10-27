@@ -2,6 +2,9 @@
 @inject ISprintService SprintService
 @inject IDialogService DialogService
 @inject FluentValidation.IValidator<SprintEditDto> Validator
+@using StandFast.Domain.Abstractions
+@inject IClock Clock
+@inject Microsoft.Extensions.Options.IOptions<StandFastUiOptions> UiOptions
 
 <MudDialog>
     <TitleContent>
@@ -31,7 +34,11 @@
             <MudAlert Severity="Severity.Error" Dense="true" Class="mb-3">@saveError</MudAlert>
         }
 
-        <MudTable Items="sprints" Hover="true" Dense="true" Loading="isLoading" Elevation="0">
+        <div class="d-flex justify-end">
+            <MudSwitch @bind-Value="showPast" Color="Color.Primary" Label="Show past" />
+        </div>
+
+        <MudTable Items="ShownSprints" Hover="true" Dense="true" Loading="isLoading" Elevation="0">
             <HeaderContent>
                 <MudTh>Name</MudTh>
                 <MudTh>Dates</MudTh>
@@ -45,7 +52,7 @@
                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteAsync(context))" aria-label="@($"Delete {context.Name}")" />
                 </MudTd>
             </RowTemplate>
-            <NoRecordsContent>No sprints recorded for this standup yet.</NoRecordsContent>
+            <NoRecordsContent>@(sprints.Count == 0 ? "No sprints recorded for this standup yet." : "No sprints from today on. Turn on Show past to list earlier ones.")</NoRecordsContent>
         </MudTable>
     </DialogContent>
     <DialogActions>
@@ -59,6 +66,8 @@
     private SprintEditDto edit = new();
     private bool isLoading = true;
     private bool isSaving;
+    private bool showPast;
+    private DateOnly today;
 
     /// <summary>Set when saving was refused, including for an overlap with another sprint, which only the stored sprints can show.</summary>
     private string? saveError;
@@ -74,10 +83,13 @@
     [EditorRequired]
     public string StandupName { get; set; } = string.Empty;
 
+    private IEnumerable<SprintDto> ShownSprints => showPast ? sprints : sprints.Where(sprint => sprint.EndDate >= today);
+
     private MudBlazor.DateRange Dates => new(edit.StartDate.ToPickerDate(), edit.EndDate.ToPickerDate());
 
     protected override async Task OnInitializedAsync()
     {
+        today = Clock.Today(UiOptions.Value.ResolveTimeZone());
         StartNew();
         await ReloadAsync();
     }
