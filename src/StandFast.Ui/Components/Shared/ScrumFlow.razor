@@ -1,0 +1,65 @@
+@* The Scrum cycle a standup belongs to. Stages, the arrows between them, and the loop back for the next sprint are all drawn from Stages, so adding a stage keeps them in step. *@
+<section class="standfast-scrum-flow" style="@GridStyle" aria-label="The Scrum cycle">
+    @for (int index = 0; index < Stages.Length; index++)
+    {
+        ScrumStage stage = Stages[index];
+
+        @if (index > 0)
+        {
+            <div class="standfast-scrum-arrow" aria-hidden="true">
+                <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Color="Color.Primary" />
+            </div>
+        }
+
+        <MudPaper Outlined="true" Class="standfast-scrum-stage pa-3">
+            <div class="d-flex align-center gap-2 mb-1">
+                <MudIcon Icon="@stage.Icon" Color="Color.Primary" Size="Size.Small" />
+                <MudText Typo="Typo.subtitle2">@stage.Title</MudText>
+            </div>
+            <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mb-2">@stage.Timing</MudText>
+            <MudText Typo="Typo.body2">@stage.Description</MudText>
+
+            @if (stage.HoldsDailyStandup)
+            {
+                <div class="standfast-scrum-standup pa-2 mt-2">
+                    <div class="d-flex align-center gap-1">
+                        <MudIcon Icon="@Icons.Material.Filled.Repeat" Color="Color.Primary" Size="Size.Small" />
+                        <MudText Typo="Typo.subtitle2">Daily Standup</MudText>
+                    </div>
+                    <MudText Typo="Typo.caption" Class="d-block">Every day, 15 minutes: what was done, what is next, and what is in the way.</MudText>
+                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="ml-0 mt-1">Run with @AppInfo.Name</MudChip>
+                </div>
+            }
+        </MudPaper>
+    }
+
+    <div class="standfast-scrum-loop">
+        <div class="standfast-scrum-loop-start" aria-hidden="true"></div>
+        <div class="standfast-scrum-loop-middle" aria-hidden="true"></div>
+        <div class="standfast-scrum-loop-end" aria-hidden="true"></div>
+        <div class="standfast-scrum-loop-label">
+            <MudIcon Icon="@Icons.Material.Filled.Replay" Color="Color.Primary" Size="Size.Small" />
+            <MudText Typo="Typo.caption">The next sprint starts again at @Stages[LoopStartIndex].Title</MudText>
+        </div>
+    </div>
+</section>
+
+@code {
+    private sealed record ScrumStage(string Title, string Timing, string Description, string Icon, bool HoldsDailyStandup = false);
+
+    private static readonly ScrumStage[] Stages =
+    [
+        new("Product Backlog", "Ongoing", "Everything the product might need, ordered by value and refined ahead of planning.", Icons.Material.Filled.Inventory2),
+        new("Sprint Planning", "Start of each sprint", "The team picks the backlog items it can finish this sprint and plans how to deliver them.", Icons.Material.Filled.EventNote),
+        new("Sprint", "One to four weeks", "The team builds a working increment, checking in with each other daily.", Icons.Material.Filled.DirectionsRun, HoldsDailyStandup: true),
+        new("Sprint Review", "End of the sprint", "The demo: the team shows what it finished and gathers feedback for the backlog.", Icons.Material.Filled.Slideshow),
+        new("Sprint Retrospective", "After the review", "The team looks at how it worked together and picks something to improve next sprint.", Icons.Material.Filled.Forum),
+    ];
+
+    /// <summary>The stage each new sprint returns to. Everything before it runs outside the sprint cycle.</summary>
+    private const int LoopStartIndex = 1;
+
+    /// <summary>One grid column per stage with an arrow column between each pair, and the span the loop covers, from its first stage through the last.</summary>
+    private static readonly string GridStyle =
+        $"--standfast-scrum-columns: repeat({Stages.Length - 1}, minmax(0, 1fr) auto) minmax(0, 1fr); --standfast-scrum-loop-from: {(LoopStartIndex * 2) + 1}; --standfast-scrum-loop-to: {Stages.Length * 2};";
+}

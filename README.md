@@ -327,6 +327,7 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 
 ### v01.06.00 — 2026-10-26
 
+- Added a diagram of a typical Scrum cycle to the About page, below Source on GitHub: Product Backlog, Sprint Planning, the Sprint with its Daily Standup, Sprint Review, and Sprint Retrospective, with a loop back to planning for the next sprint. It reads left to right on a wide window and top to bottom on a narrow one.
 - Added Leaders can present and Guests can present settings to each standup, both off by default. With one on, tapping a leader or guest again after marking them as here moves them to Presented, and their update gets blockers and parking lot boxes like a presenter's.
 - Added a Guest Roster to each standup, opened from a new badge icon on its row in Standups, for the people expected to attend without presenting. People shows a Guests column listing the standups each person is a guest at, and a Guests filter between Leaders and Neither.
 - Added tooltips to the roster, edit, and delete icons on each row in Standups.

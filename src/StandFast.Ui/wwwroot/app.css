@@ -609,3 +609,101 @@
     height: 128px;
     font-size: 4rem;
 }
+
+/* The About page's Scrum cycle: stacked on a narrow window, and a row of stages with a loop back underneath from the md breakpoint up. */
+.standfast-scrum-flow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 4px;
+}
+
+.standfast-scrum-stage {
+    height: 100%;
+}
+
+.standfast-scrum-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 4px;
+    transform: rotate(90deg);
+}
+
+.standfast-scrum-standup {
+    border: 1px solid var(--mud-palette-primary);
+    border-radius: var(--mud-default-borderradius);
+    background-color: color-mix(in srgb, var(--mud-palette-primary) 10%, transparent);
+}
+
+.standfast-scrum-loop-start,
+.standfast-scrum-loop-middle,
+.standfast-scrum-loop-end {
+    display: none;
+}
+
+.standfast-scrum-loop-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+@media (min-width: 960px) {
+    .standfast-scrum-flow {
+        grid-template-columns: var(--standfast-scrum-columns);
+    }
+
+    .standfast-scrum-arrow {
+        transform: none;
+    }
+
+    /* The loop shares the stage columns through subgrid, so its corners land under the middle of the first and last stage it spans. */
+    .standfast-scrum-loop {
+        --standfast-scrum-loop-line: 2px solid var(--mud-palette-primary);
+        grid-column: var(--standfast-scrum-loop-from) / var(--standfast-scrum-loop-to);
+        display: grid;
+        grid-template-columns: subgrid;
+        margin-top: 6px;
+    }
+
+    .standfast-scrum-loop-start,
+    .standfast-scrum-loop-middle,
+    .standfast-scrum-loop-end {
+        display: block;
+        height: 1.5rem;
+        border-bottom: var(--standfast-scrum-loop-line);
+    }
+
+    .standfast-scrum-loop-start {
+        grid-column: 1;
+        position: relative;
+        margin-left: 50%;
+        border-left: var(--standfast-scrum-loop-line);
+    }
+
+    /* Arrowhead pointing back up into the stage the next sprint starts at. */
+    .standfast-scrum-loop-start::before {
+        content: "";
+        position: absolute;
+        top: -8px;
+        left: -7px;
+        border-left: 6px solid transparent;
+        border-right: 6px solid transparent;
+        border-bottom: 8px solid var(--mud-palette-primary);
+    }
+
+    .standfast-scrum-loop-middle {
+        grid-column: 2 / -2;
+    }
+
+    .standfast-scrum-loop-end {
+        grid-column: -2;
+        margin-right: 50%;
+        border-right: var(--standfast-scrum-loop-line);
+    }
+
+    .standfast-scrum-loop-label {
+        grid-column: 1 / -1;
+    }
+}
