@@ -20,6 +20,7 @@ StandFast does not host the call and does not connect to any meeting or chat ser
   - [Set up and deploy](#set-up-and-deploy)
   - [Optional settings](#optional-settings)
   - [Access an existing deployment](#access-an-existing-deployment)
+  - [See who uses it](#see-who-uses-it)
 - [⚙️ Development and Support](#development-and-support)
   - [Settings](#settings)
     - [Values set for you](#values-set-for-you)
@@ -146,7 +147,7 @@ flowchart LR
 | Storage account | Tables hold every record and the audit log. A blob container holds the Data Protection key ring that every replica shares. | Azurite. |
 | Variable groups | Hold every deployment setting and secret, which the pipeline passes to the deployment. A group can instead be [linked to an existing Key Vault](https://learn.microsoft.com/azure/devops/pipelines/library/link-variable-groups-to-key-vaults). | `appsettings.json` and user secrets. |
 | Key Vault | Created by the deployment. Secrets passed in by the pipeline reach the app from here, not as plain environment variables. | User secrets. |
-| Log Analytics | Collects the app's console logs. | The console. |
+| Log Analytics | Collects the app's console logs, including a line for every page view; see [See who uses it](#see-who-uses-it). | The console. |
 | Identity provider | Signs users in; StandFast never sees a password. | The same provider, with the local address registered. |
 | Pipeline | Builds and tests every change to a release branch, then creates or updates every Azure resource and deploys the app. | Not used. |
 
@@ -240,6 +241,18 @@ Each is a variable in the environment's variable group and takes effect on the n
 
 Open the custom domain if one is set, or the container app's **Application Url** in the Azure portal, which the release log also prints. StandFast admits anyone the identity provider signs in for its application, so who can use it is controlled at the provider.
 
+## See who uses it
+
+The server logs one `Page view` line for every page a user opens, with the page address, the user's name and id, and a session id shared by one browser tab's visit. Browser blockers cannot stop it, unlike [Microsoft Clarity](#optional-settings). Changes to data are recorded separately in the audit log table. In Azure, query the page views in the environment's Log Analytics workspace:
+
+```kusto
+ContainerAppConsoleLogs_CL
+| where Log_s has "Page view "
+| parse Log_s with * "Page view " Page " by " User " (" UserId ") in session " Session
+| summarize Views = count(), Sessions = dcount(Session), LastSeen = max(TimeGenerated) by User
+| order by LastSeen desc
+```
+
 # <a id="development-and-support">⚙️</a> Development and Support
 
 | Topic | Detail |
@@ -332,6 +345,7 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 - Replaced the `|` dividers under each name on the board with a small gray pill around each detail (status, time zone offset, and time with the organization), which separates them in both light and dark mode and keeps each detail whole when a narrow card wraps.
 - Added the person's email address to the popup on the status detail of their board card, on its own line under their title or role. Selecting none lists everyone. Selecting several lists anyone matching at least one, so Presenters and Neither together, for example, lists everyone not on a leader roster alone.
 - Added optional Microsoft Clarity tracking. When an environment has a Clarity project id, every page loads Clarity's tag for that project; without one, nothing is loaded.
+- Added a server-side log line for every page a signed-in user opens, with the page, the user, and the visit it belongs to. Browser blockers cannot stop it, so it counts every user, and the README gives a Log Analytics query that summarizes it by user.
 
 ### v01.05.00 — 2026-10-19
 
