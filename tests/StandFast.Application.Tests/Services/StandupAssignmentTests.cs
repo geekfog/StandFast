@@ -36,15 +36,18 @@ public sealed class StandupAssignmentTests
     {
         Standup platform = await AddStandupAsync("Platform daily");
         Standup web = await AddStandupAsync("Aardvark web");
+        Standup mobile = await AddStandupAsync("Mobile sync");
         Guid personId = Guid.CreateVersion7();
 
         await AddMemberAsync(platform, personId, RosterRole.Presenter);
         await AddMemberAsync(web, personId, RosterRole.Leader);
+        await AddMemberAsync(mobile, personId, RosterRole.Guest);
 
         StandupNamesByPersonDto assignments = await service.GetStandupNamesByPersonAsync();
 
         Assert.Equal(["Platform daily"], assignments.For(RosterRole.Presenter, personId));
         Assert.Equal(["Aardvark web"], assignments.For(RosterRole.Leader, personId));
+        Assert.Equal(["Mobile sync"], assignments.For(RosterRole.Guest, personId));
     }
 
     [Fact]

@@ -16,10 +16,11 @@ namespace StandFast.Ui.Components.Pages;
 public partial class Board
 {
     /// <summary>
-    /// Columns across the board, left to right, each listing the states it holds from the top. Guests sit under the people present, since both are
-    /// here and guests never move on to presented. Driving the markup from this keeps the columns and the tap transitions in step.
+    /// Columns across the board, left to right, each listing the states it holds from the top. Leaders and guests sit under the people present, since
+    /// all of them are here and only presenters move on to presented. Driving the markup from this keeps the columns and the tap transitions in step.
     /// </summary>
-    private static readonly AttendanceState[][] BoardColumns = [[AttendanceState.Roster], [AttendanceState.Available, AttendanceState.Guest], [AttendanceState.Presented]];
+    private static readonly AttendanceState[][] BoardColumns =
+        [[AttendanceState.Roster], [AttendanceState.Available, AttendanceState.Leader, AttendanceState.Guest], [AttendanceState.Presented]];
 
     private IReadOnlyList<StandupDto> standups = [];
     private StandupBoardDto? board;
@@ -30,7 +31,7 @@ public partial class Board
     private Guid? selectedPersonId;
     private ParticipantUpdatePanel? updatePanel;
 
-    /// <summary>Who the roster column lists. Presenters tapped from it become present; anyone else tapped from it becomes a guest.</summary>
+    /// <summary>Who the roster column lists. Presenters tapped from it become present, leaders land in Leaders, and guests in Guests.</summary>
     private AttendeeKind rosterView = AttendeeKind.Presenter;
 
     /// <summary>What the standup picker shows. It follows the URL, and holds a new choice only while unsaved edits are confirmed, so a declined switch puts the picker back.</summary>
@@ -86,7 +87,7 @@ public partial class Board
 
     /// <summary>Says why the leader picker is empty, shown as its tooltip, since an empty dropdown on its own reads as a standup with nobody available to lead.</summary>
     private string? LeaderEmptyReason => LeaderCandidates.Count > 0 ? null : board?.Leaders.Count > 0
-        ? $"Mark someone on the {LeaderRosterName} present or as a guest to pick them."
+        ? $"Mark someone on the {LeaderRosterName} as here to pick them."
         : $"Nobody is on the {LeaderRosterName} for this standup.";
 
     private static string LeaderRosterName => RosterLabels.RosterTitle(RosterRole.Leader).ToLowerInvariant();
@@ -151,14 +152,17 @@ public partial class Board
         ? []
         : board.Participants.Where(participant => participant.State == state && (state != AttendanceState.Roster || participant.Kind == rosterView)).InColumnOrder(state);
 
-    private string EmptyColumnText(AttendanceState state) => (state, rosterView) switch
+    private string EmptyColumnText(AttendanceState state) => state switch
     {
-        (AttendanceState.Available, _) => "Tap a name on the roster as you spot them in the meeting.",
-        (AttendanceState.Presented, _) => "Tap a name again once they have given their update.",
-        (AttendanceState.Guest, _) => $"Switch the roster to {RosterLabels.Plural(AttendeeKind.Guest)} and tap a name to record a visitor.",
-        (_, AttendeeKind.Guest) => "Every other active person in People is already here as a guest.",
-        _ => "Everyone has been marked present.",
+        AttendanceState.Available => "Tap a name on the roster as you spot them in the meeting.",
+        AttendanceState.Presented => "Tap a name again once they have given their update.",
+        AttendanceState.Leader => EmptyNonPresenterText(AttendeeKind.Leader),
+        AttendanceState.Guest => EmptyNonPresenterText(AttendeeKind.Guest),
+        _ when board?.Participants.Any(participant => participant.Kind == rosterView) != true => $"Nobody is on the {RosterLabels.RosterTitle(rosterView.Roster()).ToLowerInvariant()} for this standup.",
+        _ => "Everyone has been marked here.",
     };
+
+    private static string EmptyNonPresenterText(AttendeeKind kind) => $"Switch the roster to {RosterLabels.Plural(kind)} and tap a name as you spot them in the meeting.";
 
     private async Task OnStandupChangedAsync(Guid standupId)
     {

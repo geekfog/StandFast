@@ -25,6 +25,9 @@ public sealed class BoardService(
     private const string AuditTargetType = nameof(StandupEntry);
     private const string MeetingAuditTargetType = nameof(StandupMeeting);
 
+    /// <summary>How someone can take part, in the order their rosters win when a person is on more than one.</summary>
+    private static readonly AttendeeKind[] RosterPriority = [AttendeeKind.Presenter, AttendeeKind.Leader, AttendeeKind.Guest];
+
     public async Task<StandupBoardDto> GetBoardAsync(Guid standupId, DateOnly meetingDate, CancellationToken cancellationToken = default)
     {
         Standup? standup = await standups.GetAsync(standupId, cancellationToken);
@@ -33,14 +36,13 @@ public sealed class BoardService(
             return StandupBoardDto.Empty(meetingDate);
         }
 
-        Task<IReadOnlyList<StandupMember>> presenterTask = standups.GetMembersAsync(standupId, RosterRole.Presenter, cancellationToken);
-        Task<IReadOnlyList<StandupMember>> leaderTask = standups.GetMembersAsync(standupId, RosterRole.Leader, cancellationToken);
+        Dictionary<RosterRole, Task<IReadOnlyList<StandupMember>>> memberTasks = RosterPriority.ToDictionary(kind => kind.Roster(), kind => standups.GetMembersAsync(standupId, kind.Roster(), cancellationToken));
         Task<IReadOnlyList<Person>> peopleTask = people.GetAllAsync(cancellationToken);
         Task<StandupMeeting?> meetingTask = standups.GetMeetingAsync(standupId, meetingDate, cancellationToken);
         Task<IReadOnlyList<StandupEntry>> onDateTask = entries.GetOnDateAsync(standupId, meetingDate, cancellationToken);
         Task<IReadOnlyList<Sprint>> sprintTask = standups.GetSprintsAsync(standupId, cancellationToken);
         Task<IReadOnlyList<Holiday>> holidayTask = holidays.GetAllAsync(cancellationToken);
-        await Task.WhenAll(presenterTask, leaderTask, peopleTask, meetingTask, onDateTask, sprintTask, holidayTask);
+        await Task.WhenAll([.. memberTasks.Values, peopleTask, meetingTask, onDateTask, sprintTask, holidayTask]);
 
         // How far days off reach depends on the sprint, so they are read once the sprint is known.
         IReadOnlyDictionary<DateOnly, HolidayDuration> holidayDurations = holidayTask.Result.ToDurationByDate();
@@ -49,8 +51,18 @@ public sealed class BoardService(
 
         Dictionary<Guid, Person> peopleById = peopleTask.Result.ToDictionary(person => person.Id);
 
-        (StandupMember Member, Person Person, StandupEntryPair Pair)[] loaded = await Task.WhenAll(presenterTask.Result
-            .Where(member => member.IsActive && peopleById.ContainsKey(member.PersonId))
+        Dictionary<Guid, (AttendeeKind Kind, StandupMember Member)> rosterByPerson = [];
+        foreach (AttendeeKind kind in RosterPriority)
+        {
+            foreach (StandupMember member in memberTasks[kind.Roster()].Result.Where(member => member.IsActive))
+            {
+                rosterByPerson.TryAdd(member.PersonId, (kind, member));
+            }
+        }
+
+        (StandupMember Member, Person Person, StandupEntryPair Pair)[] loaded = await Task.WhenAll(rosterByPerson.Values
+            .Where(roster => roster.Kind == AttendeeKind.Presenter && peopleById.ContainsKey(roster.Member.PersonId))
+            .Select(roster => roster.Member)
             .Select(async member => (
                 Member: member,
                 Person: peopleById[member.PersonId],
@@ -60,22 +72,25 @@ public sealed class BoardService(
         IReadOnlyDictionary<Guid, int> priorTurns = PresentationOrder.AtMostRecentMeeting(
             loaded.Select(item => item.Pair.Prior?.CompletedTurn).OfType<Presentation>());
 
-        // Anyone who is not presenting can visit, so guests come from the whole directory rather than a roster.
+        // Everyone else on a roster is offered on it. Anyone on no roster shows only on a date they visited.
         HashSet<Guid> presenterIds = [.. loaded.Select(item => item.Person.Id)];
         Dictionary<Guid, StandupEntry> entriesOnDate = onDateTask.Result.ToDictionary(entry => entry.PersonId);
-        IEnumerable<(Person Person, BoardParticipantDto Participant)> guests = peopleTask.Result
+        IEnumerable<(Person Person, BoardParticipantDto Participant)> nonPresenters = peopleTask.Result
             .Where(person => !presenterIds.Contains(person.Id))
-            .Select(person => (Person: person, Participant: new StandupEntryPair(entriesOnDate.GetValueOrDefault(person.Id), null).ToParticipantDto(person, AttendeeKind.Guest, BoardMappings.GuestDisplayOrder)))
-            .Where(guest => AttendanceTransitions.IsGuestPlacement(guest.Participant.State));
+            .Select(person => (Person: person, IsRostered: rosterByPerson.TryGetValue(person.Id, out (AttendeeKind Kind, StandupMember Member) roster), Roster: roster))
+            .Select(item => (item.Person, item.IsRostered, Participant: new StandupEntryPair(entriesOnDate.GetValueOrDefault(item.Person.Id), null).ToParticipantDto(
+                item.Person, item.IsRostered ? item.Roster.Kind : AttendeeKind.Guest, item.IsRostered ? item.Roster.Member.DisplayOrder : BoardMappings.GuestDisplayOrder)))
+            .Where(item => AttendanceTransitions.IsNonPresenterPlacement(item.Participant.State) && (item.IsRostered || AttendanceTransitions.IsAttending(item.Participant.State)))
+            .Select(item => (item.Person, item.Participant));
 
         IReadOnlyList<BoardParticipantDto> participants = loaded
             .Select(item => (item.Person, Participant: item.Pair.ToParticipantDto(item.Person, AttendeeKind.Presenter, item.Member.DisplayOrder)))
-            .Concat(guests)
+            .Concat(nonPresenters)
             .Where(item => AttendanceTransitions.IsOnBoard(item.Participant.State, item.Person.IsActive))
             .Select(item => item.Participant)
             .InColumnOrder(AttendanceState.Roster);
 
-        IReadOnlyList<StandupMemberDto> leaders = leaderTask.Result.Where(member => member.IsActive).ToRoster(peopleById);
+        IReadOnlyList<StandupMemberDto> leaders = memberTasks[RosterRole.Leader].Result.Where(member => member.IsActive).ToRoster(peopleById);
 
         return new StandupBoardDto(
             standup.Id,
@@ -268,7 +283,8 @@ public sealed class BoardService(
     }
 
     /// <summary>
-    /// How a person takes part in the standup: a presenter when they are on its presenter roster, otherwise a guest. Null when their person record has gone.
+    /// How a person takes part in the standup: the first of its presenter, leader, and guest rosters they are on, or a visiting guest when they are on none.
+    /// Null when their person record has gone.
     /// Whether an inactive person can be changed on a given date is <see cref="Attendee.IsOnBoard"/>.
     /// </summary>
     private async Task<Attendee?> ResolveAttendeeAsync(Guid standupId, Guid personId, CancellationToken cancellationToken)
@@ -279,9 +295,12 @@ public sealed class BoardService(
             return null;
         }
 
-        if (await FindActiveMemberAsync(standupId, personId, RosterRole.Presenter, cancellationToken) is { } member)
+        foreach (AttendeeKind kind in RosterPriority)
         {
-            return new Attendee(person, AttendeeKind.Presenter, member.DisplayOrder);
+            if (await FindActiveMemberAsync(standupId, personId, kind.Roster(), cancellationToken) is { } member)
+            {
+                return new Attendee(person, kind, member.DisplayOrder);
+            }
         }
 
         return new Attendee(person, AttendeeKind.Guest, BoardMappings.GuestDisplayOrder);

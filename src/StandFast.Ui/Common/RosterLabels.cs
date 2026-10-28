@@ -10,6 +10,7 @@ public static class RosterLabels
     public static string Name(RosterRole role) => role switch
     {
         RosterRole.Leader => "Leader",
+        RosterRole.Guest => "Guest",
         _ => "Presenter",
     };
 
@@ -17,22 +18,19 @@ public static class RosterLabels
     public static string Plural(RosterRole role) => string.Concat(Name(role), "s");
 
     /// <summary>Plural name of how someone takes part, as used by the board's roster filter.</summary>
-    public static string Plural(AttendeeKind kind) => kind switch
-    {
-        AttendeeKind.Guest => "Guests",
-        _ => Plural(RosterRole.Presenter),
-    };
+    public static string Plural(AttendeeKind kind) => Plural(kind.Roster());
 
     /// <summary>Title of the roster dialog and of the button that opens it.</summary>
     public static string RosterTitle(RosterRole role) => string.Concat(Name(role), " Roster");
 
     /// <summary>
-    /// Icon on the button that opens the roster. The leader's is a gavel rather than another figure, because the roster buttons sit side by side at
-    /// icon size and two people-shaped glyphs are indistinguishable there.
+    /// Icon on the button that opens the roster. The leader's is a gavel and the guest's a visitor badge rather than more figures, because the roster
+    /// buttons sit side by side at icon size and people-shaped glyphs are indistinguishable there.
     /// </summary>
     public static string RosterIcon(RosterRole role) => role switch
     {
         RosterRole.Leader => Icons.Material.Filled.Gavel,
+        RosterRole.Guest => Icons.Material.Filled.Badge,
         _ => Icons.Material.Filled.Groups,
     };
 }

@@ -108,6 +108,7 @@ public sealed class TableEntityMappingsTests
     [Theory]
     [InlineData(RosterRole.Presenter)]
     [InlineData(RosterRole.Leader)]
+    [InlineData(RosterRole.Guest)]
     public void StandupMember_RoundTripsCompositeKeyAndTakesItsRoleFromTheTableItCameFrom(RosterRole role)
     {
         StandupMember member = new() { StandupId = Guid.CreateVersion7(), PersonId = Guid.CreateVersion7(), Role = role, DisplayOrder = 20 };

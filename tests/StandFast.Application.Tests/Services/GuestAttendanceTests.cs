@@ -8,19 +8,77 @@ namespace StandFast.Application.Tests.Services;
 public sealed class GuestAttendanceTests
 {
     [Fact]
-    public async Task GetBoardAsync_OffersEveryActiveNonPresenterAsAGuest()
+    public async Task GetBoardAsync_OffersEachRosterUnderItsOwnKind_AndNobodyOnNoRoster()
     {
         BoardTestContext context = new();
         Person presenter = await context.AddMemberAsync("Ada", "Lovelace");
-        Person visitor = await context.AddPersonAsync("Grace", "Hopper");
-        await context.AddPersonAsync("Alan", "Turing", isActive: false);
+        Person leader = await context.AddMemberAsync("Grace", "Hopper", RosterRole.Leader);
+        Person guest = await context.AddMemberAsync("Alan", "Turing", RosterRole.Guest);
+        Person unassigned = await context.AddPersonAsync("Edsger", "Dijkstra");
 
         StandupBoardDto board = await context.Service.GetBoardAsync(context.Standup.Id, BoardTestContext.Today);
 
         Assert.Equal(AttendeeKind.Presenter, Assert.Single(board.Participants, participant => participant.PersonId == presenter.Id).Kind);
-        BoardParticipantDto guest = Assert.Single(board.Participants, participant => participant.Kind == AttendeeKind.Guest);
-        Assert.Equal(visitor.Id, guest.PersonId);
-        Assert.Equal(AttendanceState.Roster, guest.State);
+        Assert.Equal(AttendeeKind.Leader, Assert.Single(board.Participants, participant => participant.PersonId == leader.Id).Kind);
+        Assert.Equal(AttendeeKind.Guest, Assert.Single(board.Participants, participant => participant.PersonId == guest.Id).Kind);
+        Assert.DoesNotContain(board.Participants, participant => participant.PersonId == unassigned.Id);
+        Assert.All(board.Participants, participant => Assert.Equal(AttendanceState.Roster, participant.State));
+    }
+
+    [Fact]
+    public async Task GetBoardAsync_TakesTheFirstOfPresenterLeaderAndGuestForSomeoneOnSeveralRosters()
+    {
+        BoardTestContext context = new();
+        Person presenter = await context.AddMemberAsync("Ada", "Lovelace");
+        await context.AddMemberAsync(presenter, RosterRole.Leader);
+        Person leader = await context.AddMemberAsync("Grace", "Hopper", RosterRole.Guest);
+        await context.AddMemberAsync(leader, RosterRole.Leader);
+
+        StandupBoardDto board = await context.Service.GetBoardAsync(context.Standup.Id, BoardTestContext.Today);
+
+        Assert.Equal(AttendeeKind.Presenter, Assert.Single(board.Participants, participant => participant.PersonId == presenter.Id).Kind);
+        Assert.Equal(AttendeeKind.Leader, Assert.Single(board.Participants, participant => participant.PersonId == leader.Id).Kind);
+    }
+
+    [Fact]
+    public async Task GetBoardAsync_ShowsAVisitorOnNoRosterOnlyOnADateTheyAttended()
+    {
+        BoardTestContext context = new();
+        Person visitor = await context.AddPersonAsync("Grace", "Hopper");
+        await context.Service.AdvanceAsync(context.Standup.Id, BoardTestContext.Today, visitor.Id);
+
+        StandupBoardDto board = await context.Service.GetBoardAsync(context.Standup.Id, BoardTestContext.Today);
+        StandupBoardDto nextDay = await context.Service.GetBoardAsync(context.Standup.Id, BoardTestContext.Today.AddDays(1));
+
+        Assert.Equal(AttendanceState.Guest, Assert.Single(board.Participants).State);
+        Assert.Empty(nextDay.Participants);
+    }
+
+    [Fact]
+    public async Task AdvanceAsync_PlacesALeaderInLeadersAndGoesNoFurther()
+    {
+        BoardTestContext context = new();
+        Person leader = await context.AddMemberAsync("Grace", "Hopper", RosterRole.Leader);
+
+        await context.Service.AdvanceAsync(context.Standup.Id, BoardTestContext.Today, leader.Id);
+        BoardParticipantDto? participant = await context.Service.AdvanceAsync(context.Standup.Id, BoardTestContext.Today, leader.Id);
+
+        Assert.Equal(AttendanceState.Leader, participant!.State);
+        Assert.Equal(BoardTestContext.Now, participant.MarkedAvailableUtc);
+        Assert.Equal(AttendanceState.Roster, (await context.Service.RevertAsync(context.Standup.Id, BoardTestContext.Today, leader.Id))!.State);
+    }
+
+    [Fact]
+    public async Task GetBoardAsync_ReadsAGuestEntryFromBeforeJoiningTheLeaderRosterAsLeading()
+    {
+        BoardTestContext context = new();
+        Person person = await context.AddPersonAsync("Grace", "Hopper");
+        await context.Service.AdvanceAsync(context.Standup.Id, BoardTestContext.Today, person.Id);
+        await context.AddMemberAsync(person, RosterRole.Leader);
+
+        StandupBoardDto board = await context.Service.GetBoardAsync(context.Standup.Id, BoardTestContext.Today);
+
+        Assert.Equal(AttendanceState.Leader, Assert.Single(board.Participants).State);
     }
 
     [Fact]
@@ -149,7 +207,7 @@ public sealed class GuestAttendanceTests
     }
 
     [Fact]
-    public async Task SetLeaderAsync_AcceptsALeaderAttendingAsAGuest()
+    public async Task SetLeaderAsync_AcceptsALeaderAttendingWithoutPresenting()
     {
         BoardTestContext context = new();
         Person leader = await context.AddMemberAsync("Grace", "Hopper", RosterRole.Leader);

@@ -152,6 +152,7 @@
     {
         AttendanceState.Presented => $"Presented {Participant.PresentedUtc.ToLocalDisplay(TimeZone, UiFormats.DateAndTimeWithSeconds)}",
         AttendanceState.Available => $"Available since {Participant.MarkedAvailableUtc.ToLocalDisplay(TimeZone)}",
+        AttendanceState.Leader => $"Leader since {Participant.MarkedAvailableUtc.ToLocalDisplay(TimeZone)}",
         AttendanceState.Guest => $"Guest since {Participant.MarkedAvailableUtc.ToLocalDisplay(TimeZone)}",
         _ => Participant.UpdateSavedUtc is null ? "Not yet marked present" : $"Update saved {Participant.UpdateSavedUtc.ToLocalDisplay(TimeZone)}",
     };

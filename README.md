@@ -32,10 +32,11 @@ StandFast does not host the call and does not connect to any meeting or chat ser
 
 | Term | Meaning |
 | ---- | ------- |
-| Standup | A recurring meeting set up in StandFast, with a name, the days it runs, a start time, a time zone, and two rosters. |
+| Standup | A recurring meeting set up in StandFast, with a name, the days it runs, a start time, a time zone, and three rosters. |
 | Presenter Roster | The people expected to give an update at a standup. |
-| Leader Roster | The people who may run a standup. One person can be on both rosters. |
-| Guest | Someone attending a standup who is not on its Presenter Roster. A guest can have notes recorded but takes no turn. |
+| Leader Roster | The people who may run a standup. One person can be on any combination of rosters. |
+| Guest Roster | The people assigned to attend a standup without presenting. |
+| Guest | Someone on a standup's Guest Roster attending it. A guest can have notes recorded but takes no turn. |
 | Board | One standup on one date, where attendance and updates are recorded. |
 | Turn | A presenter's position in the order people gave their updates on a date. |
 | Update | What a presenter said, in three parts: current update, blockers (what is in their way), and parking lot (topics to take up after the meeting). Each is edited as formatted text and saved as [Markdown](https://www.markdownguide.org/basic-syntax/), a plain-text formatting syntax, which can also be edited directly. |
@@ -55,6 +56,7 @@ flowchart TB
     Standup["<b>Standups</b><br/>Create a standup: days, start time, time zone"]
     Presenters["<b>Presenter Roster</b><br/>Who gives an update"]
     Leaders["<b>Leader Roster</b><br/>Who may run the meeting"]
+    Guests["<b>Guest Roster</b><br/>Who attends without presenting"]
     Sprints["<b>Sprints</b><br/>Name each sprint and its dates"]
     Board["<b>Board</b><br/>Pick the standup and date"]
     Run["Mark people as they join and as they present,<br/>pick the leader, record each update"]
@@ -65,9 +67,11 @@ flowchart TB
     Organization --> Standup
     Standup --> Presenters
     Standup --> Leaders
+    Standup --> Guests
     Standup --> Sprints
     Presenters --> Board
     Leaders --> Board
+    Guests --> Board
     Sprints --> Board
     Board --> Run --> Lock --> Reports
 ```
@@ -79,14 +83,14 @@ People, holidays, standups, rosters, and sprints are set up ahead of time and ch
 | Capability | Outcome | Limitations |
 | ---------- | ------- | ----------- |
 | Multiple standups | Each standup keeps its own schedule, time zone, rosters, and history. | |
-| Attendance and speaking order | One tap marks someone as joined and a second as having presented, so the board shows who is still waiting. Each card shows the turn the person took last time, so the order can be varied. Marking the first person on a date also marks you, when your own card is still on the roster and you are not off that date. | Guests cannot be marked as presented. A presenter with days off covering the date cannot be marked present; tapping them shows a warning instead. |
+| Attendance and speaking order | One tap marks someone as joined and a second as having presented, so the board shows who is still waiting. Each card shows the turn the person took last time, so the order can be varied. Marking the first person on a date also marks you, when your own card is still on the roster and you are not off that date. | The roster shows Presenters, Leaders, or Guests at a time, each from that standup's own roster, and someone on more than one is listed under the first of those. Leaders who do not present and guests are marked as here in their own sections below Present, and cannot be marked as presented. A presenter with days off covering the date cannot be marked present; tapping them shows a warning instead. |
 | Sprints and time off | The board shows the sprint covering its date, in green beside the date, with the working days left in it counting that date. A sprint with a note shows an orange note icon beside it, with the note on hover. A card is marked when the person is off that date or has days off in the rest of the sprint; hovering shows their days off and the working days they have left to contribute. | Working days are Monday to Friday, whatever days the standup runs. Holidays apply to everyone. Days off are whole days. |
 | Leader | Records who ran the standup on each date. | Only people on the Leader Roster who are attending that date can be picked. |
 | Context at a glance | Each card shows the person's photo, their time zone offset from the standup, and their time with the organization, with location, start date, title or role, and email address on hover. | Shown only for details recorded in People. |
-| Updates | Each person's update, blockers, and parking lot are captured with formatting, and last time's entry can be copied in with one click. | Guests get one notes box. |
+| Updates | Each person's update, blockers, and parking lot are captured with formatting, and last time's entry can be copied in with one click. | Leaders who do not present and guests get one notes box. |
 | History | Any past date opens exactly as recorded, and a locked date cannot be changed by accident. | A locked date must be unlocked to change it. |
 | Reports | A chart of each person's turn over time, a table of the days a standup ran, how many presented, and how long it took, a table of how often each person presented and how long their turns ran, an org chart of everyone under their supervisor, and a table of how many days it has been since each presenter last presented at each standup. | A standup's reports cover a period running back from today, a year at most. The org chart covers all of People and shows an inactive person only when someone active reports up through them. Days Since Last Presented covers every active standup and its whole history, listing only active people on a presenter roster. |
-| People directory | One list of everyone, with photo, title or role, supervisor, organization, department, location, time zone, start date, notes, and days off. It lists active people, or only inactive people while Show inactive is on, and can be narrowed to presenters, leaders, people on neither roster, or any combination of those. | A supervisor is optional, and a save is refused when following supervisors upward would loop back. Removing a person leaves their direct reports with no supervisor and removes their days off. |
+| People directory | One list of everyone, with photo, title or role, supervisor, organization, department, location, time zone, start date, notes, and days off. It lists active people, or only inactive people while Show inactive is on, and shows the standups each person presents at, leads, and is a guest at. It can be narrowed to presenters, leaders, guests, people on no roster, or any combination of those. | A supervisor is optional, and a save is refused when following supervisors upward would loop back. Removing a person leaves their direct reports with no supervisor and removes their days off. |
 | Organization | Holidays the whole organization takes, each a full or half day, on one Holidays tab. | One holiday per date. |
 | Backup and restore | The whole data set downloads as one file and can be restored into any StandFast environment. | Restoring replaces all data. The audit log and each user's own settings are not included. |
 | Appearance | Light or dark mode follows each user to any browser. | |
@@ -310,6 +314,9 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 
 ### v01.06.00 — 2026-10-26
 
+- Added a Guest Roster to each standup, opened from a new badge icon on its row in Standups, for the people expected to attend without presenting. People shows a Guests column listing the standups each person is a guest at, and a Guests filter between Leaders and Neither.
+- Added tooltips to the roster, edit, and delete icons on each row in Standups.
+- Added a Leaders choice to the board's roster, between Presenters and Guests, listing that standup's leaders who are not also presenters. Guests now lists only that standup's Guest Roster. Tapping a leader or a guest on the roster moves them to a new Leaders section or the Guests section, both below Present. Someone visiting while on no roster still shows in Guests on the dates they were recorded.
 - Added an optional supervisor to each person, picked from anyone else in People. Saving is refused when following supervisors upward would loop back to someone already in the chain, and the message names everyone in the loop so you can see which link to change. Removing a person leaves their direct reports with no supervisor.
 - Added a fourth report, Org Chart: everyone active in People shown under their supervisor, with one tree for each person who has no supervisor, sorted by name at every level. An inactive person appears, marked inactive, only when someone active reports up through them. The standup and period pickers are hidden for this report, since it covers all of People.
 - Added an Organization menu with a Holidays tab, where each holiday is a date, a name, and a full or half day off. Only one holiday can be recorded on a date. Past holidays are hidden until Show past is turned on.

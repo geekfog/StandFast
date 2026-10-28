@@ -7,34 +7,43 @@ public static class AttendanceTransitions
 {
     /// <summary>
     /// Tapping moves a presenter one column to the right: roster to available, available to presented, and someone already presented stays there.
-    /// Tapping a guest on the roster makes them a guest; a guest goes no further, since guests never present.
+    /// Tapping anyone else on the roster places them in their own kind's section, and they go no further, since only presenters present.
     /// </summary>
     public static AttendanceState Advance(AttendanceState state, AttendeeKind kind) => (kind, state) switch
     {
-        (AttendeeKind.Guest, AttendanceState.Roster) => AttendanceState.Guest,
-        (AttendeeKind.Guest, _) => state,
-        (_, AttendanceState.Available or AttendanceState.Presented) => AttendanceState.Presented,
+        (AttendeeKind.Presenter, AttendanceState.Available or AttendanceState.Presented) => AttendanceState.Presented,
+        (AttendeeKind.Presenter, _) => AttendanceState.Available,
+        (_, AttendanceState.Roster) => Attending(kind),
+        _ => state,
+    };
+
+    /// <summary>Undo for a mis-tap: moves a presenter one column back, and anyone else back to the roster.</summary>
+    public static AttendanceState Revert(AttendanceState state, AttendeeKind kind) => (kind, state) switch
+    {
+        (AttendeeKind.Presenter, AttendanceState.Presented) => AttendanceState.Available,
+        (AttendeeKind.Presenter, _) => AttendanceState.Roster,
+        _ when state == Attending(kind) => AttendanceState.Roster,
+        _ => state,
+    };
+
+    /// <summary>The section someone of <paramref name="kind"/> lands in when first marked as here.</summary>
+    public static AttendanceState Attending(AttendeeKind kind) => kind switch
+    {
+        AttendeeKind.Leader => AttendanceState.Leader,
+        AttendeeKind.Guest => AttendanceState.Guest,
         _ => AttendanceState.Available,
     };
 
-    /// <summary>Undo for a mis-tap: moves a presenter one column back, and a guest back to the roster.</summary>
-    public static AttendanceState Revert(AttendanceState state, AttendeeKind kind) => (kind, state) switch
-    {
-        (AttendeeKind.Guest, AttendanceState.Guest) => AttendanceState.Roster,
-        (AttendeeKind.Guest, _) => state,
-        (_, AttendanceState.Presented) => AttendanceState.Available,
-        _ => AttendanceState.Roster,
-    };
-
     /// <summary>
-    /// Where a stored state places someone of <paramref name="kind"/> on the board. A presenter cannot be a guest, so a guest entry recorded before they
-    /// joined the presenter roster reads as not yet seen.
+    /// Where a stored state places someone of <paramref name="kind"/> on the board. Attending without presenting follows the roster they are on now: a
+    /// presenter cannot attend that way, so the entry reads as not yet seen, and anyone else is shown in their own kind's section.
     /// </summary>
-    public static AttendanceState Placement(AttendanceState state, AttendeeKind kind) =>
-        kind == AttendeeKind.Presenter && state == AttendanceState.Guest ? AttendanceState.Roster : state;
+    public static AttendanceState Placement(AttendanceState state, AttendeeKind kind) => state is AttendanceState.Guest or AttendanceState.Leader
+        ? kind == AttendeeKind.Presenter ? AttendanceState.Roster : Attending(kind)
+        : state;
 
-    /// <summary>True when a guest can be shown in <paramref name="state"/>. Someone off the presenter roster who presented on a date before leaving it is not a guest on that date.</summary>
-    public static bool IsGuestPlacement(AttendanceState state) => state is AttendanceState.Roster or AttendanceState.Guest;
+    /// <summary>True when someone who does not present can be shown in <paramref name="state"/>. Someone off the presenter roster who presented on a date before leaving it is not shown on that date.</summary>
+    public static bool IsNonPresenterPlacement(AttendanceState state) => state is AttendanceState.Roster or AttendanceState.Guest or AttendanceState.Leader;
 
     /// <summary>True once someone has been seen at the meeting, in whichever way they take part. Only an attending leader can be picked to lead.</summary>
     public static bool IsAttending(AttendanceState state) => state != AttendanceState.Roster;
