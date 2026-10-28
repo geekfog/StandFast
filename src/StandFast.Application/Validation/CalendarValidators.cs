@@ -31,6 +31,7 @@ public sealed class SprintEditDtoValidator : AbstractValidator<SprintEditDto>
     {
         RuleFor(sprint => sprint.StandupId).NotEmpty();
         RuleFor(sprint => sprint.Name).NotEmpty().MaximumLength(DomainLimits.SprintNameMaxLength);
+        RuleFor(sprint => sprint.Note).MaximumLength(DomainLimits.SprintNoteMaxLength);
         Include(new DateRangeEditValidator());
     }
 }

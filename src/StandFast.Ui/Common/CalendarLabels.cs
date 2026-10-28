@@ -16,6 +16,7 @@ public static class CalendarLabels
     public const string HolidayIcon = Icons.Material.Filled.Celebration;
     public const string SprintIcon = Icons.Material.Filled.DirectionsRun;
     public const string DaysOffIcon = Icons.Material.Filled.EventBusy;
+    public const string SprintNoteIcon = Icons.Material.Filled.StickyNote2;
 
     public static string Duration(HolidayDuration duration) => duration == HolidayDuration.HalfDay ? "Half day" : "Full day";
 

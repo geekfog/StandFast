@@ -20,6 +20,8 @@ public sealed class SprintTableEntity : ITableEntity
 
     public string EndDate { get; set; } = string.Empty;
 
+    public string? Note { get; set; }
+
     public DateTimeOffset CreatedUtc { get; set; }
 
     public DateTimeOffset? ModifiedUtc { get; set; }

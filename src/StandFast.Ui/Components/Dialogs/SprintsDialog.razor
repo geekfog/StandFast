@@ -2,6 +2,9 @@
 @inject ISprintService SprintService
 @inject IDialogService DialogService
 @inject FluentValidation.IValidator<SprintEditDto> Validator
+@using StandFast.Domain.Abstractions
+@inject IClock Clock
+@inject Microsoft.Extensions.Options.IOptions<StandFastUiOptions> UiOptions
 
 <MudDialog>
     <TitleContent>
@@ -13,8 +16,11 @@
                 <MudItem xs="12" sm="4">
                     <MudTextField @bind-Value="edit.Name" For="@(() => edit.Name)" Label="Name" Placeholder="Sprint 29" Variant="Variant.Outlined" />
                 </MudItem>
-                <MudItem xs="12" sm="5">
+                <MudItem xs="12" sm="8">
                     <MudDateRangePicker DateRange="@Dates" DateRangeChanged="OnDatesChanged" Label="Dates" DateFormat="@UiFormats.ShortDate" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="9">
+                    <MudTextField @bind-Value="edit.Note" For="@(() => edit.Note)" Label="Note" Placeholder="Optional, shown on the board" Variant="Variant.Outlined" />
                 </MudItem>
                 <MudItem xs="12" sm="3" Class="d-flex align-center gap-1">
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="isSaving" OnClick="SaveAsync">@(edit.Id is null ? "Add" : "Save")</MudButton>
@@ -31,21 +37,27 @@
             <MudAlert Severity="Severity.Error" Dense="true" Class="mb-3">@saveError</MudAlert>
         }
 
-        <MudTable Items="sprints" Hover="true" Dense="true" Loading="isLoading" Elevation="0">
+        <div class="d-flex justify-end">
+            <MudSwitch @bind-Value="showPast" Color="Color.Primary" Label="Show past" />
+        </div>
+
+        <MudTable Items="ShownSprints" Hover="true" Dense="true" Loading="isLoading" Elevation="0">
             <HeaderContent>
                 <MudTh>Name</MudTh>
                 <MudTh>Dates</MudTh>
+                <MudTh>Note</MudTh>
                 <MudTh Style="width: 7rem;"></MudTh>
             </HeaderContent>
             <RowTemplate>
                 <MudTd DataLabel="Name">@context.Name</MudTd>
                 <MudTd DataLabel="Dates">@CalendarLabels.Range(context.StartDate, context.EndDate)</MudTd>
+                <MudTd DataLabel="Note">@context.Note</MudTd>
                 <MudTd>
                     <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => StartEdit(context))" aria-label="@($"Edit {context.Name}")" />
                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteAsync(context))" aria-label="@($"Delete {context.Name}")" />
                 </MudTd>
             </RowTemplate>
-            <NoRecordsContent>No sprints recorded for this standup yet.</NoRecordsContent>
+            <NoRecordsContent>@(sprints.Count == 0 ? "No sprints recorded for this standup yet." : "No sprints from today on. Turn on Show past to list earlier ones.")</NoRecordsContent>
         </MudTable>
     </DialogContent>
     <DialogActions>
@@ -59,6 +71,8 @@
     private SprintEditDto edit = new();
     private bool isLoading = true;
     private bool isSaving;
+    private bool showPast;
+    private DateOnly today;
 
     /// <summary>Set when saving was refused, including for an overlap with another sprint, which only the stored sprints can show.</summary>
     private string? saveError;
@@ -74,10 +88,13 @@
     [EditorRequired]
     public string StandupName { get; set; } = string.Empty;
 
+    private IEnumerable<SprintDto> ShownSprints => showPast ? sprints : sprints.Where(sprint => sprint.EndDate >= today);
+
     private MudBlazor.DateRange Dates => new(edit.StartDate.ToPickerDate(), edit.EndDate.ToPickerDate());
 
     protected override async Task OnInitializedAsync()
     {
+        today = Clock.Today(UiOptions.Value.ResolveTimeZone());
         StartNew();
         await ReloadAsync();
     }

@@ -24,10 +24,10 @@ public static class CalendarMappings
     public static IReadOnlyDictionary<DateOnly, HolidayDuration> ToDurationByDate(this IEnumerable<Holiday> holidays) =>
         holidays.DistinctBy(holiday => holiday.Date).ToDictionary(holiday => holiday.Date, holiday => holiday.Duration);
 
-    public static SprintDto ToDto(this Sprint sprint) => new(sprint.Id, sprint.StandupId, sprint.Name, sprint.StartDate, sprint.EndDate);
+    public static SprintDto ToDto(this Sprint sprint) => new(sprint.Id, sprint.StandupId, sprint.Name, sprint.StartDate, sprint.EndDate, sprint.Note);
 
     public static SprintEditDto ToEditDto(this SprintDto sprint) =>
-        new() { Id = sprint.Id, StandupId = sprint.StandupId, Name = sprint.Name, StartDate = sprint.StartDate, EndDate = sprint.EndDate };
+        new() { Id = sprint.Id, StandupId = sprint.StandupId, Name = sprint.Name, StartDate = sprint.StartDate, EndDate = sprint.EndDate, Note = sprint.Note };
 
     /// <summary>Called only after validation, which guarantees both dates are set.</summary>
     public static void ApplyTo(this SprintEditDto dto, Sprint sprint)
@@ -36,6 +36,7 @@ public static class CalendarMappings
         sprint.Name = dto.Name.Trim();
         sprint.StartDate = dto.StartDate!.Value;
         sprint.EndDate = dto.EndDate!.Value;
+        sprint.Note = OptionalText.Normalize(dto.Note);
     }
 
     public static DayOffDto ToDto(this PersonDayOff dayOff) => new(dayOff.Id, dayOff.PersonId, dayOff.StartDate, dayOff.EndDate, dayOff.Note);

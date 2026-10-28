@@ -15,6 +15,8 @@ public sealed class Sprint
 
     public DateOnly EndDate { get; set; }
 
+    public string? Note { get; set; }
+
     public DateTimeOffset CreatedUtc { get; set; }
 
     public DateTimeOffset? ModifiedUtc { get; set; }
