@@ -7,7 +7,7 @@ namespace StandFast.Application.Mapping;
 
 public static class BoardMappings
 {
-    /// <summary>Guests are not on a roster, so they carry no roster position of their own and the board orders them by name alone.</summary>
+    /// <summary>Visiting guests are not on a roster, so they carry no roster position of their own and the board orders them by name alone.</summary>
     public const int GuestDisplayOrder = 0;
 
     /// <summary>Composes one board tile from the person, how they take part, their roster position, and the current/prior entry pair returned by storage.</summary>

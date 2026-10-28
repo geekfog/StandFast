@@ -109,7 +109,7 @@
                                     <MudText Typo="Typo.subtitle1" Class="flex-grow-1">@StandFastTheme.ColumnTitle(state)</MudText>
                                     @if (state == AttendanceState.Roster)
                                     {
-                                        @* The filter decides who the roster lists, and so whether a tap lands them in Present or in Guests. *@
+                                        @* The filter decides who the roster lists, and so whether a tap lands them in Present, Leaders, or Guests. *@
                                         <MudToggleGroup T="AttendeeKind" @bind-Value="rosterView" Size="Size.Small" Color="Color.Primary" Class="mr-2" aria-label="Show on the roster">
                                             @foreach (AttendeeKind kind in AttendeeKindExtensions.InDisplayOrder)
                                             {

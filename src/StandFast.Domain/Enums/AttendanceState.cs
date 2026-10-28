@@ -1,6 +1,6 @@
 namespace StandFast.Domain.Enums;
 
-/// <summary>Where a participant sits on the board for a single meeting date. The board renders one column per value.</summary>
+/// <summary>Where a participant sits on the board for a single meeting date. The board renders one section per value.</summary>
 public enum AttendanceState
 {
     /// <summary>On the roster but not yet seen in the meeting.</summary>
@@ -12,6 +12,9 @@ public enum AttendanceState
     /// <summary>Has given their update.</summary>
     Presented = 2,
 
-    /// <summary>Attending without presenting. Only someone who is not on the standup's presenter roster can be a guest; see <see cref="AttendeeKind"/>.</summary>
+    /// <summary>Attending as a guest, without presenting; see <see cref="AttendeeKind.Guest"/>.</summary>
     Guest = 3,
+
+    /// <summary>Attending as a leader, without presenting; see <see cref="AttendeeKind.Leader"/>.</summary>
+    Leader = 4,
 }

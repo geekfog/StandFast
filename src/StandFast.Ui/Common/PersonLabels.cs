@@ -11,7 +11,7 @@ public static class PersonLabels
 
     public const string Supervisor = "Supervisor";
 
-    /// <summary>Heading of the People screen's filter by roster: presenters, leaders, or neither.</summary>
+    /// <summary>Heading of the People screen's filter by roster: each roster role, or none of them.</summary>
     public const string RoleFilter = "Role";
 
     public static string Status(bool isActive) => isActive ? "Active" : "Inactive";

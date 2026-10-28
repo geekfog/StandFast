@@ -9,7 +9,7 @@ public sealed class StandupMember
 
     public Guid PersonId { get; set; }
 
-    /// <summary>Which roster this membership belongs to. Someone holding both roles on one standup has one membership per role.</summary>
+    /// <summary>Which roster this membership belongs to. Someone holding several roles on one standup has one membership per role.</summary>
     public RosterRole Role { get; set; } = RosterRole.Presenter;
 
     /// <summary>Roster ordering. Ties fall back to display name so the order is always deterministic.</summary>

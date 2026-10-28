@@ -10,6 +10,7 @@ public static class StorageNames
     public const string Standups = "Standups";
     public const string StandupMembers = "StandupMembers";
     public const string StandupLeaders = "StandupLeaders";
+    public const string StandupGuests = "StandupGuests";
     public const string StandupMeetings = "StandupMeetings";
     public const string StandupEntries = "StandupEntries";
     public const string Sprints = "Sprints";
@@ -24,18 +25,19 @@ public static class StorageNames
     /// explains the restore itself. <see cref="UserPreferences"/> is absent for a related reason: it belongs to the people using the app rather
     /// than to the board data, so restoring last month's copy of the board leaves everyone's own settings alone.
     /// </summary>
-    public static readonly IReadOnlyList<string> DataTables = [People, PersonPhotos, PersonDaysOff, Standups, StandupMembers, StandupLeaders, StandupMeetings, StandupEntries, Sprints, Holidays];
+    public static readonly IReadOnlyList<string> DataTables = [People, PersonPhotos, PersonDaysOff, Standups, StandupMembers, StandupLeaders, StandupGuests, StandupMeetings, StandupEntries, Sprints, Holidays];
 
     /// <summary>Every table the app creates. Tests clean up from this list, so a table added above is never left behind.</summary>
     public static readonly IReadOnlyList<string> AllTables = [.. DataTables, UserPreferences, AuditLog];
 
     /// <summary>
     /// The table holding one roster role's memberships. Each role gets its own table rather than a column, so the rows keep the person id as their
-    /// whole row key and one person can hold both roles on the same standup.
+    /// whole row key and one person can hold several roles on the same standup.
     /// </summary>
     public static string MemberTable(RosterRole role) => role switch
     {
         RosterRole.Leader => StandupLeaders,
+        RosterRole.Guest => StandupGuests,
         _ => StandupMembers,
     };
 }

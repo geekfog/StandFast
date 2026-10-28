@@ -1,23 +1,34 @@
 namespace StandFast.Domain.Enums;
 
 /// <summary>
-/// How someone takes part in one standup. Presenters are the standup's presenter roster; guests are anyone else in the people directory, so a visitor
-/// is tracked without being assigned to the standup. Someone on the presenter roster is always a presenter there and can never be a guest.
+/// How someone takes part in one standup, from the first roster they are on: presenter, then leader, then guest. Someone on the presenter roster is
+/// always a presenter there, even when they also lead, so they never attend without presenting.
 /// </summary>
 public enum AttendeeKind
 {
     /// <summary>On the standup's presenter roster: marked present, then called on to give an update.</summary>
     Presenter = 0,
 
-    /// <summary>Not on the presenter roster: attends without presenting, which includes a leader who is not also a presenter. A guest can record notes, but no blockers or parking lot.</summary>
+    /// <summary>On the standup's guest roster, or a visitor on no roster at all who was recorded on a date: attends without presenting.</summary>
     Guest = 1,
+
+    /// <summary>On the standup's leader roster but not its presenter roster: attends to run the meeting without presenting.</summary>
+    Leader = 2,
 }
 
 public static class AttendeeKindExtensions
 {
     /// <summary>Kinds in the order the board's roster filter lists them.</summary>
-    public static IReadOnlyList<AttendeeKind> InDisplayOrder { get; } = [AttendeeKind.Presenter, AttendeeKind.Guest];
+    public static IReadOnlyList<AttendeeKind> InDisplayOrder { get; } = [AttendeeKind.Presenter, AttendeeKind.Leader, AttendeeKind.Guest];
 
-    /// <summary>True when this kind of attendee records blockers and a parking lot alongside their update. Guests record notes only.</summary>
+    /// <summary>The roster that makes someone this kind of attendee. A visiting guest is on no roster, but is offered under the guest roster's name.</summary>
+    public static RosterRole Roster(this AttendeeKind kind) => kind switch
+    {
+        AttendeeKind.Leader => RosterRole.Leader,
+        AttendeeKind.Guest => RosterRole.Guest,
+        _ => RosterRole.Presenter,
+    };
+
+    /// <summary>True when this kind of attendee records blockers and a parking lot alongside their update. Everyone who does not present records notes only.</summary>
     public static bool RecordsBlockersAndParkingLot(this AttendeeKind kind) => kind == AttendeeKind.Presenter;
 }

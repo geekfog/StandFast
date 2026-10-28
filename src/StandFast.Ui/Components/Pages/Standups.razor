@@ -31,13 +31,19 @@
         <MudTd>
             @foreach (RosterRole role in RosterRoleExtensions.InDisplayOrder)
             {
-                <MudIconButton Icon="@RosterLabels.RosterIcon(role)" Size="Size.Small" OnClick="@(() => ManageMembersAsync(context, role))" aria-label="@($"Manage the {RosterLabels.RosterTitle(role)} for {context.Name}")" />
+                <MudTooltip Text="@RosterLabels.RosterTitle(role)">
+                    <MudIconButton Icon="@RosterLabels.RosterIcon(role)" Size="Size.Small" OnClick="@(() => ManageMembersAsync(context, role))" aria-label="@($"Manage the {RosterLabels.RosterTitle(role)} for {context.Name}")" />
+                </MudTooltip>
             }
             <MudTooltip Text="@CalendarLabels.Sprints">
                 <MudIconButton Icon="@CalendarLabels.SprintIcon" Size="Size.Small" OnClick="@(() => ManageSprintsAsync(context))" aria-label="@($"Manage the {CalendarLabels.Sprints.ToLowerInvariant()} for {context.Name}")" />
             </MudTooltip>
-            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => EditAsync(context))" aria-label="@($"Edit {context.Name}")" />
-            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteAsync(context))" aria-label="@($"Delete {context.Name}")" />
+            <MudTooltip Text="Edit">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => EditAsync(context))" aria-label="@($"Edit {context.Name}")" />
+            </MudTooltip>
+            <MudTooltip Text="Delete">
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteAsync(context))" aria-label="@($"Delete {context.Name}")" />
+            </MudTooltip>
         </MudTd>
     </RowTemplate>
     <NoRecordsContent>No standups defined yet.</NoRecordsContent>
@@ -98,7 +104,7 @@
 
     private async Task DeleteAsync(StandupDto standup)
     {
-        bool? confirmed = await DialogService.ShowMessageBoxAsync("Remove standup", $"Remove {standup.Name} and its roster? Recorded updates are kept.", yesText: "Remove", cancelText: "Cancel");
+        bool? confirmed = await DialogService.ShowMessageBoxAsync("Remove standup", $"Remove {standup.Name} and its rosters? Recorded updates are kept.", yesText: "Remove", cancelText: "Cancel");
         if (confirmed == true)
         {
             await StandupService.DeleteAsync(standup.Id);

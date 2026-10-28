@@ -3,7 +3,7 @@ using StandFast.Domain.Common;
 namespace StandFast.Application.Dtos;
 
 /// <summary>The whole board for one standup on one date. The UI splits <see cref="Participants"/> into columns by attendance state.</summary>
-/// <param name="Participants">Everyone on the presenter roster, and every other active person in the directory as a possible guest.</param>
+/// <param name="Participants">Everyone on the presenter, leader, and guest rosters, each under the first of those they are on, plus anyone else who visited on this date.</param>
 /// <param name="Leaders">Everyone on the standup's leader roster, in roster order. The leader picker offers those of them attending; see <see cref="LeaderCandidates"/>.</param>
 /// <param name="LeaderPersonId">Whoever is leading this date, or null while nobody is picked. Leading is optional, so null is a normal state.</param>
 /// <param name="LockedUtc">When this date was closed to changes, or null while it is open. The board reads its whole locked state from this one value.</param>
