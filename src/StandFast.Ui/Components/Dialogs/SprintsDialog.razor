@@ -16,8 +16,11 @@
                 <MudItem xs="12" sm="4">
                     <MudTextField @bind-Value="edit.Name" For="@(() => edit.Name)" Label="Name" Placeholder="Sprint 29" Variant="Variant.Outlined" />
                 </MudItem>
-                <MudItem xs="12" sm="5">
+                <MudItem xs="12" sm="8">
                     <MudDateRangePicker DateRange="@Dates" DateRangeChanged="OnDatesChanged" Label="Dates" DateFormat="@UiFormats.ShortDate" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="9">
+                    <MudTextField @bind-Value="edit.Note" For="@(() => edit.Note)" Label="Note" Placeholder="Optional, shown on the board" Variant="Variant.Outlined" />
                 </MudItem>
                 <MudItem xs="12" sm="3" Class="d-flex align-center gap-1">
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="isSaving" OnClick="SaveAsync">@(edit.Id is null ? "Add" : "Save")</MudButton>
@@ -42,11 +45,13 @@
             <HeaderContent>
                 <MudTh>Name</MudTh>
                 <MudTh>Dates</MudTh>
+                <MudTh>Note</MudTh>
                 <MudTh Style="width: 7rem;"></MudTh>
             </HeaderContent>
             <RowTemplate>
                 <MudTd DataLabel="Name">@context.Name</MudTd>
                 <MudTd DataLabel="Dates">@CalendarLabels.Range(context.StartDate, context.EndDate)</MudTd>
+                <MudTd DataLabel="Note">@context.Note</MudTd>
                 <MudTd>
                     <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => StartEdit(context))" aria-label="@($"Edit {context.Name}")" />
                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteAsync(context))" aria-label="@($"Delete {context.Name}")" />

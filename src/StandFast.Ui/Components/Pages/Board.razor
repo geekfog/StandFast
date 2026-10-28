@@ -16,6 +16,12 @@
                         <MudTooltip Text="@CalendarLabels.SprintDescription(sprint)">
                             <MudText Typo="Typo.body2" Color="Color.Primary" Class="text-nowrap">@CalendarLabels.SprintCaption(sprint)</MudText>
                         </MudTooltip>
+                        @if (sprint.Note is { } note)
+                        {
+                            <MudTooltip Text="@note">
+                                <MudIcon Icon="@CalendarLabels.SprintNoteIcon" Size="Size.Small" Color="Color.Warning" Class="ml-n3" aria-label="@note" />
+                            </MudTooltip>
+                        }
                     }
                     <MudSpacer />
                     @if (board is not null)

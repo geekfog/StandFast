@@ -11,7 +11,7 @@ public static class BoardAvailability
     /// <summary>The sprint covering <paramref name="date"/>, with the working days left in it, or null when no sprint covers the date.</summary>
     public static SprintStatusDto? ForSprint(IEnumerable<Sprint> sprints, DateOnly date, IReadOnlyDictionary<DateOnly, HolidayDuration> holidays) =>
         sprints.FirstOrDefault(sprint => sprint.Dates.Contains(date)) is { } sprint
-            ? new SprintStatusDto(sprint.Name, sprint.StartDate, sprint.EndDate, WorkCalendar.WorkingDays(new DateRange(date, sprint.EndDate), holidays))
+            ? new SprintStatusDto(sprint.Name, sprint.StartDate, sprint.EndDate, WorkCalendar.WorkingDays(new DateRange(date, sprint.EndDate), holidays), sprint.Note)
             : null;
 
     /// <summary>The dates whose days off matter to the board: the rest of the sprint, or the board's date alone when no sprint covers it.</summary>

@@ -24,7 +24,7 @@ public sealed class HolidayEditDto
     public HolidayDuration Duration { get; set; } = HolidayDuration.FullDay;
 }
 
-public sealed record SprintDto(Guid Id, Guid StandupId, string Name, DateOnly StartDate, DateOnly EndDate);
+public sealed record SprintDto(Guid Id, Guid StandupId, string Name, DateOnly StartDate, DateOnly EndDate, string? Note);
 
 /// <summary>Create/update input for one standup's sprint. <see cref="Id"/> is null when creating.</summary>
 public sealed class SprintEditDto : IDateRangeEdit
@@ -38,6 +38,8 @@ public sealed class SprintEditDto : IDateRangeEdit
     public DateOnly? StartDate { get; set; }
 
     public DateOnly? EndDate { get; set; }
+
+    public string? Note { get; set; }
 }
 
 public sealed record DayOffDto(Guid Id, Guid PersonId, DateOnly StartDate, DateOnly EndDate, string? Note);
@@ -58,7 +60,8 @@ public sealed class DayOffEditDto : IDateRangeEdit
 
 /// <summary>The sprint covering a board's date.</summary>
 /// <param name="DaysLeft">Working days from the board's date through the sprint's last day, both included, less holidays; a half-day holiday takes off half a day.</param>
-public sealed record SprintStatusDto(string Name, DateOnly StartDate, DateOnly EndDate, decimal DaysLeft);
+/// <param name="Note">The sprint's note, when there is one.</param>
+public sealed record SprintStatusDto(string Name, DateOnly StartDate, DateOnly EndDate, decimal DaysLeft, string? Note);
 
 /// <summary>How one person's days off bear on a board's date and the rest of its sprint.</summary>
 /// <param name="IsOffOnDate">True when the person is off on the board's date, which keeps them from being marked present.</param>

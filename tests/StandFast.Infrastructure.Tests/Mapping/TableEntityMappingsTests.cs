@@ -147,7 +147,7 @@ public sealed class TableEntityMappingsTests
     public void CalendarEntries_RoundTripTheirDatesAndDuration()
     {
         Holiday holiday = new() { Date = new DateOnly(2026, 12, 24), Name = "Christmas Eve", Duration = HolidayDuration.HalfDay };
-        Sprint sprint = new() { StandupId = Guid.CreateVersion7(), Name = "Sprint 29", StartDate = new DateOnly(2026, 9, 14), EndDate = new DateOnly(2026, 9, 25) };
+        Sprint sprint = new() { StandupId = Guid.CreateVersion7(), Name = "Sprint 29", StartDate = new DateOnly(2026, 9, 14), EndDate = new DateOnly(2026, 9, 25), Note = "Release freeze Thursday" };
         PersonDayOff dayOff = new() { PersonId = Guid.CreateVersion7(), StartDate = new DateOnly(2026, 9, 21), EndDate = new DateOnly(2026, 9, 22), Note = "Vacation" };
 
         Holiday restoredHoliday = holiday.ToTableEntity().ToDomain();
@@ -155,7 +155,7 @@ public sealed class TableEntityMappingsTests
         PersonDayOff restoredDayOff = dayOff.ToTableEntity().ToDomain();
 
         Assert.Equal((holiday.Id, holiday.Date, holiday.Name, holiday.Duration), (restoredHoliday.Id, restoredHoliday.Date, restoredHoliday.Name, restoredHoliday.Duration));
-        Assert.Equal((sprint.Id, sprint.StandupId, sprint.Name, sprint.Dates), (restoredSprint.Id, restoredSprint.StandupId, restoredSprint.Name, restoredSprint.Dates));
+        Assert.Equal((sprint.Id, sprint.StandupId, sprint.Name, sprint.Dates, sprint.Note), (restoredSprint.Id, restoredSprint.StandupId, restoredSprint.Name, restoredSprint.Dates, restoredSprint.Note));
         Assert.Equal((dayOff.Id, dayOff.PersonId, dayOff.Dates, dayOff.Note), (restoredDayOff.Id, restoredDayOff.PersonId, restoredDayOff.Dates, restoredDayOff.Note));
     }
 
