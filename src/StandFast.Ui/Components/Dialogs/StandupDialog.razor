@@ -27,6 +27,8 @@
 
             <TimeZoneSelect @bind-Value="Standup.TimeZoneId" For="@(() => Standup.TimeZoneId)" />
 
+            <MudSwitch @bind-Value="Standup.LeadersCanPresent" Color="Color.Primary" Label="@CanPresentLabel(AttendeeKind.Leader)" />
+            <MudSwitch @bind-Value="Standup.GuestsCanPresent" Color="Color.Primary" Label="@CanPresentLabel(AttendeeKind.Guest)" />
             <MudSwitch @bind-Value="Standup.IsActive" Color="Color.Primary" Label="Active" />
         </MudForm>
     </DialogContent>
@@ -49,6 +51,8 @@
     public StandupEditDto Standup { get; set; } = default!;
 
     protected override void OnParametersSet() => startTime = Standup.StartTimeLocal.ToTimeSpan();
+
+    private static string CanPresentLabel(AttendeeKind kind) => $"{RosterLabels.Plural(kind)} can present";
 
     private void ToggleDay(DayOfWeek day, bool included) => Standup.RecurrenceDays = Standup.RecurrenceDays.With(day, included);
 

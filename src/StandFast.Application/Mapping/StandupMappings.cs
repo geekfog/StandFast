@@ -18,6 +18,8 @@ public static class StandupMappings
         StartTimeLocal = standup.StartTimeLocal,
         TimeZoneId = TimeZoneIds.ToStored(standup.TimeZoneId),
         IsActive = standup.IsActive,
+        LeadersCanPresent = standup.LeadersCanPresent,
+        GuestsCanPresent = standup.GuestsCanPresent,
     };
 
     public static void ApplyTo(this StandupEditDto dto, Standup standup)
@@ -28,6 +30,8 @@ public static class StandupMappings
         standup.StartTimeLocal = dto.StartTimeLocal;
         standup.TimeZoneId = TimeZoneIds.ToStored(dto.TimeZoneId.Trim());
         standup.IsActive = dto.IsActive;
+        standup.LeadersCanPresent = dto.LeadersCanPresent;
+        standup.GuestsCanPresent = dto.GuestsCanPresent;
     }
 
     public static StandupMemberDto ToDto(this StandupMember member, Person person) =>

@@ -27,6 +27,10 @@ public sealed class StandupTableEntity : ITableEntity
 
     public bool IsActive { get; set; } = true;
 
+    public bool LeadersCanPresent { get; set; }
+
+    public bool GuestsCanPresent { get; set; }
+
     public DateTimeOffset CreatedUtc { get; set; }
 
     public DateTimeOffset? ModifiedUtc { get; set; }

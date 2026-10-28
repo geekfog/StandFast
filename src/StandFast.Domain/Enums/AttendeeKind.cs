@@ -9,10 +9,10 @@ public enum AttendeeKind
     /// <summary>On the standup's presenter roster: marked present, then called on to give an update.</summary>
     Presenter = 0,
 
-    /// <summary>On the standup's guest roster, or a visitor on no roster at all who was recorded on a date: attends without presenting.</summary>
+    /// <summary>On the standup's guest roster, or a visitor on no roster at all who was recorded on a date: attends without presenting unless the standup lets guests present.</summary>
     Guest = 1,
 
-    /// <summary>On the standup's leader roster but not its presenter roster: attends to run the meeting without presenting.</summary>
+    /// <summary>On the standup's leader roster but not its presenter roster: attends to run the meeting without presenting unless the standup lets leaders present.</summary>
     Leader = 2,
 }
 
@@ -28,7 +28,4 @@ public static class AttendeeKindExtensions
         AttendeeKind.Guest => RosterRole.Guest,
         _ => RosterRole.Presenter,
     };
-
-    /// <summary>True when this kind of attendee records blockers and a parking lot alongside their update. Everyone who does not present records notes only.</summary>
-    public static bool RecordsBlockersAndParkingLot(this AttendeeKind kind) => kind == AttendeeKind.Presenter;
 }

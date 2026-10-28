@@ -168,7 +168,7 @@
         : $"{Participant.Location} · {offset.ToOffsetDescription()}";
 
     /// <summary>False on a locked date, and for anyone a tap would leave where they are, such as a guest already recorded.</summary>
-    private bool CanAdvance => !IsLocked && AttendanceTransitions.Advance(Participant.State, Participant.Kind) != Participant.State;
+    private bool CanAdvance => !IsLocked && AttendanceTransitions.Advance(Participant.State, Participant.Kind, Participant.Presents) != Participant.State;
 
     private Task OnAdvanceAsync() => CanAdvance ? OnAdvance.InvokeAsync(Participant.PersonId) : Task.CompletedTask;
 

@@ -9,7 +9,7 @@ public enum AttendanceState
     /// <summary>Confirmed present and eligible to be called on.</summary>
     Available = 1,
 
-    /// <summary>Has given their update.</summary>
+    /// <summary>Has given their update: a presenter, or a leader or guest at a standup that lets them present.</summary>
     Presented = 2,
 
     /// <summary>Attending as a guest, without presenting; see <see cref="AttendeeKind.Guest"/>.</summary>
