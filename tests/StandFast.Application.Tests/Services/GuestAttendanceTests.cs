@@ -69,6 +69,76 @@ public sealed class GuestAttendanceTests
     }
 
     [Fact]
+    public async Task AdvanceAsync_MarksALeaderAsPresented_WhenTheStandupLetsLeadersPresent()
+    {
+        BoardTestContext context = new();
+        context.Standup.LeadersCanPresent = true;
+        Person leader = await context.AddMemberAsync("Grace", "Hopper", RosterRole.Leader);
+
+        await context.Service.AdvanceAsync(context.Standup.Id, BoardTestContext.Today, leader.Id);
+        BoardParticipantDto? presented = await context.Service.AdvanceAsync(context.Standup.Id, BoardTestContext.Today, leader.Id);
+        StandupBoardDto board = await context.Service.GetBoardAsync(context.Standup.Id, BoardTestContext.Today);
+
+        Assert.True(presented!.Presents);
+        Assert.Equal(AttendanceState.Presented, presented.State);
+        Assert.Equal(BoardTestContext.Now, presented.PresentedUtc);
+        Assert.Equal(AttendanceState.Presented, Assert.Single(board.Participants).State);
+        Assert.Equal(AttendanceState.Leader, (await context.Service.RevertAsync(context.Standup.Id, BoardTestContext.Today, leader.Id))!.State);
+    }
+
+    [Fact]
+    public async Task AdvanceAsync_MarksAVisitingGuestAsPresented_WhenTheStandupLetsGuestsPresent()
+    {
+        BoardTestContext context = new();
+        context.Standup.GuestsCanPresent = true;
+        Person visitor = await context.AddPersonAsync("Grace", "Hopper");
+
+        await context.Service.AdvanceAsync(context.Standup.Id, BoardTestContext.Today, visitor.Id);
+        await context.Service.AdvanceAsync(context.Standup.Id, BoardTestContext.Today, visitor.Id);
+        StandupBoardDto board = await context.Service.GetBoardAsync(context.Standup.Id, BoardTestContext.Today);
+
+        Assert.Equal(AttendanceState.Presented, Assert.Single(board.Participants).State);
+    }
+
+    [Fact]
+    public async Task GetBoardAsync_HidesALeaderWhoPresented_OnceTheStandupStopsLettingLeadersPresent()
+    {
+        BoardTestContext context = new();
+        context.Standup.LeadersCanPresent = true;
+        Person leader = await context.AddMemberAsync("Grace", "Hopper", RosterRole.Leader);
+        await context.Service.AdvanceAsync(context.Standup.Id, BoardTestContext.Today, leader.Id);
+        await context.Service.AdvanceAsync(context.Standup.Id, BoardTestContext.Today, leader.Id);
+        context.Standup.LeadersCanPresent = false;
+        await context.Standups.UpsertAsync(context.Standup);
+
+        StandupBoardDto board = await context.Service.GetBoardAsync(context.Standup.Id, BoardTestContext.Today);
+
+        Assert.Empty(board.Participants);
+    }
+
+    [Fact]
+    public async Task SaveUpdateAsync_RecordsBlockersAndParkingLotForALeaderWhoCanPresent()
+    {
+        BoardTestContext context = new();
+        context.Standup.LeadersCanPresent = true;
+        Person leader = await context.AddMemberAsync("Grace", "Hopper", RosterRole.Leader);
+        await context.Service.AdvanceAsync(context.Standup.Id, BoardTestContext.Today, leader.Id);
+
+        BoardParticipantDto? saved = await context.Service.SaveUpdateAsync(new ParticipantUpdateDto
+        {
+            StandupId = context.Standup.Id,
+            PersonId = leader.Id,
+            MeetingDate = BoardTestContext.Today,
+            Update = "Planning the release.",
+            Blockers = "Waiting on access.",
+            ParkingLot = "Talk about the release.",
+        });
+
+        Assert.Equal("Waiting on access.", saved!.Blockers);
+        Assert.Equal("Talk about the release.", saved.ParkingLot);
+    }
+
+    [Fact]
     public async Task GetBoardAsync_ReadsAGuestEntryFromBeforeJoiningTheLeaderRosterAsLeading()
     {
         BoardTestContext context = new();

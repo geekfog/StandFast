@@ -17,7 +17,7 @@ public partial class Board
 {
     /// <summary>
     /// Columns across the board, left to right, each listing the states it holds from the top. Leaders and guests sit under the people present, since
-    /// all of them are here and only presenters move on to presented. Driving the markup from this keeps the columns and the tap transitions in step.
+    /// all of them are here, and move on to presented only where the standup lets them. Driving the markup from this keeps the columns and the tap transitions in step.
     /// </summary>
     private static readonly AttendanceState[][] BoardColumns =
         [[AttendanceState.Roster], [AttendanceState.Available, AttendanceState.Leader, AttendanceState.Guest], [AttendanceState.Presented]];

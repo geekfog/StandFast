@@ -9,7 +9,7 @@ namespace StandFast.Infrastructure.Tests.Mapping;
 public sealed class TableEntityMappingsTests
 {
     [Fact]
-    public void Standup_RoundTripsScheduleAndStartTime()
+    public void Standup_RoundTripsScheduleStartTimeAndWhoCanPresent()
     {
         Standup standup = new()
         {
@@ -18,6 +18,7 @@ public sealed class TableEntityMappingsTests
             RecurrenceDays = MeetingDays.Weekdays,
             StartTimeLocal = new TimeOnly(9, 45),
             TimeZoneId = "UTC",
+            LeadersCanPresent = true,
         };
 
         Standup restored = standup.ToTableEntity().ToDomain();
@@ -26,6 +27,8 @@ public sealed class TableEntityMappingsTests
         Assert.Equal(standup.RecurrenceDays, restored.RecurrenceDays);
         Assert.Equal(standup.StartTimeLocal, restored.StartTimeLocal);
         Assert.Equal(standup.TimeZoneId, restored.TimeZoneId);
+        Assert.True(restored.LeadersCanPresent);
+        Assert.False(restored.GuestsCanPresent);
     }
 
     [Fact]

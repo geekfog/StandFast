@@ -21,6 +21,12 @@ public sealed class Standup
 
     public bool IsActive { get; set; } = true;
 
+    /// <summary>True when leaders who are not on the presenter roster can be marked as presented after attending.</summary>
+    public bool LeadersCanPresent { get; set; }
+
+    /// <summary>True when guests, rostered or visiting, can be marked as presented after attending.</summary>
+    public bool GuestsCanPresent { get; set; }
+
     public DateTimeOffset CreatedUtc { get; set; }
 
     public DateTimeOffset? ModifiedUtc { get; set; }
@@ -28,4 +34,12 @@ public sealed class Standup
     public string? ETag { get; set; }
 
     public bool OccursOn(DateOnly date) => RecurrenceDays.Includes(date.DayOfWeek);
+
+    /// <summary>True when someone of <paramref name="kind"/> gives an update at this standup. Presenters always do; leaders and guests only where it allows them to.</summary>
+    public bool Presents(AttendeeKind kind) => kind switch
+    {
+        AttendeeKind.Leader => LeadersCanPresent,
+        AttendeeKind.Guest => GuestsCanPresent,
+        _ => true,
+    };
 }

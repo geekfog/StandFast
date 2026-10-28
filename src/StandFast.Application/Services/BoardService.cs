@@ -78,13 +78,14 @@ public sealed class BoardService(
         IEnumerable<(Person Person, BoardParticipantDto Participant)> nonPresenters = peopleTask.Result
             .Where(person => !presenterIds.Contains(person.Id))
             .Select(person => (Person: person, IsRostered: rosterByPerson.TryGetValue(person.Id, out (AttendeeKind Kind, StandupMember Member) roster), Roster: roster))
+            .Select(item => (item.Person, item.IsRostered, Kind: item.IsRostered ? item.Roster.Kind : AttendeeKind.Guest, DisplayOrder: item.IsRostered ? item.Roster.Member.DisplayOrder : BoardMappings.GuestDisplayOrder))
             .Select(item => (item.Person, item.IsRostered, Participant: new StandupEntryPair(entriesOnDate.GetValueOrDefault(item.Person.Id), null).ToParticipantDto(
-                item.Person, item.IsRostered ? item.Roster.Kind : AttendeeKind.Guest, item.IsRostered ? item.Roster.Member.DisplayOrder : BoardMappings.GuestDisplayOrder)))
-            .Where(item => AttendanceTransitions.IsNonPresenterPlacement(item.Participant.State) && (item.IsRostered || AttendanceTransitions.IsAttending(item.Participant.State)))
+                item.Person, item.Kind, standup.Presents(item.Kind), item.DisplayOrder)))
+            .Where(item => AttendanceTransitions.IsNonPresenterPlacement(item.Participant.State, item.Participant.Presents) && (item.IsRostered || AttendanceTransitions.IsAttending(item.Participant.State)))
             .Select(item => (item.Person, item.Participant));
 
         IReadOnlyList<BoardParticipantDto> participants = loaded
-            .Select(item => (item.Person, Participant: item.Pair.ToParticipantDto(item.Person, AttendeeKind.Presenter, item.Member.DisplayOrder)))
+            .Select(item => (item.Person, Participant: item.Pair.ToParticipantDto(item.Person, AttendeeKind.Presenter, presents: true, item.Member.DisplayOrder)))
             .Concat(nonPresenters)
             .Where(item => AttendanceTransitions.IsOnBoard(item.Participant.State, item.Person.IsActive))
             .Select(item => item.Participant)
@@ -138,10 +139,10 @@ public sealed class BoardService(
     }
 
     public Task<BoardParticipantDto?> AdvanceAsync(Guid standupId, DateOnly meetingDate, Guid personId, CancellationToken cancellationToken = default) =>
-        ChangeStateAsync(standupId, meetingDate, personId, AttendanceTransitions.Advance, cancellationToken);
+        ChangeStateAsync(standupId, meetingDate, personId, (attendee, state) => AttendanceTransitions.Advance(state, attendee.Kind, attendee.Presents), cancellationToken);
 
     public Task<BoardParticipantDto?> RevertAsync(Guid standupId, DateOnly meetingDate, Guid personId, CancellationToken cancellationToken = default) =>
-        ChangeStateAsync(standupId, meetingDate, personId, AttendanceTransitions.Revert, cancellationToken);
+        ChangeStateAsync(standupId, meetingDate, personId, (attendee, state) => AttendanceTransitions.Revert(state, attendee.Kind), cancellationToken);
 
     public async Task<BoardParticipantDto?> SaveUpdateAsync(ParticipantUpdateDto update, CancellationToken cancellationToken = default)
     {
@@ -160,10 +161,9 @@ public sealed class BoardService(
             return null;
         }
 
-        bool recordsBlockersAndParkingLot = attendee.Kind.RecordsBlockersAndParkingLot();
         entry.Update = OptionalText.Normalize(update.Update);
-        entry.Blockers = recordsBlockersAndParkingLot ? OptionalText.Normalize(update.Blockers) : null;
-        entry.ParkingLot = recordsBlockersAndParkingLot ? OptionalText.Normalize(update.ParkingLot) : null;
+        entry.Blockers = attendee.Presents ? OptionalText.Normalize(update.Blockers) : null;
+        entry.ParkingLot = attendee.Presents ? OptionalText.Normalize(update.ParkingLot) : null;
 
         // Saving every box empty deletes the update. The entry row goes too unless it still records attendance.
         bool isDeleted = !entry.HasContent;
@@ -211,7 +211,7 @@ public sealed class BoardService(
         (await standups.GetMeetingsAsync(standupId, from, to, cancellationToken)).Where(meeting => meeting.IsLocked).Select(meeting => meeting.MeetingDate).ToHashSet();
 
     private async Task<BoardParticipantDto?> ChangeStateAsync(
-        Guid standupId, DateOnly meetingDate, Guid personId, Func<AttendanceState, AttendeeKind, AttendanceState> transition, CancellationToken cancellationToken)
+        Guid standupId, DateOnly meetingDate, Guid personId, Func<Attendee, AttendanceState, AttendanceState> transition, CancellationToken cancellationToken)
     {
         StandupMeeting? meeting = await standups.GetMeetingAsync(standupId, meetingDate, cancellationToken);
         GuardUnlocked(standupId, meetingDate, meeting);
@@ -230,7 +230,7 @@ public sealed class BoardService(
             return null;
         }
 
-        AttendanceState next = transition(previous, attendee.Kind);
+        AttendanceState next = transition(attendee, previous);
         if (next == previous)
         {
             return attendee.ToParticipantDto(new StandupEntryPair(entry, pair.Prior));
@@ -284,13 +284,14 @@ public sealed class BoardService(
 
     /// <summary>
     /// How a person takes part in the standup: the first of its presenter, leader, and guest rosters they are on, or a visiting guest when they are on none.
-    /// Null when their person record has gone.
+    /// Null when their person record or the standup has gone.
     /// Whether an inactive person can be changed on a given date is <see cref="Attendee.IsOnBoard"/>.
     /// </summary>
     private async Task<Attendee?> ResolveAttendeeAsync(Guid standupId, Guid personId, CancellationToken cancellationToken)
     {
-        Person? person = await people.GetAsync(personId, cancellationToken);
-        if (person is null)
+        Task<Person?> personTask = people.GetAsync(personId, cancellationToken);
+        Task<Standup?> standupTask = standups.GetAsync(standupId, cancellationToken);
+        if (await personTask is not { } person || await standupTask is not { } standup)
         {
             return null;
         }
@@ -299,11 +300,11 @@ public sealed class BoardService(
         {
             if (await FindActiveMemberAsync(standupId, personId, kind.Roster(), cancellationToken) is { } member)
             {
-                return new Attendee(person, kind, member.DisplayOrder);
+                return new Attendee(person, kind, standup.Presents(kind), member.DisplayOrder);
             }
         }
 
-        return new Attendee(person, AttendeeKind.Guest, BoardMappings.GuestDisplayOrder);
+        return new Attendee(person, AttendeeKind.Guest, standup.Presents(AttendeeKind.Guest), BoardMappings.GuestDisplayOrder);
     }
 
     /// <summary>The person behind a leader pick, or null when they are not on the standup's leader roster, are not attending this date, or their person record has gone.</summary>
@@ -329,9 +330,9 @@ public sealed class BoardService(
     private static string MeetingTargetId(Guid standupId, DateOnly meetingDate) => $"{standupId}/{MeetingCalendar.ToRouteValue(meetingDate)}";
 
     /// <summary>A person resolved against one standup, carrying what a board tile needs beyond their entries.</summary>
-    private sealed record Attendee(Person Person, AttendeeKind Kind, int DisplayOrder)
+    private sealed record Attendee(Person Person, AttendeeKind Kind, bool Presents, int DisplayOrder)
     {
-        public BoardParticipantDto ToParticipantDto(StandupEntryPair pair) => pair.ToParticipantDto(Person, Kind, DisplayOrder);
+        public BoardParticipantDto ToParticipantDto(StandupEntryPair pair) => pair.ToParticipantDto(Person, Kind, Presents, DisplayOrder);
 
         /// <summary>The board's own visibility rule, so nothing can change someone the board does not show, such as an inactive person not attending.</summary>
         public bool IsOnBoard(AttendanceState stored) => AttendanceTransitions.IsOnBoard(AttendanceTransitions.Placement(stored, Kind), Person.IsActive);

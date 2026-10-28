@@ -3,7 +3,11 @@ using StandFast.Domain.Enums;
 namespace StandFast.Application.Dtos;
 
 /// <summary>Everything the board needs for one participant on one date, including the prior update that the "copy forward" action pulls from.</summary>
-/// <param name="Kind">Whether this person presents at the standup or attends it as a guest. Guests record notes only, with no blockers or parking lot.</param>
+/// <param name="Kind">Which of the standup's rosters this person takes part from, or a visiting guest when they are on none.</param>
+/// <param name="Presents">
+/// True when this person can be marked as presented: always for a presenter, and for a leader or guest when the standup allows it. Anyone who presents
+/// records blockers and a parking lot alongside their update; everyone else records notes only.
+/// </param>
 public sealed record BoardParticipantDto(
     Guid PersonId,
     string DisplayName,
@@ -17,6 +21,7 @@ public sealed record BoardParticipantDto(
     DateTimeOffset? PhotoSavedUtc,
     int DisplayOrder,
     AttendeeKind Kind,
+    bool Presents,
     AttendanceState State,
     DateTimeOffset? MarkedAvailableUtc,
     DateTimeOffset? PresentedUtc,

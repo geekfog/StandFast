@@ -11,7 +11,8 @@ public static class BoardMappings
     public const int GuestDisplayOrder = 0;
 
     /// <summary>Composes one board tile from the person, how they take part, their roster position, and the current/prior entry pair returned by storage.</summary>
-    public static BoardParticipantDto ToParticipantDto(this StandupEntryPair pair, Person person, AttendeeKind kind, int displayOrder)
+    /// <param name="presents">Whether the standup lets someone of <paramref name="kind"/> present; see <see cref="Standup.Presents"/>.</param>
+    public static BoardParticipantDto ToParticipantDto(this StandupEntryPair pair, Person person, AttendeeKind kind, bool presents, int displayOrder)
     {
         StandupEntry? current = pair.Current;
         StandupEntry? prior = pair.Prior;
@@ -29,6 +30,7 @@ public static class BoardMappings
             person.PhotoSavedUtc,
             displayOrder,
             kind,
+            presents,
             AttendanceTransitions.Placement(current?.State ?? AttendanceState.Roster, kind),
             current?.MarkedAvailableUtc,
             current?.PresentedUtc,

@@ -43,7 +43,7 @@ public sealed class AttendanceTransitionTests
     [InlineData(AttendanceState.Available, AttendanceState.Presented)]
     [InlineData(AttendanceState.Presented, AttendanceState.Presented)]
     public void Advance_MovesAPresenterOneColumnRight(AttendanceState from, AttendanceState expected) =>
-        Assert.Equal(expected, AttendanceTransitions.Advance(from, AttendeeKind.Presenter));
+        Assert.Equal(expected, AttendanceTransitions.Advance(from, AttendeeKind.Presenter, presents: true));
 
     [Theory]
     [InlineData(AttendanceState.Presented, AttendanceState.Available)]
@@ -55,8 +55,22 @@ public sealed class AttendanceTransitionTests
     [Theory]
     [InlineData(AttendanceState.Roster, AttendanceState.Guest)]
     [InlineData(AttendanceState.Guest, AttendanceState.Guest)]
-    public void Advance_NeverTakesAGuestPastTheGuestList(AttendanceState from, AttendanceState expected) =>
-        Assert.Equal(expected, AttendanceTransitions.Advance(from, AttendeeKind.Guest));
+    public void Advance_NeverTakesAGuestPastTheGuestList_WhenGuestsCannotPresent(AttendanceState from, AttendanceState expected) =>
+        Assert.Equal(expected, AttendanceTransitions.Advance(from, AttendeeKind.Guest, presents: false));
+
+    [Theory]
+    [InlineData(AttendeeKind.Leader, AttendanceState.Roster, AttendanceState.Leader)]
+    [InlineData(AttendeeKind.Leader, AttendanceState.Leader, AttendanceState.Presented)]
+    [InlineData(AttendeeKind.Guest, AttendanceState.Guest, AttendanceState.Presented)]
+    [InlineData(AttendeeKind.Guest, AttendanceState.Presented, AttendanceState.Presented)]
+    public void Advance_TakesALeaderOrGuestOnToPresented_WhenTheyCanPresent(AttendeeKind kind, AttendanceState from, AttendanceState expected) =>
+        Assert.Equal(expected, AttendanceTransitions.Advance(from, kind, presents: true));
+
+    [Theory]
+    [InlineData(AttendeeKind.Leader, AttendanceState.Presented, AttendanceState.Leader)]
+    [InlineData(AttendeeKind.Guest, AttendanceState.Presented, AttendanceState.Guest)]
+    public void Revert_ReturnsALeaderOrGuestWhoPresentedToTheirOwnSection(AttendeeKind kind, AttendanceState from, AttendanceState expected) =>
+        Assert.Equal(expected, AttendanceTransitions.Revert(from, kind));
 
     [Theory]
     [InlineData(AttendanceState.Guest, AttendanceState.Roster)]

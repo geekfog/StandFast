@@ -18,4 +18,8 @@ public sealed class StandupEditDto
     public string TimeZoneId { get; set; } = TimeZoneIds.Local;
 
     public bool IsActive { get; set; } = true;
+
+    public bool LeadersCanPresent { get; set; }
+
+    public bool GuestsCanPresent { get; set; }
 }

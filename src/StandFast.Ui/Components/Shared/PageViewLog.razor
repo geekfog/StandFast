@@ -1,0 +1,47 @@
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@implements IDisposable
+@inject NavigationManager Navigation
+@inject ILogger<PageViewLog> Logger
+
+@* Logs every page the signed-in user opens, server side, so usage reaches the console and Log Analytics where no browser blocker can stop it. *@
+
+@code {
+    private const string SignedOutUser = "(signed out)";
+
+    /// <summary>The signed-in principal. The cascading authentication state is used because the circuit has no HTTP context to read one from.</summary>
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    /// <summary>Ties together the page views of one browser tab's connection, which is how a visit is told apart from the next.</summary>
+    private readonly string sessionId = Guid.NewGuid().ToString("N");
+
+    private string userName = SignedOutUser;
+    private string userId = SignedOutUser;
+
+    // After render runs only on the interactive circuit, never on the prerender, so the first page is logged once.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        if (AuthenticationStateTask is not null)
+        {
+            ClaimsPrincipal user = (await AuthenticationStateTask).User;
+            userName = user.DisplayName() ?? user.Email() ?? SignedOutUser;
+            userId = user.UserId() ?? SignedOutUser;
+        }
+
+        LogPageView(Navigation.Uri);
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => LogPageView(e.Location);
+
+    private void LogPageView(string uri) =>
+        Logger.LogInformation("Page view /{UsagePage} by {UsageUser} ({UsageUserId}) in session {UsageSession}", Navigation.ToBaseRelativePath(uri), userName, userId, sessionId);
+
+    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
+}

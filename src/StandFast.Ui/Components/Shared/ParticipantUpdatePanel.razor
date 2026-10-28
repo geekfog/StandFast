@@ -167,9 +167,9 @@
     // Cancel takes the place of Close while there are edits to throw away, so the panel only closes with nothing unsaved in it.
     private bool CanCancel => !IsReadOnly && IsDirty;
 
-    private bool RecordsBlockersAndParkingLot => Participant.Kind.RecordsBlockersAndParkingLot();
+    private bool RecordsBlockersAndParkingLot => Participant.Presents;
 
-    // Guests record notes only, so their single box takes the full width.
+    // Anyone who does not present records notes only, so their single box takes the full width.
     private int ColumnWidth => expandedField is null && RecordsBlockersAndParkingLot ? GridColumns / SideBySideColumns : GridColumns;
 
     private string UpdateLabel => RecordsBlockersAndParkingLot ? "Current" : "Notes";

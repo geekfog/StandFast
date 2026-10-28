@@ -20,6 +20,7 @@ StandFast does not host the call and does not connect to any meeting or chat ser
   - [Set up and deploy](#set-up-and-deploy)
   - [Optional settings](#optional-settings)
   - [Access an existing deployment](#access-an-existing-deployment)
+  - [See who uses it](#see-who-uses-it)
 - [⚙️ Development and Support](#development-and-support)
   - [Settings](#settings)
     - [Values set for you](#values-set-for-you)
@@ -32,11 +33,11 @@ StandFast does not host the call and does not connect to any meeting or chat ser
 
 | Term | Meaning |
 | ---- | ------- |
-| Standup | A recurring meeting set up in StandFast, with a name, the days it runs, a start time, a time zone, and three rosters. |
+| Standup | A recurring meeting set up in StandFast, with a name, the days it runs, a start time, a time zone, three rosters, and whether its leaders and its guests can present. |
 | Presenter Roster | The people expected to give an update at a standup. |
 | Leader Roster | The people who may run a standup. One person can be on any combination of rosters. |
 | Guest Roster | The people assigned to attend a standup without presenting. |
-| Guest | Someone on a standup's Guest Roster attending it. A guest can have notes recorded but takes no turn. |
+| Guest | Someone on a standup's Guest Roster attending it. A guest can have notes recorded but takes no turn, unless the standup lets guests present. |
 | Board | One standup on one date, where attendance and updates are recorded. |
 | Turn | A presenter's position in the order people gave their updates on a date. |
 | Update | What a presenter said, in three parts: current update, blockers (what is in their way), and parking lot (topics to take up after the meeting). Each is edited as formatted text and saved as [Markdown](https://www.markdownguide.org/basic-syntax/), a plain-text formatting syntax, which can also be edited directly. |
@@ -83,11 +84,11 @@ People, holidays, standups, rosters, and sprints are set up ahead of time and ch
 | Capability | Outcome | Limitations |
 | ---------- | ------- | ----------- |
 | Multiple standups | Each standup keeps its own schedule, time zone, rosters, and history. | |
-| Attendance and speaking order | One tap marks someone as joined and a second as having presented, so the board shows who is still waiting. Each card shows the turn the person took last time, so the order can be varied. Marking the first person on a date also marks you, when your own card is still on the roster and you are not off that date. | The roster shows Presenters, Leaders, or Guests at a time, each from that standup's own roster, and someone on more than one is listed under the first of those. Leaders who do not present and guests are marked as here in their own sections below Present, and cannot be marked as presented. A presenter with days off covering the date cannot be marked present; tapping them shows a warning instead. |
+| Attendance and speaking order | One tap marks someone as joined and a second as having presented, so the board shows who is still waiting. Each card shows the turn the person took last time, so the order can be varied. Marking the first person on a date also marks you, when your own card is still on the roster and you are not off that date. | The roster shows Presenters, Leaders, or Guests at a time, each from that standup's own roster, and someone on more than one is listed under the first of those. Leaders who are not presenters and guests are marked as here in their own sections below Present. A second tap marks them as presented only when the standup's Leaders can present or Guests can present setting is on; both are off for a new standup. A presenter with days off covering the date cannot be marked present; tapping them shows a warning instead. |
 | Sprints and time off | The board shows the sprint covering its date, in green beside the date, with the working days left in it counting that date. A sprint with a note shows an orange note icon beside it, with the note on hover. A card is marked when the person is off that date or has days off in the rest of the sprint; hovering shows their days off and the working days they have left to contribute. | Working days are Monday to Friday, whatever days the standup runs. Holidays apply to everyone. Days off are whole days. |
 | Leader | Records who ran the standup on each date. | Only people on the Leader Roster who are attending that date can be picked. |
 | Context at a glance | Each card shows the person's photo, their time zone offset from the standup, and their time with the organization, with location, start date, title or role, and email address on hover. | Shown only for details recorded in People. |
-| Updates | Each person's update, blockers, and parking lot are captured with formatting, and last time's entry can be copied in with one click. | Leaders who do not present and guests get one notes box. |
+| Updates | Each person's update, blockers, and parking lot are captured with formatting, and last time's entry can be copied in with one click. | Leaders and guests get one notes box unless the standup lets them present. |
 | History | Any past date opens exactly as recorded, and a locked date cannot be changed by accident. | A locked date must be unlocked to change it. |
 | Reports | A chart of each person's turn over time, a table of the days a standup ran, how many presented, and how long it took, a table of how often each person presented and how long their turns ran, an org chart of everyone under their supervisor, and a table of how many days it has been since each presenter last presented at each standup. | A standup's reports cover a period running back from today, a year at most. The org chart covers all of People and shows an inactive person only when someone active reports up through them. Days Since Last Presented covers every active standup and its whole history, listing only active people on a presenter roster. |
 | People directory | One list of everyone, with photo, title or role, supervisor, organization, department, location, time zone, start date, notes, and days off. It lists active people, or only inactive people while Show inactive is on, and shows the standups each person presents at, leads, and is a guest at. It can be narrowed to presenters, leaders, guests, people on no roster, or any combination of those. | A supervisor is optional, and a save is refused when following supervisors upward would loop back. Removing a person leaves their direct reports with no supervisor and removes their days off. |
@@ -146,7 +147,7 @@ flowchart LR
 | Storage account | Tables hold every record and the audit log. A blob container holds the Data Protection key ring that every replica shares. | Azurite. |
 | Variable groups | Hold every deployment setting and secret, which the pipeline passes to the deployment. A group can instead be [linked to an existing Key Vault](https://learn.microsoft.com/azure/devops/pipelines/library/link-variable-groups-to-key-vaults). | `appsettings.json` and user secrets. |
 | Key Vault | Created by the deployment. Secrets passed in by the pipeline reach the app from here, not as plain environment variables. | User secrets. |
-| Log Analytics | Collects the app's console logs. | The console. |
+| Log Analytics | Collects the app's console logs, including a line for every page view; see [See who uses it](#see-who-uses-it). | The console. |
 | Identity provider | Signs users in; StandFast never sees a password. | The same provider, with the local address registered. |
 | Pipeline | Builds and tests every change to a release branch, then creates or updates every Azure resource and deploys the app. | Not used. |
 
@@ -240,6 +241,18 @@ Each is a variable in the environment's variable group and takes effect on the n
 
 Open the custom domain if one is set, or the container app's **Application Url** in the Azure portal, which the release log also prints. StandFast admits anyone the identity provider signs in for its application, so who can use it is controlled at the provider.
 
+## See who uses it
+
+The server logs one `Page view` line for every page a user opens, with the page address, the user's name and id, and a session id shared by one browser tab's visit. Browser blockers cannot stop it, unlike [Microsoft Clarity](#optional-settings). Changes to data are recorded separately in the audit log table. In Azure, query the page views in the environment's Log Analytics workspace:
+
+```kusto
+ContainerAppConsoleLogs_CL
+| where Log_s has "Page view "
+| parse Log_s with * "Page view " Page " by " User " (" UserId ") in session " Session
+| summarize Views = count(), Sessions = dcount(Session), LastSeen = max(TimeGenerated) by User
+| order by LastSeen desc
+```
+
 # <a id="development-and-support">⚙️</a> Development and Support
 
 | Topic | Detail |
@@ -314,6 +327,8 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 
 ### v01.06.00 — 2026-10-26
 
+- Added a diagram of a typical Scrum cycle to the About page, below Source on GitHub: Product Backlog, Sprint Planning, the Sprint with its Daily Standup, Sprint Review, and Sprint Retrospective, with a loop back to planning for the next sprint. It reads left to right on a wide window and top to bottom on a narrow one.
+- Added Leaders can present and Guests can present settings to each standup, both off by default. With one on, tapping a leader or guest again after marking them as here moves them to Presented, and their update gets blockers and parking lot boxes like a presenter's.
 - Added a Guest Roster to each standup, opened from a new badge icon on its row in Standups, for the people expected to attend without presenting. People shows a Guests column listing the standups each person is a guest at, and a Guests filter between Leaders and Neither.
 - Added tooltips to the roster, edit, and delete icons on each row in Standups.
 - Added a Leaders choice to the board's roster, between Presenters and Guests, listing that standup's leaders who are not also presenters. Guests now lists only that standup's Guest Roster. Tapping a leader or a guest on the roster moves them to a new Leaders section or the Guests section, both below Present. Someone visiting while on no roster still shows in Guests on the dates they were recorded.
@@ -332,6 +347,7 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 - Replaced the `|` dividers under each name on the board with a small gray pill around each detail (status, time zone offset, and time with the organization), which separates them in both light and dark mode and keeps each detail whole when a narrow card wraps.
 - Added the person's email address to the popup on the status detail of their board card, on its own line under their title or role. Selecting none lists everyone. Selecting several lists anyone matching at least one, so Presenters and Neither together, for example, lists everyone not on a leader roster alone.
 - Added optional Microsoft Clarity tracking. When an environment has a Clarity project id, every page loads Clarity's tag for that project; without one, nothing is loaded.
+- Added a server-side log line for every page a signed-in user opens, with the page, the user, and the visit it belongs to. Browser blockers cannot stop it, so it counts every user, and the README gives a Log Analytics query that summarizes it by user.
 
 ### v01.05.00 — 2026-10-19
 
