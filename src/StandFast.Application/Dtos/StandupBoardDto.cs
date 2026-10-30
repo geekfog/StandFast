@@ -5,6 +5,7 @@ namespace StandFast.Application.Dtos;
 /// <summary>The whole board for one standup on one date. The UI splits <see cref="Participants"/> into columns by attendance state.</summary>
 /// <param name="Participants">Everyone on the presenter, leader, and guest rosters, each under the first of those they are on, plus anyone else who visited on this date.</param>
 /// <param name="Leaders">Everyone on the standup's leader roster, in roster order. The leader picker offers those of them attending; see <see cref="LeaderCandidates"/>.</param>
+/// <param name="AnyAttendeeCanLead">True when this date lets anyone attending be picked to lead, not only those on the leader roster.</param>
 /// <param name="LeaderPersonId">Whoever is leading this date, or null while nobody is picked. Leading is optional, so null is a normal state.</param>
 /// <param name="LockedUtc">When this date was closed to changes, or null while it is open. The board reads its whole locked state from this one value.</param>
 /// <param name="PriorPresentationOrder">
@@ -20,6 +21,7 @@ public sealed record StandupBoardDto(
     bool IsScheduledDay,
     IReadOnlyList<BoardParticipantDto> Participants,
     IReadOnlyList<StandupMemberDto> Leaders,
+    bool AnyAttendeeCanLead,
     Guid? LeaderPersonId,
     DateTimeOffset? LockedUtc,
     IReadOnlyDictionary<Guid, int> PriorPresentationOrder,
@@ -27,7 +29,7 @@ public sealed record StandupBoardDto(
     IReadOnlyDictionary<Guid, PersonAvailabilityDto> Availability)
 {
     public static StandupBoardDto Empty(DateOnly meetingDate) =>
-        new(Guid.Empty, string.Empty, meetingDate, false, [], [], null, null, new Dictionary<Guid, int>(), null, new Dictionary<Guid, PersonAvailabilityDto>());
+        new(Guid.Empty, string.Empty, meetingDate, false, [], [], false, null, null, new Dictionary<Guid, int>(), null, new Dictionary<Guid, PersonAvailabilityDto>());
 
     /// <summary>The participant's days off as they bear on this board, or null when they have none that do.</summary>
     public PersonAvailabilityDto? AvailabilityFor(Guid personId) => Availability.GetValueOrDefault(personId);
@@ -35,13 +37,17 @@ public sealed record StandupBoardDto(
     public bool IsLocked => LockedUtc is not null;
 
     /// <summary>
-    /// Who the leader picker offers: the leader roster members attending this date, as a guest or as a presenter. Whoever is already recorded as leading
-    /// stays in the list, so a date recorded before leaders had to attend still shows its leader.
+    /// Who the leader picker offers: the leader roster members attending this date, then, where <see cref="AnyAttendeeCanLead"/> is on, everyone else
+    /// attending. Whoever is already recorded as leading stays in the list, so a date recorded before leaders had to attend still shows its leader.
     /// </summary>
     public IReadOnlyList<StandupMemberDto> LeaderCandidates =>
     [
         .. Leaders.Where(leader => leader.PersonId == LeaderPersonId
             || Participants.Any(participant => participant.PersonId == leader.PersonId && AttendanceTransitions.IsAttending(participant.State))),
+        .. Participants
+            .Where(participant => Leaders.All(leader => leader.PersonId != participant.PersonId)
+                && (participant.PersonId == LeaderPersonId || (AnyAttendeeCanLead && AttendanceTransitions.IsAttending(participant.State))))
+            .Select(participant => new StandupMemberDto(StandupId, participant.PersonId, participant.DisplayName, participant.Email, participant.DisplayOrder, IsActive: true)),
     ];
 
     /// <summary>The participant's turn at the previous meeting, or null when they were not there.</summary>

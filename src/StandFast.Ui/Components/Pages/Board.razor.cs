@@ -86,9 +86,17 @@ public partial class Board
     private IReadOnlyList<StandupMemberDto> LeaderCandidates => board?.LeaderCandidates ?? [];
 
     /// <summary>Says why the leader picker is empty, shown as its tooltip, since an empty dropdown on its own reads as a standup with nobody available to lead.</summary>
-    private string? LeaderEmptyReason => LeaderCandidates.Count > 0 ? null : board?.Leaders.Count > 0
-        ? $"Mark someone on the {LeaderRosterName} as here to pick them."
-        : $"Nobody is on the {LeaderRosterName} for this standup.";
+    private string? LeaderEmptyReason => LeaderCandidates.Count > 0 ? null : AnyAttendeeCanLead
+        ? "Mark someone as here to pick them."
+        : board?.Leaders.Count > 0
+            ? $"Mark someone on the {LeaderRosterName} as here to pick them."
+            : $"Nobody is on the {LeaderRosterName} for this standup. Turn on picking anyone attending to choose someone else.";
+
+    private bool AnyAttendeeCanLead => board?.AnyAttendeeCanLead == true;
+
+    private string LeaderPoolDescription => AnyAttendeeCanLead
+        ? $"Anyone attending can lead on this date. Turn off to offer only the {LeaderRosterName}."
+        : $"Only the {LeaderRosterName} can lead on this date. Turn on to offer anyone attending.";
 
     private static string LeaderRosterName => RosterLabels.RosterTitle(RosterRole.Leader).ToLowerInvariant();
 
@@ -227,6 +235,28 @@ public partial class Board
         }
 
         board = board with { LeaderPersonId = personId };
+    }
+
+    private async Task OnAnyAttendeeCanLeadChangedAsync(bool anyAttendeeCanLead)
+    {
+        if (board is null)
+        {
+            return;
+        }
+
+        Guid? leaderPersonId;
+
+        try
+        {
+            leaderPersonId = await BoardService.SetAnyAttendeeCanLeadAsync(SelectedStandupId, SelectedDate, anyAttendeeCanLead);
+        }
+        catch (BoardLockedException)
+        {
+            await ReloadLockedBoardAsync();
+            return;
+        }
+
+        board = board with { AnyAttendeeCanLead = anyAttendeeCanLead, LeaderPersonId = leaderPersonId };
     }
 
     /// <summary>Locks the date, or asks before reopening one, since unlocking is what puts a finished standup back within reach of a stray tap.</summary>

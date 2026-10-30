@@ -17,6 +17,8 @@ public sealed class StandupMeetingTableEntity : ITableEntity
 
     public Guid? LeaderPersonId { get; set; }
 
+    public bool AnyAttendeeCanLead { get; set; }
+
     public DateTimeOffset? LockedUtc { get; set; }
 
     public DateTimeOffset CreatedUtc { get; set; }

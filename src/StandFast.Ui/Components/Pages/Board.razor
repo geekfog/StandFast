@@ -49,16 +49,23 @@
                             </MudSelect>
                         </MudItem>
                         <MudItem xs="12" sm="6">
-                            @* Only a leader who is here can run the standup, so the picker offers attending leaders rather than the whole leader roster. *@
-                            <MudTooltip Text="@LeaderEmptyReason" Disabled="@(LeaderEmptyReason is null)" Inline="false">
-                                <MudSelect T="Guid?" Value="@board?.LeaderPersonId" ValueChanged="OnLeaderChangedAsync" Label="@RosterLabels.Name(RosterRole.Leader)" Variant="Variant.Outlined" Dense="true" Class="mb-0" Clearable="true"
-                                           Disabled="@(LeaderCandidates.Count == 0 || IsLocked)">
-                                    @foreach (StandupMemberDto leader in LeaderCandidates)
-                                    {
-                                        <MudSelectItem T="Guid?" Value="@leader.PersonId">@leader.DisplayName</MudSelectItem>
-                                    }
-                                </MudSelect>
-                            </MudTooltip>
+                            @* Only someone who is here can run the standup, so the picker offers attending leaders, and everyone attending once the toggle opens it up for the date. *@
+                            <div class="d-flex align-center gap-1">
+                                <MudTooltip Text="@LeaderEmptyReason" Disabled="@(LeaderEmptyReason is null)" Inline="false" RootClass="flex-grow-1">
+                                    <MudSelect T="Guid?" Value="@board?.LeaderPersonId" ValueChanged="OnLeaderChangedAsync" Label="@RosterLabels.Name(RosterRole.Leader)" Variant="Variant.Outlined" Dense="true" Class="mb-0" Clearable="true"
+                                               Disabled="@(LeaderCandidates.Count == 0 || IsLocked)">
+                                        @foreach (StandupMemberDto leader in LeaderCandidates)
+                                        {
+                                            <MudSelectItem T="Guid?" Value="@leader.PersonId">@leader.DisplayName</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                </MudTooltip>
+                                <MudTooltip Text="@LeaderPoolDescription">
+                                    <MudToggleIconButton Toggled="@AnyAttendeeCanLead" ToggledChanged="OnAnyAttendeeCanLeadChangedAsync"
+                                                         Icon="@Icons.Material.Outlined.GroupAdd" ToggledIcon="@Icons.Material.Filled.GroupAdd" ToggledColor="Color.Primary"
+                                                         Disabled="@(board is null || IsLocked)" aria-label="@LeaderPoolDescription" />
+                                </MudTooltip>
+                            </div>
                         </MudItem>
                     </MudGrid>
                 </div>
