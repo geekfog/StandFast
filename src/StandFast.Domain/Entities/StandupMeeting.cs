@@ -13,6 +13,9 @@ public sealed class StandupMeeting
     /// <summary>The person running the standup that day, or null when nobody is picked. Leading is optional, so no leader is a normal state.</summary>
     public Guid? LeaderPersonId { get; set; }
 
+    /// <summary>True when anyone attending this date can be picked to lead, not only those on the leader roster. Off unless turned on for the date.</summary>
+    public bool AnyAttendeeCanLead { get; set; }
+
     /// <summary>
     /// The moment this date's board was closed to changes, or null while it is open. The timestamp carries the flag on its own, so there is no
     /// second boolean that can disagree with it, and when a standup was closed stays on the record.

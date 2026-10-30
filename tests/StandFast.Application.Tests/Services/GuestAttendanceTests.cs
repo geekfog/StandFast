@@ -314,6 +314,77 @@ public sealed class GuestAttendanceTests
     }
 
     [Fact]
+    public async Task LeaderCandidates_LeavesOutPresentersAndGuests_UntilTheDateLetsAnyoneAttendingLead()
+    {
+        BoardTestContext context = new();
+        Person presenter = await context.AddMemberAsync("Ada", "Lovelace");
+        Person guest = await context.AddMemberAsync("Grace", "Hopper", RosterRole.Guest);
+        await context.Service.AdvanceAsync(context.Standup.Id, BoardTestContext.Today, presenter.Id);
+        await context.Service.AdvanceAsync(context.Standup.Id, BoardTestContext.Today, guest.Id);
+
+        StandupBoardDto board = await context.Service.GetBoardAsync(context.Standup.Id, BoardTestContext.Today);
+
+        Assert.Empty(board.LeaderCandidates);
+        Assert.False(await context.Service.SetLeaderAsync(context.Standup.Id, BoardTestContext.Today, presenter.Id));
+        Assert.False(await context.Service.SetLeaderAsync(context.Standup.Id, BoardTestContext.Today, guest.Id));
+    }
+
+    [Fact]
+    public async Task LeaderCandidates_ListsEveryoneAttendingAfterLeaders_WhenTheDateLetsAnyoneAttendingLead()
+    {
+        BoardTestContext context = new();
+        Person presenter = await context.AddMemberAsync("Ada", "Lovelace");
+        await context.AddMemberAsync("Alan", "Turing");
+        Person guest = await context.AddMemberAsync("Grace", "Hopper", RosterRole.Guest);
+        Person visitor = await context.AddPersonAsync("Edsger", "Dijkstra");
+        Person leader = await context.AddMemberAsync("Barbara", "Liskov", RosterRole.Leader);
+        foreach (Person attending in new[] { presenter, guest, visitor, leader })
+        {
+            await context.Service.AdvanceAsync(context.Standup.Id, BoardTestContext.Today, attending.Id);
+        }
+
+        await context.Service.AdvanceAsync(context.Standup.Id, BoardTestContext.Today, presenter.Id);
+        await context.Service.SetAnyAttendeeCanLeadAsync(context.Standup.Id, BoardTestContext.Today, true);
+        StandupBoardDto board = await context.Service.GetBoardAsync(context.Standup.Id, BoardTestContext.Today);
+
+        Assert.Equal(leader.Id, board.LeaderCandidates[0].PersonId);
+        Assert.Equal(new[] { leader.Id, presenter.Id, guest.Id, visitor.Id }.Order(), board.LeaderCandidates.Select(candidate => candidate.PersonId).Order());
+        Assert.True(await context.Service.SetLeaderAsync(context.Standup.Id, BoardTestContext.Today, presenter.Id));
+        Assert.True(await context.Service.SetLeaderAsync(context.Standup.Id, BoardTestContext.Today, visitor.Id));
+        Assert.Empty((await context.Service.GetBoardAsync(context.Standup.Id, BoardTestContext.Yesterday)).LeaderCandidates);
+    }
+
+    [Fact]
+    public async Task SetAnyAttendeeCanLeadAsync_ClearsALeaderFromOutsideTheLeaderRoster_WhenTurnedOff()
+    {
+        BoardTestContext context = new();
+        Person presenter = await context.AddMemberAsync("Ada", "Lovelace");
+        await context.Service.AdvanceAsync(context.Standup.Id, BoardTestContext.Today, presenter.Id);
+        await context.Service.SetAnyAttendeeCanLeadAsync(context.Standup.Id, BoardTestContext.Today, true);
+        await context.Service.SetLeaderAsync(context.Standup.Id, BoardTestContext.Today, presenter.Id);
+
+        Guid? leaderAfter = await context.Service.SetAnyAttendeeCanLeadAsync(context.Standup.Id, BoardTestContext.Today, false);
+        StandupBoardDto board = await context.Service.GetBoardAsync(context.Standup.Id, BoardTestContext.Today);
+
+        Assert.Null(leaderAfter);
+        Assert.Null(board.LeaderPersonId);
+        Assert.False(board.AnyAttendeeCanLead);
+        Assert.Empty(board.LeaderCandidates);
+    }
+
+    [Fact]
+    public async Task SetAnyAttendeeCanLeadAsync_KeepsALeaderFromTheLeaderRoster_WhenTurnedOff()
+    {
+        BoardTestContext context = new();
+        Person leader = await context.AddMemberAsync("Grace", "Hopper", RosterRole.Leader);
+        await context.Service.AdvanceAsync(context.Standup.Id, BoardTestContext.Today, leader.Id);
+        await context.Service.SetAnyAttendeeCanLeadAsync(context.Standup.Id, BoardTestContext.Today, true);
+        await context.Service.SetLeaderAsync(context.Standup.Id, BoardTestContext.Today, leader.Id);
+
+        Assert.Equal(leader.Id, await context.Service.SetAnyAttendeeCanLeadAsync(context.Standup.Id, BoardTestContext.Today, false));
+    }
+
+    [Fact]
     public async Task RevertAsync_ClearsTheLeaderWhenTheyStopAttending()
     {
         BoardTestContext context = new();

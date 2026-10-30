@@ -111,6 +111,15 @@ public sealed class BoardLockTests
     }
 
     [Fact]
+    public async Task SetAnyAttendeeCanLeadAsync_IsRefusedOnALockedDate()
+    {
+        BoardTestContext context = new();
+        await context.Service.LockAsync(context.Standup.Id, BoardTestContext.Today);
+
+        await Assert.ThrowsAsync<BoardLockedException>(() => context.Service.SetAnyAttendeeCanLeadAsync(context.Standup.Id, BoardTestContext.Today, true));
+    }
+
+    [Fact]
     public async Task GetLockedDatesAsync_ReturnsOnlyTheLockedDatesInTheRange()
     {
         BoardTestContext context = new();

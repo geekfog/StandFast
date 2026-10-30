@@ -19,9 +19,16 @@ public interface IBoardService
 
     /// <summary>
     /// Records who is leading this date, or clears it when <paramref name="personId"/> is null. False means the person is not on the standup's leader
-    /// roster or is not attending this date, and nothing was written, which is what a picker filled before either changed produces.
+    /// roster while the date does not let anyone attending lead, or is not attending this date, and nothing was written, which is what a picker filled
+    /// before either changed produces.
     /// </summary>
     Task<bool> SetLeaderAsync(Guid standupId, DateOnly meetingDate, Guid? personId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lets anyone attending this date be picked to lead, or limits the pick back to the leader roster, which clears a leader from outside it. Returns
+    /// who is leading afterward. Throws <see cref="BoardLockedException"/> once the date has been locked.
+    /// </summary>
+    Task<Guid?> SetAnyAttendeeCanLeadAsync(Guid standupId, DateOnly meetingDate, bool anyAttendeeCanLead, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Closes this date to changes and returns the moment the lock records. That moment is the current time during the standup and the day's last turn

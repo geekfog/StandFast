@@ -1,3 +1,6 @@
+@using StandFast.Domain.Abstractions
+@inject IClock Clock
+
 <MudPaper Outlined="true"
           Class="@($"d-flex align-center pa-2 mb-2 {(CanAdvance ? "standfast-participant" : "standfast-participant-inert")} {(IsSelected ? "standfast-participant-selected" : string.Empty)}")"
           @onclick="OnAdvanceAsync">
@@ -43,8 +46,12 @@
             </MudTooltip>
             @if (OffsetFromStandup is { } offset)
             {
-                <MudTooltip Text="@OffsetTooltip(offset)">
-                    <span class="standfast-card-fact">@offset.ToOffsetLabel()</span>
+                @* The tooltip shows the person's time now, so it reads the clock each time it opens rather than when the card last rendered. *@
+                <MudTooltip VisibleChanged="OnOffsetTooltipVisibleChanged">
+                    <TooltipContent>@OffsetTooltip(offset)</TooltipContent>
+                    <ChildContent>
+                        <span class="standfast-card-fact">@offset.ToOffsetLabel()</span>
+                    </ChildContent>
                 </MudTooltip>
             }
             @if (TenureAtMeeting is { } tenure)
@@ -157,15 +164,30 @@
         _ => Participant.UpdateSavedUtc is null ? "Not yet marked present" : $"Update saved {Participant.UpdateSavedUtc.ToLocalDisplay(TimeZone)}",
     };
 
+    /// <summary>When the offset tooltip last opened, so it shows the participant's time as of then.</summary>
+    private DateTimeOffset offsetTooltipOpenedUtc;
+
+    private TimeZoneInfo? ParticipantTimeZone => TimeZoneIds.Resolve(Participant.TimeZoneId);
+
     /// <summary>How far the participant's clock is from the standup's, or null when their time zone is not recorded.</summary>
-    private TimeSpan? OffsetFromStandup => TimeZoneIds.Resolve(Participant.TimeZoneId) is { } zone ? TimeZoneIds.OffsetFrom(zone, TimeZone, MeetingStart) : null;
+    private TimeSpan? OffsetFromStandup => ParticipantTimeZone is { } zone ? TimeZoneIds.OffsetFrom(zone, TimeZone, MeetingStart) : null;
 
     /// <summary>Time at the organization as of the meeting date, or null when no start date is recorded or it falls after that date.</summary>
     private Tenure? TenureAtMeeting => Participant.StartDate is { } start ? Tenure.Between(start, MeetingDate) : null;
 
-    private string OffsetTooltip(TimeSpan offset) => string.IsNullOrEmpty(Participant.Location)
-        ? offset.ToOffsetDescription()
-        : $"{Participant.Location} · {offset.ToOffsetDescription()}";
+    private string OffsetTooltip(TimeSpan offset)
+    {
+        string description = $"{offset.ToOffsetDescription()} · {TimeZoneInfo.ConvertTime(offsetTooltipOpenedUtc, ParticipantTimeZone!).ToString(UiFormats.TimeOfDay)} there now";
+        return string.IsNullOrEmpty(Participant.Location) ? description : $"{Participant.Location} · {description}";
+    }
+
+    private void OnOffsetTooltipVisibleChanged(bool visible)
+    {
+        if (visible)
+        {
+            offsetTooltipOpenedUtc = Clock.UtcNow;
+        }
+    }
 
     /// <summary>False on a locked date, and for anyone a tap would leave where they are, such as a guest already recorded.</summary>
     private bool CanAdvance => !IsLocked && AttendanceTransitions.Advance(Participant.State, Participant.Kind, Participant.Presents) != Participant.State;
