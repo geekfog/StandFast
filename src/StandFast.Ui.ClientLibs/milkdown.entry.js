@@ -17,12 +17,11 @@ export {
     toggleStrongCommand,
     turnIntoTextCommand,
     wrapInBlockquoteCommand,
-    wrapInBulletListCommand,
-    wrapInHeadingCommand,
-    wrapInOrderedListCommand
+    wrapInHeadingCommand
 } from '@milkdown/kit/preset/commonmark';
 export { toggleStrikethroughCommand } from '@milkdown/kit/preset/gfm';
 export { lift } from '@milkdown/kit/prose/commands';
+export { wrapInList } from '@milkdown/kit/prose/schema-list';
 export { Plugin } from '@milkdown/kit/prose/state';
 export { callCommand, replaceAll } from '@milkdown/kit/utils';
 export { defaultHandlers } from 'mdast-util-to-markdown';
