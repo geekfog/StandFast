@@ -86,7 +86,7 @@ const configure = (entry, italicMarker) => (ctx) => {
     ctx.update(Milkdown.editorViewOptionsCtx, (options) => ({ ...options, attributes: { class: 'standfast-markdown' } }));
     // Pasted or dropped images would only ever link to this browser's memory, so they are ignored.
     ctx.update(Milkdown.uploadConfig.key, (options) => ({ ...options, enableHtmlFileUploader: false, uploader: async () => [] }));
-    ctx.update(Milkdown.prosePluginsCtx, (plugins) => [...plugins, changePlugin(entry)]);
+    ctx.update(Milkdown.prosePluginsCtx, (plugins) => [...plugins, changePlugin(entry), emptyLineDeletePlugin()]);
 };
 
 const markdownOf = (entry, doc) => {
@@ -113,6 +113,32 @@ const changePlugin = (entry) => new Milkdown.Plugin({
             }
         }
     })
+});
+
+const deleteKey = 'Delete';
+
+// Delete on an empty line before a list, quote or table removes the line, where ProseMirror would otherwise lift the block's first line out of it (dropping its number or bullet).
+const emptyLineDeletePlugin = () => new Milkdown.Plugin({
+    props: {
+        handleDOMEvents: {
+            keydown: (view, event) => {
+                const { $cursor } = view.state.selection;
+                if (event.key !== deleteKey || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey || !$cursor || $cursor.parent.content.size > 0) {
+                    return false;
+                }
+                const container = $cursor.node(-1);
+                const index = $cursor.index(-1);
+                const next = container.maybeChild(index + 1);
+                if (!next || next.isTextblock || !container.canReplace(index, index + 1)) {
+                    return false;
+                }
+                event.preventDefault();
+                // The caret maps to the nearest text position after the removed line, which is the start of the next block.
+                view.dispatch(view.state.tr.delete($cursor.before(), $cursor.after()).scrollIntoView());
+                return true;
+            }
+        }
+    }
 });
 
 const isInside = (view, typeName) => {
@@ -153,8 +179,8 @@ const run = (editor, command, payload) => editor.action(Milkdown.callCommand(com
 
 const callCommand = (command) => (editor) => run(editor, command);
 
-// A list button takes lines out of a list of its own kind, and otherwise moves them into one.
-const toggleList = (editor, view, listType, wrapCommand) => {
+// A list button takes lines out of a list of its own kind, and otherwise moves them into one, as one item per selected line.
+const toggleList = (editor, view, listType) => {
     const otherListType = listType === nodeTypes.bulletList ? nodeTypes.orderedList : nodeTypes.bulletList;
     if (isInside(view, listType)) {
         return run(editor, Milkdown.liftListItemCommand);
@@ -162,10 +188,10 @@ const toggleList = (editor, view, listType, wrapCommand) => {
     while (isInside(view, otherListType) && run(editor, Milkdown.liftListItemCommand)) {
         // Lifts one level per pass until the lines are out of the other kind of list.
     }
-    return run(editor, wrapCommand);
+    return Milkdown.wrapInList(view.state.schema.nodes[listType])(view.state, view.dispatch);
 };
 
-const toggleBulletList = (editor, view) => toggleList(editor, view, nodeTypes.bulletList, Milkdown.wrapInBulletListCommand);
+const toggleBulletList = (editor, view) => toggleList(editor, view, nodeTypes.bulletList);
 
 const isTask = (view) => [...selectedListItems(view.state).values()].some((item) => item.attrs.checked !== null);
 
@@ -180,7 +206,7 @@ const actions = {
         ? run(editor, Milkdown.turnIntoTextCommand)
         : run(editor, Milkdown.wrapInHeadingCommand, linePrefix.trim().length),
     BulletedList: (editor, view) => isInside(view, nodeTypes.bulletList) && isTask(view) ? setTaskState(view, null) : toggleBulletList(editor, view),
-    NumberedList: (editor, view) => toggleList(editor, view, nodeTypes.orderedList, Milkdown.wrapInOrderedListCommand),
+    NumberedList: (editor, view) => toggleList(editor, view, nodeTypes.orderedList),
     TaskList: (editor, view) => {
         if (isTask(view)) {
             return setTaskState(view, null);
