@@ -86,7 +86,7 @@ const configure = (entry, italicMarker) => (ctx) => {
     ctx.update(Milkdown.editorViewOptionsCtx, (options) => ({ ...options, attributes: { class: 'standfast-markdown' } }));
     // Pasted or dropped images would only ever link to this browser's memory, so they are ignored.
     ctx.update(Milkdown.uploadConfig.key, (options) => ({ ...options, enableHtmlFileUploader: false, uploader: async () => [] }));
-    ctx.update(Milkdown.prosePluginsCtx, (plugins) => [...plugins, changePlugin(entry)]);
+    ctx.update(Milkdown.prosePluginsCtx, (plugins) => [...plugins, changePlugin(entry), emptyLineDeletePlugin()]);
 };
 
 const markdownOf = (entry, doc) => {
@@ -113,6 +113,32 @@ const changePlugin = (entry) => new Milkdown.Plugin({
             }
         }
     })
+});
+
+const deleteKey = 'Delete';
+
+// Delete on an empty line before a list, quote or table removes the line, where ProseMirror would otherwise lift the block's first line out of it (dropping its number or bullet).
+const emptyLineDeletePlugin = () => new Milkdown.Plugin({
+    props: {
+        handleDOMEvents: {
+            keydown: (view, event) => {
+                const { $cursor } = view.state.selection;
+                if (event.key !== deleteKey || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey || !$cursor || $cursor.parent.content.size > 0) {
+                    return false;
+                }
+                const container = $cursor.node(-1);
+                const index = $cursor.index(-1);
+                const next = container.maybeChild(index + 1);
+                if (!next || next.isTextblock || !container.canReplace(index, index + 1)) {
+                    return false;
+                }
+                event.preventDefault();
+                // The caret maps to the nearest text position after the removed line, which is the start of the next block.
+                view.dispatch(view.state.tr.delete($cursor.before(), $cursor.after()).scrollIntoView());
+                return true;
+            }
+        }
+    }
 });
 
 const isInside = (view, typeName) => {
