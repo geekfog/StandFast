@@ -31,8 +31,14 @@ public partial class Board
     private Guid? selectedPersonId;
     private ParticipantUpdatePanel? updatePanel;
 
-    /// <summary>Who the roster column lists. Presenters tapped from it become present, leaders land in Leaders, and guests in Guests.</summary>
-    private AttendeeKind rosterView = AttendeeKind.Presenter;
+    /// <summary>
+    /// Who the roster column lists, where null lists everyone. Presenters tapped from it become present, leaders land in Leaders, and guests in Guests;
+    /// someone on several rosters is listed once, under the first of presenter, leader, then guest.
+    /// </summary>
+    private AttendeeKind? rosterView;
+
+    /// <summary>The roster filter's options: everyone, then each kind of attendee.</summary>
+    private static readonly IReadOnlyList<AttendeeKind?> RosterViews = [null, .. AttendeeKindExtensions.InDisplayOrder.Cast<AttendeeKind?>()];
 
     /// <summary>What the standup picker shows. It follows the URL, and holds a new choice only while unsaved edits are confirmed, so a declined switch puts the picker back.</summary>
     private Guid standupPickerValue;
@@ -158,7 +164,11 @@ public partial class Board
     /// <summary>Everyone in one state, in that column's order. The roster lists only the kind of attendee the filter is set to.</summary>
     private IReadOnlyList<BoardParticipantDto> ParticipantsIn(AttendanceState state) => board is null
         ? []
-        : board.Participants.Where(participant => participant.State == state && (state != AttendanceState.Roster || participant.Kind == rosterView)).InColumnOrder(state);
+        : board.Participants.Where(participant => participant.State == state && (state != AttendanceState.Roster || InRosterView(participant))).InColumnOrder(state);
+
+    private bool InRosterView(BoardParticipantDto participant) => rosterView is null || participant.Kind == rosterView;
+
+    private string RosterViewName => rosterView is { } kind ? $"the {RosterLabels.RosterTitle(kind.Roster()).ToLowerInvariant()}" : "any roster";
 
     private string EmptyColumnText(AttendanceState state) => state switch
     {
@@ -166,7 +176,7 @@ public partial class Board
         AttendanceState.Presented => "Tap a name again once they have given their update.",
         AttendanceState.Leader => EmptyNonPresenterText(AttendeeKind.Leader),
         AttendanceState.Guest => EmptyNonPresenterText(AttendeeKind.Guest),
-        _ when board?.Participants.Any(participant => participant.Kind == rosterView) != true => $"Nobody is on the {RosterLabels.RosterTitle(rosterView.Roster()).ToLowerInvariant()} for this standup.",
+        _ when board?.Participants.Any(InRosterView) != true => $"Nobody is on {RosterViewName} for this standup.",
         _ => "Everyone has been marked here.",
     };
 

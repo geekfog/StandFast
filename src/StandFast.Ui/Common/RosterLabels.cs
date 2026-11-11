@@ -20,6 +20,12 @@ public static class RosterLabels
     /// <summary>Plural name of how someone takes part, as used by the board's roster filter.</summary>
     public static string Plural(AttendeeKind kind) => Plural(kind.Roster());
 
+    /// <summary>The board's roster filter option that lists everyone on any roster.</summary>
+    public const string AllRosters = "All";
+
+    /// <summary>Name of the board's roster filter option, where null is <see cref="AllRosters"/>.</summary>
+    public static string Plural(AttendeeKind? kind) => kind is { } value ? Plural(value) : AllRosters;
+
     /// <summary>Title of the roster dialog and of the button that opens it.</summary>
     public static string RosterTitle(RosterRole role) => string.Concat(Name(role), " Roster");
 
