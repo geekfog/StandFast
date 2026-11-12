@@ -16,6 +16,12 @@
     <div class="ml-3 flex-grow-1 standfast-participant-text">
         <div class="d-flex align-center">
             <MudText Typo="Typo.body1">@Participant.DisplayName</MudText>
+            @if (Participant.State == AttendanceState.Roster)
+            {
+                <MudTooltip Text="@KindDescription">
+                    <MudIcon Icon="@StandFastTheme.KindIcon(Participant.Kind)" Color="@StandFastTheme.KindColor(Participant.Kind)" Size="Size.Small" Class="ml-1" aria-label="@KindDescription" />
+                </MudTooltip>
+            }
             @if (IsSelf)
             {
                 <MudTooltip Text="@SelfDescription">
@@ -146,6 +152,8 @@
     public EventCallback<Guid> OnSelect { get; set; }
 
     private const string SelfDescription = "This is you";
+
+    private string KindDescription => RosterLabels.Name(Participant.Kind.Roster());
 
     private string UpdateActionDescription => Participant.HasUpdate ? "Open recorded update" : "Open update";
 
