@@ -137,9 +137,16 @@
     position: relative;
 }
 
-.standfast-today {
+/* The :focus selector outranks MudBlazor's button:focus reset, which would otherwise drop the ring while the clicked day still holds focus. */
+.standfast-today,
+.standfast-today:focus {
     outline: 2px dashed var(--mud-palette-secondary);
     outline-offset: -2px;
+}
+
+/* When today is also the selected day, the ring sits just outside the button, where the filled background cannot hide it. */
+.mud-button-filled.standfast-today {
+    outline-offset: 2px;
 }
 
 /* Dot beneath a day in the week strip, marking a date someone presented on. Always laid out, coloured only when the date has one. */

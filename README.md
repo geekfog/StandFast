@@ -336,6 +336,7 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 - Showed the notes icon from the board's cards beside the hint at the bottom of the board that tells you to tap it.
 - Shaded each board section's header in that section's color, such as green for Presented, light in light mode and dark in dark mode, with its icon, title, and count in a stronger shade of the same color.
 - Added a calendar button above Today on the board's week strip that opens a calendar for jumping straight to any date, with its month and year header opening month and year lists.
+- Kept today's dashed outline on the week strip visible when today is the selected day, drawn just outside the highlighted button, including right after clicking it.
 - Hovering the time zone offset on a board card now also shows the person's current local time, as of when the tooltip opens.
 - Added a group icon beside the board's Leader dropdown that, for that date only, lets any presenter, leader, or guest who is here or has presented be picked as leader, listed after the attending leaders. It is off for every date until turned on, and turning it back off clears a leader from outside the Leader Roster.
 - Added Leaders can present and Guests can present settings to each standup, both off by default. With one on, tapping a leader or guest again after marking them as here moves them to Presented, and their update gets blockers and parking lot boxes like a presenter's.
