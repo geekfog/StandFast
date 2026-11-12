@@ -10,6 +10,7 @@ using StandFast.Domain.Enums;
 using StandFast.Ui.Common;
 using StandFast.Ui.Components.Shared;
 using StandFast.Ui.Configuration;
+using StandFast.Ui.Services;
 
 namespace StandFast.Ui.Components.Pages;
 
@@ -26,7 +27,17 @@ public partial class Board
     private StandupBoardDto? board;
     private IReadOnlyCollection<DateOnly> presentedDates = [];
     private IReadOnlyCollection<DateOnly> lockedDates = [];
-    private TimeZoneInfo timeZone = TimeZoneInfo.Local;
+
+    /// <summary>The selected standup's time zone, which decides the meeting date, which date is today, and when the meeting starts.</summary>
+    private TimeZoneInfo standupTimeZone = TimeZoneInfo.Local;
+
+    /// <summary>The viewer's browser time zone, or null until it is read or when it cannot be.</summary>
+    private TimeZoneInfo? browserTimeZone;
+
+    /// <summary>Short name of <see cref="DisplayTimeZone"/> on the meeting date, such as CST, or null when the browser has none. Valid for <see cref="abbreviatedFor"/> only.</summary>
+    private string? displayTimeZoneAbbreviation;
+    private (string ZoneId, DateTimeOffset Instant)? abbreviatedFor;
+
     private DateOnly today;
     private Guid? selectedPersonId;
     private ParticipantUpdatePanel? updatePanel;
@@ -59,6 +70,9 @@ public partial class Board
     private IClock Clock { get; set; } = default!;
 
     [Inject]
+    private BrowserTimeZone BrowserTimeZone { get; set; } = default!;
+
+    [Inject]
     private IOptions<StandFastUiOptions> UiOptions { get; set; } = default!;
 
     [Inject]
@@ -85,7 +99,7 @@ public partial class Board
     private MeetingDays SelectedStandupDays => SelectedStandup?.RecurrenceDays ?? MeetingDays.EveryDay;
 
     /// <summary>When the selected standup starts on the selected date. Each card's time zone offset is measured at this instant, so daylight saving on that date counts.</summary>
-    private DateTimeOffset MeetingStart => TimeZoneIds.ToInstant(SelectedDate, SelectedStandup?.StartTimeLocal ?? TimeOnly.MinValue, timeZone);
+    private DateTimeOffset MeetingStart => TimeZoneIds.ToInstant(SelectedDate, SelectedStandup?.StartTimeLocal ?? TimeOnly.MinValue, standupTimeZone);
 
     private BoardParticipantDto? SelectedParticipant => board?.Participants.FirstOrDefault(participant => participant.PersonId == selectedPersonId);
 
@@ -106,12 +120,26 @@ public partial class Board
 
     private static string LeaderRosterName => RosterLabels.RosterTitle(RosterRole.Leader).ToLowerInvariant();
 
+    /// <summary>The time zone the board's times of day are shown in: the browser's when known, otherwise the standup's.</summary>
+    private TimeZoneInfo DisplayTimeZone => browserTimeZone ?? standupTimeZone;
+
+    private (string ZoneId, DateTimeOffset Instant) DisplayTimeZoneKey => (TimeZoneIds.ToStored(DisplayTimeZone.Id), MeetingStart);
+
+    /// <summary>The shown time zone's short name, such as CST or CDT on the meeting date, or its IANA id when the browser has no short name for it.</summary>
+    private string DisplayTimeZoneLabel => abbreviatedFor == DisplayTimeZoneKey && displayTimeZoneAbbreviation is { } abbreviation ? abbreviation : DisplayTimeZoneKey.ZoneId;
+
+    private string DisplayTimeZoneDescription => browserTimeZone is null
+        ? $"Times are shown in the standup's time zone, {DescribeTimeZone(standupTimeZone)}, because your browser's time zone is not available."
+        : $"Times are shown in your browser's time zone, {DescribeTimeZone(browserTimeZone)}. The meeting date follows the standup's time zone, {DescribeTimeZone(standupTimeZone)}.";
+
+    private static string DescribeTimeZone(TimeZoneInfo zone) => $"{TimeZoneIds.ToStored(zone.Id)} {zone.DisplayName}";
+
     private bool IsLocked => board?.IsLocked == true;
 
     /// <summary>True once somebody has given their update on this date. Locking closes a standup that ran, so a date with no turn on it has nothing to close.</summary>
     private bool HasPresented => board?.Participants.Any(participant => participant.State == AttendanceState.Presented) == true;
 
-    private string LockedCaption => $"Locked {board?.LockedUtc.ToLocalDisplay(timeZone)}. Unlock to record anything further on this date.";
+    private string LockedCaption => $"Locked {board?.LockedUtc.ToLocalDisplay(DisplayTimeZone)}. Unlock to record anything further on this date.";
 
     private string LockActionDescription => IsLocked
         ? LockedCaption
@@ -121,9 +149,26 @@ public partial class Board
 
     protected override async Task OnInitializedAsync()
     {
-        timeZone = UiOptions.Value.ResolveTimeZone();
-        today = Clock.Today(timeZone);
+        standupTimeZone = UiOptions.Value.ResolveTimeZone();
+        today = Clock.Today(standupTimeZone);
         standups = await StandupService.GetSelectableAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && await BrowserTimeZone.GetAsync() is { } zone)
+        {
+            browserTimeZone = zone;
+        }
+
+        // The short name depends on the date, for daylight saving, so it is looked up again whenever the shown zone or the meeting date changes.
+        if (abbreviatedFor != DisplayTimeZoneKey)
+        {
+            (string ZoneId, DateTimeOffset Instant) key = DisplayTimeZoneKey;
+            displayTimeZoneAbbreviation = await BrowserTimeZone.AbbreviationAsync(DisplayTimeZone, key.Instant);
+            abbreviatedFor = key;
+            StateHasChanged();
+        }
     }
 
     // The standup and date live in the query string, so the board is reloaded from the URL rather than from component state. That makes any board view shareable.
@@ -132,8 +177,8 @@ public partial class Board
         standupPickerValue = SelectedStandupId;
 
         // Times on the board, and which date is "today", are in the selected standup's own time zone.
-        timeZone = UiOptions.Value.ResolveTimeZone(SelectedStandup);
-        today = Clock.Today(timeZone);
+        standupTimeZone = UiOptions.Value.ResolveTimeZone(SelectedStandup);
+        today = Clock.Today(standupTimeZone);
 
         if (SelectedStandupId == Guid.Empty || (SelectedStandupId == loadedStandupId && SelectedDate == loadedDate && board is not null))
         {
@@ -283,7 +328,7 @@ public partial class Board
             board = board with { LockedUtc = lockedUtc };
             lockedDates = WithMarker(lockedDates, marked: true);
             selectedPersonId = null;
-            Snackbar.Add($"Standup locked as of {lockedUtc.ToLocalDisplay(timeZone)}.", Severity.Success);
+            Snackbar.Add($"Standup locked as of {lockedUtc.ToLocalDisplay(DisplayTimeZone)}.", Severity.Success);
 
             return;
         }

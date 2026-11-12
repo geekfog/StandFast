@@ -63,16 +63,16 @@ public static class UiFormats
     /// <summary>A time zone offset as a short signed label, for example "+1h" or "-2.5h".</summary>
     public static string ToOffsetLabel(this TimeSpan offset) => $"{offset.TotalHours.ToString(SignedHours)}h";
 
-    /// <summary>A time zone offset as a phrase, for example "1 hour ahead of the standup" or "Same time as the standup".</summary>
-    public static string ToOffsetDescription(this TimeSpan offset)
+    /// <summary>A time zone offset from <paramref name="reference"/> as a phrase, for example "1 hour ahead of CST" or "Same time as CST".</summary>
+    public static string ToOffsetDescription(this TimeSpan offset, string reference)
     {
         if (offset == TimeSpan.Zero)
         {
-            return "Same time as the standup";
+            return $"Same time as {reference}";
         }
 
         double hours = Math.Abs(offset.TotalHours);
-        return $"{hours:0.##} {(hours == 1 ? "hour" : "hours")} {(offset > TimeSpan.Zero ? "ahead of" : "behind")} the standup";
+        return $"{hours:0.##} {(hours == 1 ? "hour" : "hours")} {(offset > TimeSpan.Zero ? "ahead of" : "behind")} {reference}";
     }
 
     /// <summary>Tenure as a compact label with zero parts left out, for example "3y 2m 1w 4d" or "2w". Same-day tenure reads "0d".</summary>

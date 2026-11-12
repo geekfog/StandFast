@@ -10,7 +10,13 @@
             @* Both header columns stack from the top and push their last block to the bottom, so the dropdowns and the week strip share a bottom edge; mb-0 clears the dense dropdowns' own bottom margin so that edge is exact. *@
             <MudItem xs="12" md="4" Class="d-flex flex-column">
                 <div class="d-flex align-center gap-4 mb-1">
-                    <h1 class="mud-typography mud-typography-h5">@SelectedDate.ToDateTime(TimeOnly.MinValue).ToString(UiFormats.LongDate)</h1>
+                    @* The time zone sits inside the heading so it follows the date's last word when the date wraps. *@
+                    <h1 class="mud-typography mud-typography-h5">
+                        @SelectedDate.ToDateTime(TimeOnly.MinValue).ToString(UiFormats.LongDate)
+                        <MudTooltip Text="@DisplayTimeZoneDescription">
+                            <span class="mud-typography-body2 text-nowrap" aria-label="@DisplayTimeZoneDescription">@DisplayTimeZoneLabel</span>
+                        </MudTooltip>
+                    </h1>
                     @if (board?.Sprint is { } sprint)
                     {
                         <MudTooltip Text="@CalendarLabels.SprintDescription(sprint)">
@@ -130,7 +136,8 @@
                                 @foreach (BoardParticipantDto participant in ParticipantsIn(state))
                                 {
                                     <ParticipantCard Participant="@participant"
-                                                     TimeZone="@timeZone"
+                                                     TimeZone="@DisplayTimeZone"
+                                                     TimeZoneLabel="@DisplayTimeZoneLabel"
                                                      MeetingStart="@MeetingStart"
                                                      MeetingDate="@SelectedDate"
                                                      PriorTurn="@board.PriorTurnFor(participant.PersonId)"
@@ -164,7 +171,7 @@
                                         Participant="@participant"
                                         StandupId="@SelectedStandupId"
                                         MeetingDate="@board.MeetingDate"
-                                        TimeZone="@timeZone"
+                                        TimeZone="@DisplayTimeZone"
                                         IsReadOnly="@IsLocked"
                                         OnSave="SaveUpdateAsync"
                                         OnClose="CloseUpdate" />
