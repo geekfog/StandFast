@@ -112,6 +112,26 @@
     margin-top: var(--standfast-page-gutter);
 }
 
+/* Each board section's header is a tint of its column color toward the surface, light in light mode and dark in dark mode. Its icon, title, and count use the
+   column color pushed toward the text color, so they keep contrast against the tint in either mode. */
+.standfast-column-header {
+    --standfast-column-ink: color-mix(in srgb, var(--standfast-column-color) 55%, var(--mud-palette-text-primary));
+    background-color: color-mix(in srgb, var(--standfast-column-color) 22%, var(--mud-palette-surface));
+    border-radius: var(--mud-default-borderradius);
+    color: var(--standfast-column-ink);
+    padding: 4px 8px;
+}
+
+.standfast-column-header .standfast-column-count,
+.standfast-column-header .mud-toggle-group {
+    background-color: var(--mud-palette-surface);
+}
+
+.standfast-column-header .standfast-column-count {
+    color: var(--standfast-column-ink);
+    font-weight: 600;
+}
+
 .standfast-today {
     outline: 2px dashed var(--mud-palette-secondary);
     outline-offset: -2px;
