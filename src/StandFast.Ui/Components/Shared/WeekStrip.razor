@@ -28,7 +28,18 @@
         <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" OnClick="@(() => ShiftWeeksAsync(1))" aria-label="Next week" />
     </MudTooltip>
 
-    <MudButton Variant="Variant.Outlined" Size="Size.Small" Disabled="@(SelectedDate == Today)" OnClick="@(() => SelectAsync(Today))">Today</MudButton>
+    <div class="d-flex flex-column align-center gap-1 standfast-date-jump">
+        <MudTooltip Text="@PickDateLabel">
+            <MudIconButton Icon="@Icons.Material.Filled.CalendarMonth" OnClick="@(() => isPickerOpen = !isPickerOpen)" aria-label="@PickDateLabel" />
+        </MudTooltip>
+        @* The calendar's header opens year and month lists, so a distant date is a few taps away; picking a day jumps the board there and closes it. *@
+        <MudPopover Open="@isPickerOpen" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+            <MudDatePicker PickerVariant="PickerVariant.Static" Date="@SelectedDate.ToDateTime(TimeOnly.MinValue)" DateChanged="PickAsync" />
+        </MudPopover>
+        <MudOverlay Visible="@isPickerOpen" OnClick="@(() => isPickerOpen = false)" />
+
+        <MudButton Variant="Variant.Outlined" Size="Size.Small" Disabled="@(SelectedDate == Today)" OnClick="@(() => SelectAsync(Today))">Today</MudButton>
+    </div>
 </MudPaper>
 
 @code {
@@ -65,7 +76,17 @@
         ? "Locked standup"
         : PresentedDates.Contains(day) ? "Has a recorded standup" : null;
 
+    private const string PickDateLabel = "Pick a date";
+
+    private bool isPickerOpen;
+
     private Task SelectAsync(DateOnly date) => SelectedDateChanged.InvokeAsync(date);
+
+    private Task PickAsync(DateTime? picked)
+    {
+        isPickerOpen = false;
+        return picked is DateTime date ? SelectAsync(DateOnly.FromDateTime(date)) : Task.CompletedTask;
+    }
 
     private Task ShiftWeeksAsync(int weeks) => SelectAsync(SelectedDate.AddDays(weeks * MeetingCalendar.DaysPerWeek));
 }

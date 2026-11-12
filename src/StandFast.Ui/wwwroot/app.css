@@ -132,6 +132,11 @@
     font-weight: 600;
 }
 
+/* Anchors the week strip's date picker popover beneath its calendar button. */
+.standfast-date-jump {
+    position: relative;
+}
+
 .standfast-today {
     outline: 2px dashed var(--mud-palette-secondary);
     outline-offset: -2px;
