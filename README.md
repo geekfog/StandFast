@@ -333,6 +333,7 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 - Made Delete on an empty line just above a list, quote, or table in the formatted update editor remove that line, so the list moves up with its first item still numbered or bulleted.
 - Made the expanded navigation menu only as wide as its longest line, giving the page the rest of the width.
 - Made the bulleted and numbered list buttons in the formatted update editor turn each selected line into its own list item.
+- Showed the notes icon from the board's cards beside the hint at the bottom of the board that tells you to tap it.
 - Hovering the time zone offset on a board card now also shows the person's current local time, as of when the tooltip opens.
 - Added a group icon beside the board's Leader dropdown that, for that date only, lets any presenter, leader, or guest who is here or has presented be picked as leader, listed after the attending leaders. It is off for every date until turned on, and turning it back off clears a leader from outside the Leader Roster.
 - Added Leaders can present and Guests can present settings to each standup, both off by default. With one on, tapping a leader or guest again after marking them as here moves them to Presented, and their update gets blockers and parking lot boxes like a presenter's.

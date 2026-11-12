@@ -80,7 +80,7 @@
     <div class="d-flex align-center" @onclick:stopPropagation="true">
         @* Colour marks who already has an update recorded, in every column; the card's outline is what marks the one currently open. *@
         <MudTooltip Text="@UpdateActionDescription">
-            <MudIconButton Icon="@Icons.Material.Filled.EditNote"
+            <MudIconButton Icon="@StandFastTheme.UpdateIcon"
                            Size="Size.Small"
                            Color="@(Participant.HasUpdate ? Color.Tertiary : Color.Default)"
                            OnClick="OnSelectAsync"

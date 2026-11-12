@@ -64,6 +64,9 @@ public static class StandFastTheme
     /// <summary>Wording for a date's lock state, used on its own and inside the labels that describe the lock action.</summary>
     public static string LockTitle(bool isLocked) => isLocked ? "Locked" : "Open";
 
+    /// <summary>Icon for opening a person's update, shared by each card's button and the board's hint that points at it.</summary>
+    public const string UpdateIcon = Icons.Material.Filled.EditNote;
+
     /// <summary>Icon shown on each board column header.</summary>
     public static string ColumnIcon(Domain.Enums.AttendanceState state) => state switch
     {
