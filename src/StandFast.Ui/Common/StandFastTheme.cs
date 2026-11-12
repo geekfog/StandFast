@@ -73,4 +73,10 @@ public static class StandFastTheme
         Domain.Enums.AttendanceState.Guest => Icons.Material.Filled.EmojiPeople,
         _ => Icons.Material.Filled.Group,
     };
+
+    /// <summary>Icon marking how someone takes part, matching the header of the section a tap from the roster places them in.</summary>
+    public static string KindIcon(Domain.Enums.AttendeeKind kind) => ColumnIcon(Domain.Common.AttendanceTransitions.Attending(kind));
+
+    /// <summary>Colour that goes with <see cref="KindIcon"/>, matching the same section's header.</summary>
+    public static Color KindColor(Domain.Enums.AttendeeKind kind) => ColumnColor(Domain.Common.AttendanceTransitions.Attending(kind));
 }

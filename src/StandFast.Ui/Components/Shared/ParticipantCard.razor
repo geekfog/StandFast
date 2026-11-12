@@ -16,6 +16,12 @@
     <div class="ml-3 flex-grow-1 standfast-participant-text">
         <div class="d-flex align-center">
             <MudText Typo="Typo.body1">@Participant.DisplayName</MudText>
+            @if (Participant.State == AttendanceState.Roster)
+            {
+                <MudTooltip Text="@KindDescription">
+                    <MudIcon Icon="@StandFastTheme.KindIcon(Participant.Kind)" Color="@StandFastTheme.KindColor(Participant.Kind)" Size="Size.Small" Class="ml-1" aria-label="@KindDescription" />
+                </MudTooltip>
+            }
             @if (IsSelf)
             {
                 <MudTooltip Text="@SelfDescription">
@@ -44,7 +50,7 @@
                     <span class="standfast-card-fact">@StatusCaption</span>
                 </ChildContent>
             </MudTooltip>
-            @if (OffsetFromStandup is { } offset)
+            @if (OffsetFromShown is { } offset)
             {
                 @* The tooltip shows the person's time now, so it reads the clock each time it opens rather than when the card last rendered. *@
                 <MudTooltip VisibleChanged="OnOffsetTooltipVisibleChanged">
@@ -101,6 +107,10 @@
     [Parameter]
     public TimeZoneInfo TimeZone { get; set; } = TimeZoneInfo.Local;
 
+    /// <summary>Name of <see cref="TimeZone"/> as the board shows it, which the offset tooltip measures against.</summary>
+    [Parameter]
+    public string TimeZoneLabel { get; set; } = string.Empty;
+
     /// <summary>When the standup starts on the date shown. The participant's offset from <see cref="TimeZone"/> is measured at this instant.</summary>
     [Parameter]
     public DateTimeOffset MeetingStart { get; set; }
@@ -147,6 +157,8 @@
 
     private const string SelfDescription = "This is you";
 
+    private string KindDescription => RosterLabels.Name(Participant.Kind.Roster());
+
     private string UpdateActionDescription => Participant.HasUpdate ? "Open recorded update" : "Open update";
 
     private string PriorTurnLabel => PriorTurn?.ToString() ?? UiFormats.NoPriorTurnSymbol;
@@ -169,15 +181,15 @@
 
     private TimeZoneInfo? ParticipantTimeZone => TimeZoneIds.Resolve(Participant.TimeZoneId);
 
-    /// <summary>How far the participant's clock is from the standup's, or null when their time zone is not recorded.</summary>
-    private TimeSpan? OffsetFromStandup => ParticipantTimeZone is { } zone ? TimeZoneIds.OffsetFrom(zone, TimeZone, MeetingStart) : null;
+    /// <summary>How far the participant's clock is from the time zone times are shown in, or null when their time zone is not recorded.</summary>
+    private TimeSpan? OffsetFromShown => ParticipantTimeZone is { } zone ? TimeZoneIds.OffsetFrom(zone, TimeZone, MeetingStart) : null;
 
     /// <summary>Time at the organization as of the meeting date, or null when no start date is recorded or it falls after that date.</summary>
     private Tenure? TenureAtMeeting => Participant.StartDate is { } start ? Tenure.Between(start, MeetingDate) : null;
 
     private string OffsetTooltip(TimeSpan offset)
     {
-        string description = $"{offset.ToOffsetDescription()} · {TimeZoneInfo.ConvertTime(offsetTooltipOpenedUtc, ParticipantTimeZone!).ToString(UiFormats.TimeOfDay)} there now";
+        string description = $"{offset.ToOffsetDescription(TimeZoneLabel)} · {TimeZoneInfo.ConvertTime(offsetTooltipOpenedUtc, ParticipantTimeZone!).ToString(UiFormats.TimeOfDay)} there now";
         return string.IsNullOrEmpty(Participant.Location) ? description : $"{Participant.Location} · {description}";
     }
 

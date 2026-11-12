@@ -36,6 +36,8 @@ try
 
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+    builder.Services.AddScoped<BrowserTimeZone>();
+    builder.Services.AddScoped<BrowserTimeZone>();
     builder.Services.AddSingleton<IMarkdownRenderer, MarkdownRenderer>();
 
     builder.AddStandFastAuthentication();
