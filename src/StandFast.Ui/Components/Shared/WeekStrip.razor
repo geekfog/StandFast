@@ -1,8 +1,4 @@
-<MudPaper Outlined="true" Class="d-flex align-center pa-2 gap-1">
-    <MudTooltip Text="Previous week">
-        <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" OnClick="@(() => ShiftWeeksAsync(-1))" aria-label="Previous week" />
-    </MudTooltip>
-
+<MudPaper Outlined="true" Class="d-flex align-center px-2 py-1 gap-2">
     <div class="d-flex flex-grow-1 justify-space-around flex-wrap gap-1">
         @foreach (DateOnly day in MeetingCalendar.Week(SelectedDate))
         {
@@ -12,7 +8,7 @@
             <MudButton Variant="@(isSelected ? Variant.Filled : Variant.Text)"
                        Color="@(isSelected ? Color.Primary : isScheduled ? Color.Default : Color.Inherit)"
                        Disabled="@(!isScheduled && HideUnscheduledDays)"
-                       Class="@(day == Today ? "standfast-today" : null)"
+                       Class="@($"standfast-week-day {(day == Today ? "standfast-today" : string.Empty)} {(isScheduled || isSelected ? string.Empty : "standfast-week-day-unscheduled")}")"
                        OnClick="@(() => SelectAsync(day))">
                 <div class="d-flex flex-column align-center">
                     <MudText Typo="Typo.caption">@day.ToString(UiFormats.WeekdayAbbreviation)</MudText>
@@ -24,21 +20,29 @@
         }
     </div>
 
-    <MudTooltip Text="Next week">
-        <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" OnClick="@(() => ShiftWeeksAsync(1))" aria-label="Next week" />
-    </MudTooltip>
-
-    <div class="d-flex flex-column align-center gap-1 standfast-date-jump">
-        <MudTooltip Text="@PickDateLabel">
-            <MudIconButton Icon="@Icons.Material.Filled.CalendarMonth" OnClick="@(() => isPickerOpen = !isPickerOpen)" aria-label="@PickDateLabel" />
-        </MudTooltip>
+    @* All date navigation sits on one row: the week arrows as a pair, then a gap, then the jumps to today and to any date, so a tap meant for one pair does not land on the other. *@
+    <div class="d-flex align-center gap-4 standfast-date-jump">
+        <div class="d-flex align-center gap-2">
+            <MudTooltip Text="Previous week" Placement="Placement.Top">
+                <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Size="Size.Small" OnClick="@(() => ShiftWeeksAsync(-1))" aria-label="Previous week" />
+            </MudTooltip>
+            <MudTooltip Text="Next week" Placement="Placement.Top">
+                <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" OnClick="@(() => ShiftWeeksAsync(1))" aria-label="Next week" />
+            </MudTooltip>
+        </div>
+        <div class="d-flex align-center gap-2">
+            <MudTooltip Text="@TodayLabel" Placement="Placement.Top">
+                <MudIconButton Icon="@Icons.Material.Filled.Today" Size="Size.Small" Disabled="@(SelectedDate == Today)" OnClick="@(() => SelectAsync(Today))" aria-label="@TodayLabel" />
+            </MudTooltip>
+            <MudTooltip Text="@PickDateLabel" Placement="Placement.Top">
+                <MudIconButton Icon="@Icons.Material.Filled.CalendarMonth" Size="Size.Small" OnClick="@(() => isPickerOpen = !isPickerOpen)" aria-label="@PickDateLabel" />
+            </MudTooltip>
+        </div>
         @* The calendar's header opens year and month lists, so a distant date is a few taps away; picking a day jumps the board there and closes it. *@
         <MudPopover Open="@isPickerOpen" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
             <MudDatePicker PickerVariant="PickerVariant.Static" Date="@SelectedDate.ToDateTime(TimeOnly.MinValue)" DateChanged="PickAsync" />
         </MudPopover>
         <MudOverlay Visible="@isPickerOpen" OnClick="@(() => isPickerOpen = false)" />
-
-        <MudButton Variant="Variant.Outlined" Size="Size.Small" Disabled="@(SelectedDate == Today)" OnClick="@(() => SelectAsync(Today))">Today</MudButton>
     </div>
 </MudPaper>
 
@@ -77,6 +81,8 @@
         : PresentedDates.Contains(day) ? "Has a recorded standup" : null;
 
     private const string PickDateLabel = "Pick a date";
+
+    private const string TodayLabel = "Go to today";
 
     private bool isPickerOpen;
 

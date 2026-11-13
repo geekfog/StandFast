@@ -257,6 +257,8 @@ export function create(elementId, markdown, options, dotNetReference, changedMet
     entry.builder = builder;
     entry.ready = builder.create().then(() => {
         entry.serialize = builder.editor.action((ctx) => ctx.get(Milkdown.serializerCtx));
+        // The baseline is the editor's own rendering of the text, so a transaction that changes nothing visible (such as a click) is not reported as an edit.
+        entry.markdown = markdownOf(entry, viewOf(entry).state.doc);
     });
     editors.set(elementId, entry);
 }

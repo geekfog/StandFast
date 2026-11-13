@@ -325,6 +325,22 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 
 *Each entry is a specific version (release/\* branch), in descending order (newest version up top), with a plain bullet list summarizing each change without technical jargon.*
 
+### v01.07.00 — 2026-11-12
+
+- Showed the notes icon from the board's cards beside the hint at the bottom of the board that tells you to tap it.
+- Shaded each board section's header in that section's color, such as green for Presented, light in light mode and dark in dark mode, with its icon, title, and count in a stronger shade of the same color.
+- Added a calendar button on the board's week strip that opens a calendar for jumping straight to any date, with its month and year header opening month and year lists.
+- Marked today on the week strip with a solid ring, kept visible when today is the selected day by drawing it just outside the highlighted button, including right after clicking it.
+- Moved the board's date onto one line directly above the week strip, and put a smaller Lock button followed by the sprint, shown as a chip with its note icon beside it, close above the standup and leader pickers, which are centered on the week strip and line up with the Roster column below.
+- Showed the board's Presenters, Leaders, and Guests roster filters as their icons, named on hover, next to All, each wide enough to tap and centered on one line.
+- Put the week strip's navigation on one row: previous and next week as a pair, then a Today icon, named Go to today on hover, and the calendar button, spaced apart so a tap does not land on the wrong one, with narrower day buttons.
+- Showed the previous standup's turn on Present cards as an ordinal, such as 2nd, and left it blank for anyone who did not present at the previous standup.
+- Replaced the gray pills under each name on the board with spaced details, the time zone offset marked by a clock icon and time with the organization by a work history icon. Roster cards leave out "Not yet marked present", since the Roster column already says so.
+- Moved the popup with a person's title and email address from the status detail to their name on each board card.
+- Dimmed the week strip's days the standup does not run on, showed its button hints above the buttons so they do not cover the board, made the strip shorter, and dropped the ring around the selected day's dot.
+- Removed the locked banner above the week strip, freeing its height for the board. Hovering Unlock shows when the date was locked.
+- Fixed Save and Cancel turning on in an update panel that was only clicked into, with nothing changed, when its saved text was formatted differently from how the formatted editor writes it.
+
 ### v01.06.00 — 2026-10-26
 
 - Showed times on the board in your browser's time zone, or the standup's when your browser's is not available, with the time zone in use named after the date by its short name, such as CST or CDT, or its id when it has none, and its source shown on hover. Each person's offset is measured from that time zone. The meeting date still follows the standup's time zone.
@@ -333,10 +349,6 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 - Made Delete on an empty line just above a list, quote, or table in the formatted update editor remove that line, so the list moves up with its first item still numbered or bulleted.
 - Made the expanded navigation menu only as wide as its longest line, giving the page the rest of the width.
 - Made the bulleted and numbered list buttons in the formatted update editor turn each selected line into its own list item.
-- Showed the notes icon from the board's cards beside the hint at the bottom of the board that tells you to tap it.
-- Shaded each board section's header in that section's color, such as green for Presented, light in light mode and dark in dark mode, with its icon, title, and count in a stronger shade of the same color.
-- Added a calendar button above Today on the board's week strip that opens a calendar for jumping straight to any date, with its month and year header opening month and year lists.
-- Kept today's dashed outline on the week strip visible when today is the selected day, drawn just outside the highlighted button, including right after clicking it.
 - Hovering the time zone offset on a board card now also shows the person's current local time, as of when the tooltip opens.
 - Added a group icon beside the board's Leader dropdown that, for that date only, lets any presenter, leader, or guest who is here or has presented be picked as leader, listed after the attending leaders. It is off for every date until turned on, and turning it back off clears a leader from outside the Leader Roster.
 - Added Leaders can present and Guests can present settings to each standup, both off by default. With one on, tapping a leader or guest again after marking them as here moves them to Presented, and their update gets blockers and parking lot boxes like a presenter's.

@@ -6,77 +6,42 @@
 
 <div class="standfast-board">
     <div class="standfast-board-header">
-        <MudGrid Spacing="3">
-            @* Both header columns stack from the top and push their last block to the bottom, so the dropdowns and the week strip share a bottom edge; mb-0 clears the dense dropdowns' own bottom margin so that edge is exact. *@
-            <MudItem xs="12" md="4" Class="d-flex flex-column">
-                <div class="d-flex align-center gap-4 mb-1">
-                    @* The time zone sits inside the heading so it follows the date's last word when the date wraps. *@
-                    <h1 class="mud-typography mud-typography-h5">
-                        @SelectedDate.ToDateTime(TimeOnly.MinValue).ToString(UiFormats.LongDate)
-                        <MudTooltip Text="@DisplayTimeZoneDescription">
-                            <span class="mud-typography-body2 text-nowrap" aria-label="@DisplayTimeZoneDescription">@DisplayTimeZoneLabel</span>
-                        </MudTooltip>
-                    </h1>
-                    @if (board?.Sprint is { } sprint)
-                    {
-                        <MudTooltip Text="@CalendarLabels.SprintDescription(sprint)">
-                            <MudText Typo="Typo.body2" Color="Color.Primary" Class="text-nowrap">@CalendarLabels.SprintCaption(sprint)</MudText>
+        @*
+            Two rows that line up across both columns: the Lock button and sprint beside the date, then the standup and leader pickers beside the week strip,
+            centered on it. Below the md breakpoint each area stacks, the pickers under the Lock button and the date over the week strip.
+        *@
+        <div class="standfast-board-header-grid">
+            <div class="standfast-board-header-tools d-flex align-center flex-wrap gap-3">
+                @if (board is not null)
+                {
+                    <MudTooltip Text="@LockActionDescription">
+                        <MudButton Variant="Variant.Outlined"
+                                   Size="Size.Small"
+                                   Color="@StandFastTheme.LockColor(IsLocked)"
+                                   StartIcon="@StandFastTheme.LockIcon(IsLocked)"
+                                   Disabled="@(!IsLocked && !HasPresented)"
+                                   OnClick="ToggleLockAsync"
+                                   aria-label="@LockActionDescription">
+                            @(IsLocked ? "Unlock" : "Lock")
+                        </MudButton>
+                    </MudTooltip>
+                }
+                @if (board?.Sprint is { } sprint)
+                {
+                    <div class="d-flex align-center gap-1">
+                        <MudTooltip Text="@CalendarLabels.SprintDescription(sprint)" RootClass="d-flex">
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" Icon="@CalendarLabels.SprintIcon" Class="ma-0">@CalendarLabels.SprintCaption(sprint)</MudChip>
                         </MudTooltip>
                         @if (sprint.Note is { } note)
                         {
-                            <MudTooltip Text="@note">
-                                <MudIcon Icon="@CalendarLabels.SprintNoteIcon" Size="Size.Small" Color="Color.Warning" Class="ml-n3" aria-label="@note" />
+                            <MudTooltip Text="@note" RootClass="d-flex">
+                                <MudIcon Icon="@CalendarLabels.SprintNoteIcon" Size="Size.Small" Color="Color.Warning" aria-label="@note" />
                             </MudTooltip>
                         }
-                    }
-                    <MudSpacer />
-                    @if (board is not null)
-                    {
-                        <MudTooltip Text="@LockActionDescription">
-                            <MudButton Variant="Variant.Outlined"
-                                       Color="@StandFastTheme.LockColor(IsLocked)"
-                                       StartIcon="@StandFastTheme.LockIcon(IsLocked)"
-                                       Disabled="@(!IsLocked && !HasPresented)"
-                                       OnClick="ToggleLockAsync"
-                                       aria-label="@LockActionDescription">
-                                @(IsLocked ? "Unlock" : "Lock")
-                            </MudButton>
-                        </MudTooltip>
-                    }
-                </div>
-                <div class="mt-auto">
-                    <MudGrid Spacing="3">
-                        <MudItem xs="12" sm="6">
-                            <MudSelect T="Guid" Value="@standupPickerValue" ValueChanged="OnStandupChangedAsync" Label="Standup" Variant="Variant.Outlined" Dense="true" Class="mb-0" Disabled="@(standups.Count == 0)">
-                                @foreach (StandupDto standup in standups)
-                                {
-                                    <MudSelectItem T="Guid" Value="@standup.Id">@standup.Name</MudSelectItem>
-                                }
-                            </MudSelect>
-                        </MudItem>
-                        <MudItem xs="12" sm="6">
-                            @* Only someone who is here can run the standup, so the picker offers attending leaders, and everyone attending once the toggle opens it up for the date. *@
-                            <div class="d-flex align-center gap-1">
-                                <MudTooltip Text="@LeaderEmptyReason" Disabled="@(LeaderEmptyReason is null)" Inline="false" RootClass="flex-grow-1">
-                                    <MudSelect T="Guid?" Value="@board?.LeaderPersonId" ValueChanged="OnLeaderChangedAsync" Label="@RosterLabels.Name(RosterRole.Leader)" Variant="Variant.Outlined" Dense="true" Class="mb-0" Clearable="true"
-                                               Disabled="@(LeaderCandidates.Count == 0 || IsLocked)">
-                                        @foreach (StandupMemberDto leader in LeaderCandidates)
-                                        {
-                                            <MudSelectItem T="Guid?" Value="@leader.PersonId">@leader.DisplayName</MudSelectItem>
-                                        }
-                                    </MudSelect>
-                                </MudTooltip>
-                                <MudTooltip Text="@LeaderPoolDescription">
-                                    <MudToggleIconButton Toggled="@AnyAttendeeCanLead" ToggledChanged="OnAnyAttendeeCanLeadChangedAsync"
-                                                         Icon="@Icons.Material.Outlined.GroupAdd" ToggledIcon="@Icons.Material.Filled.GroupAdd" ToggledColor="Color.Primary"
-                                                         Disabled="@(board is null || IsLocked)" aria-label="@LeaderPoolDescription" />
-                                </MudTooltip>
-                            </div>
-                        </MudItem>
-                    </MudGrid>
-                </div>
-            </MudItem>
-            <MudItem xs="12" md="8" Class="d-flex flex-column">
+                    </div>
+                }
+            </div>
+            <div class="standfast-board-header-date">
                 @if (standups.Count == 0)
                 {
                     <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">
@@ -93,18 +58,50 @@
                     {
                         <MudAlert Severity="Severity.Normal" Dense="true" Class="mb-2">@board.StandupName does not normally run on this day.</MudAlert>
                     }
-
-                    @if (IsLocked)
-                    {
-                        <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-2">@LockedCaption</MudAlert>
-                    }
                 }
-                <div class="mt-auto">
-                    <WeekStrip SelectedDate="@SelectedDate" SelectedDateChanged="OnDateChangedAsync" Today="@today" ScheduledDays="@SelectedStandupDays"
-                               PresentedDates="@presentedDates" LockedDates="@lockedDates" />
-                </div>
-            </MudItem>
-        </MudGrid>
+                <h1 class="mud-typography mud-typography-h6 standfast-board-date">
+                    @SelectedDate.ToDateTime(TimeOnly.MinValue).ToString(UiFormats.LongDate)
+                    <MudTooltip Text="@DisplayTimeZoneDescription">
+                        <span class="mud-typography-body2 mud-text-secondary" aria-label="@DisplayTimeZoneDescription">@DisplayTimeZoneLabel</span>
+                    </MudTooltip>
+                </h1>
+            </div>
+            <div class="standfast-board-header-pickers">
+                <MudGrid Spacing="3">
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="Guid" Value="@standupPickerValue" ValueChanged="OnStandupChangedAsync" Label="Standup" Variant="Variant.Outlined" Dense="true" Class="mb-0" Disabled="@(standups.Count == 0)">
+                            @foreach (StandupDto standup in standups)
+                            {
+                                <MudSelectItem T="Guid" Value="@standup.Id">@standup.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        @* Only someone who is here can run the standup, so the picker offers attending leaders, and everyone attending once the toggle opens it up for the date. *@
+                        <div class="d-flex align-center gap-1">
+                            <MudTooltip Text="@LeaderEmptyReason" Disabled="@(LeaderEmptyReason is null)" Inline="false" RootClass="flex-grow-1">
+                                <MudSelect T="Guid?" Value="@board?.LeaderPersonId" ValueChanged="OnLeaderChangedAsync" Label="@RosterLabels.Name(RosterRole.Leader)" Variant="Variant.Outlined" Dense="true" Class="mb-0" Clearable="true"
+                                           Disabled="@(LeaderCandidates.Count == 0 || IsLocked)">
+                                    @foreach (StandupMemberDto leader in LeaderCandidates)
+                                    {
+                                        <MudSelectItem T="Guid?" Value="@leader.PersonId">@leader.DisplayName</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </MudTooltip>
+                            <MudTooltip Text="@LeaderPoolDescription">
+                                <MudToggleIconButton Toggled="@AnyAttendeeCanLead" ToggledChanged="OnAnyAttendeeCanLeadChangedAsync"
+                                                     Icon="@Icons.Material.Outlined.GroupAdd" ToggledIcon="@Icons.Material.Filled.GroupAdd" ToggledColor="Color.Primary"
+                                                     Disabled="@(board is null || IsLocked)" aria-label="@LeaderPoolDescription" />
+                            </MudTooltip>
+                        </div>
+                    </MudItem>
+                </MudGrid>
+            </div>
+            <div class="standfast-board-header-strip">
+                <WeekStrip SelectedDate="@SelectedDate" SelectedDateChanged="OnDateChangedAsync" Today="@today" ScheduledDays="@SelectedStandupDays"
+                           PresentedDates="@presentedDates" LockedDates="@lockedDates" />
+            </div>
+        </div>
     </div>
 
     @if (standups.Count > 0 && board is not null)
@@ -124,10 +121,22 @@
                                     @if (state == AttendanceState.Roster)
                                     {
                                         @* The filter decides who the roster lists, and so whether a tap lands them in Present, Leaders, or Guests. *@
-                                        <MudToggleGroup T="AttendeeKind?" @bind-Value="rosterView" Size="Size.Small" Color="Color.Primary" Class="mr-2" aria-label="Show on the roster">
+                                        <MudToggleGroup T="AttendeeKind?" @bind-Value="rosterView" Size="Size.Small" Color="Color.Primary" Class="mr-2 standfast-roster-filter" aria-label="Show on the roster">
                                             @foreach (AttendeeKind? kind in RosterViews)
                                             {
-                                                <MudToggleItem T="AttendeeKind?" Value="@kind" Text="@RosterLabels.Plural(kind)" />
+                                                @* Each kind shows the icon its roster cards carry, named on hover, which keeps the filter narrow enough to share the header. *@
+                                                <MudToggleItem T="AttendeeKind?" Value="@kind">
+                                                    @if (kind is { } attendeeKind)
+                                                    {
+                                                        <MudTooltip Text="@RosterLabels.Plural(attendeeKind)" RootClass="d-flex">
+                                                            <MudIcon Icon="@StandFastTheme.KindIcon(attendeeKind)" Size="Size.Small" aria-label="@RosterLabels.Plural(attendeeKind)" />
+                                                        </MudTooltip>
+                                                    }
+                                                    else
+                                                    {
+                                                        @RosterLabels.AllRosters
+                                                    }
+                                                </MudToggleItem>
                                             }
                                         </MudToggleGroup>
                                     }

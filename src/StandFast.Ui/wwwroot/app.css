@@ -22,16 +22,19 @@
 .standfast-card-facts {
     display: flex;
     flex-wrap: wrap;
-    gap: 2px 4px;
+    gap: 2px 12px;
     margin-top: 2px;
 }
 
 .standfast-card-fact {
-    display: inline-block;
-    padding: 0 6px;
-    border-radius: 4px;
-    background-color: var(--mud-palette-background-gray);
+    align-items: center;
+    display: inline-flex;
+    gap: 3px;
     white-space: nowrap;
+}
+
+.standfast-card-fact-icon.mud-icon-root {
+    font-size: 0.95rem;
 }
 
 .standfast-column {
@@ -137,10 +140,81 @@
     position: relative;
 }
 
+/* The roster filter's icons and All text share one centered line, with each option wide enough to hit easily. */
+.standfast-roster-filter .mud-toggle-item {
+    align-items: center;
+    min-width: 2.75rem;
+}
+
+.standfast-roster-filter .mud-toggle-item > .mud-button-label {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+}
+
+/*
+ * The board header's four areas. Stacked on a narrow window; from the md breakpoint up, a first column as wide as the board's first column below (which MudGrid
+ * spacing 3 makes a third of the width less its 24px gutters), holding the Lock button and sprint over the pickers, beside the date over the week strip.
+ * The pickers are centered on the week strip, so the two read as one row.
+ */
+.standfast-board-header-grid {
+    --standfast-board-header-gap: 24px;
+    display: grid;
+    gap: 6px var(--standfast-board-header-gap);
+    grid-template-areas: "tools" "pickers" "date" "strip";
+    grid-template-columns: 100%;
+}
+
+.standfast-board-header-tools {
+    grid-area: tools;
+}
+
+.standfast-board-header-date {
+    grid-area: date;
+}
+
+.standfast-board-header-pickers {
+    grid-area: pickers;
+}
+
+.standfast-board-header-strip {
+    grid-area: strip;
+}
+
+@media (min-width: 960px) {
+    .standfast-board-header-grid {
+        align-items: end;
+        grid-template-areas: "tools date" "pickers strip";
+        grid-template-columns: calc((100% - 2 * var(--standfast-board-header-gap)) / 3) 1fr;
+    }
+
+    .standfast-board-header-pickers {
+        align-self: center;
+    }
+}
+
+/* The board's date stays whole on one line above the week strip. */
+.standfast-board-date {
+    margin: 0;
+    white-space: nowrap;
+}
+
+/* Narrower than MudBlazor's default button width, so the seven days and the navigation cluster fit the strip without spreading out. */
+.standfast-week-day.mud-button-root {
+    min-width: 3rem;
+    padding-bottom: 2px;
+    padding-top: 2px;
+}
+
+/* A day the standup does not run on is dimmed, so the meeting days stand out; it stays clickable for a catch-up. */
+.standfast-week-day-unscheduled.mud-button-root {
+    color: var(--mud-palette-text-disabled);
+}
+
 /* The :focus selector outranks MudBlazor's button:focus reset, which would otherwise drop the ring while the clicked day still holds focus. */
 .standfast-today,
 .standfast-today:focus {
-    outline: 2px dashed var(--mud-palette-secondary);
+    outline: 2px solid var(--mud-palette-secondary);
     outline-offset: -2px;
 }
 
@@ -165,12 +239,6 @@
 /* The same orange the Lock button and the locked banner carry, so one colour means "closed" wherever it appears. */
 .standfast-day-marker-locked {
     background-color: var(--mud-palette-warning);
-}
-
-/* On the selected day the dot sits on the button's filled background, so it is ringed in the button's text color to stand out from that fill. */
-.mud-button-filled .standfast-day-marker-presented,
-.mud-button-filled .standfast-day-marker-locked {
-    box-shadow: 0 0 0 1.5px currentColor;
 }
 
 /* A report chart is drawn at a fixed pixel step per date, so a long period scrolls sideways rather than squeezing its labels together. */
@@ -603,16 +671,20 @@
     align-items: center;
     background-color: var(--mud-palette-background-gray);
     border: 1px solid var(--mud-palette-lines-default);
-    border-radius: 50%;
+    border-radius: 0.875rem;
     color: var(--mud-palette-text-secondary);
     display: inline-flex;
     flex: 0 0 auto;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     font-variant-numeric: tabular-nums;
     font-weight: 600;
     height: 1.75rem;
     justify-content: center;
-    width: 1.75rem;
+    width: 2.5rem;
+}
+
+.standfast-prior-turn-none {
+    visibility: hidden;
 }
 
 /* Star marking the card of whoever is signed in. Dark yellow is fixed rather than taken from the palette, which reserves its colours for attendance
