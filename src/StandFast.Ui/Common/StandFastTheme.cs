@@ -45,6 +45,13 @@ public static class StandFastTheme
         _ => Color.Default,
     };
 
+    /// <summary><see cref="ColumnColor"/> as a CSS value that follows the light or dark palette, for styling that a MudBlazor <see cref="Color"/> parameter cannot reach.</summary>
+    public static string ColumnCssColor(Domain.Enums.AttendanceState state) => ColumnColor(state) switch
+    {
+        Color.Default => "var(--mud-palette-text-secondary)",
+        Color color => $"var(--mud-palette-{color.ToString().ToLowerInvariant()})",
+    };
+
     /// <summary>Column heading shown above each board list.</summary>
     public static string ColumnTitle(Domain.Enums.AttendanceState state) => state switch
     {
@@ -63,6 +70,9 @@ public static class StandFastTheme
 
     /// <summary>Wording for a date's lock state, used on its own and inside the labels that describe the lock action.</summary>
     public static string LockTitle(bool isLocked) => isLocked ? "Locked" : "Open";
+
+    /// <summary>Icon for opening a person's update, shared by each card's button and the board's hint that points at it.</summary>
+    public const string UpdateIcon = Icons.Material.Filled.EditNote;
 
     /// <summary>Icon shown on each board column header.</summary>
     public static string ColumnIcon(Domain.Enums.AttendanceState state) => state switch

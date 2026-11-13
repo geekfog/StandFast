@@ -6,16 +6,35 @@
           @onclick="OnAdvanceAsync">
     @if (ShowPriorTurn)
     {
-        <MudTooltip Text="@PriorTurnDescription">
-            <div class="standfast-prior-turn mr-2" aria-label="@PriorTurnDescription">@PriorTurnLabel</div>
-        </MudTooltip>
+        @* Someone who was not at the previous standup gets an empty slot of the same width, so every avatar in the column stays aligned. *@
+        @if (PriorTurn is { } turn)
+        {
+            <MudTooltip Text="@($"Went {turn.ToOrdinal()} at the previous standup")">
+                <div class="standfast-prior-turn mr-2">@turn.ToOrdinal()</div>
+            </MudTooltip>
+        }
+        else
+        {
+            <div class="standfast-prior-turn standfast-prior-turn-none mr-2" aria-hidden="true"></div>
+        }
     }
 
     <PersonAvatar Initials="@Participant.Initials" PhotoUrl="@PersonPhotoUrls.Saved(Participant.PersonId, Participant.PhotoSavedUtc)" Color="@StandFastTheme.ColumnColor(Participant.State)" IsRinged="true" />
 
     <div class="ml-3 flex-grow-1 standfast-participant-text">
         <div class="d-flex align-center">
-            <MudText Typo="Typo.body1">@Participant.DisplayName</MudText>
+            <MudTooltip>
+                <TooltipContent>
+                    @if (!string.IsNullOrWhiteSpace(Participant.Title))
+                    {
+                        <div>@PersonLabels.Title: @Participant.Title</div>
+                    }
+                    <div>@PersonLabels.Email: @Participant.Email</div>
+                </TooltipContent>
+                <ChildContent>
+                    <MudText Typo="Typo.body1">@Participant.DisplayName</MudText>
+                </ChildContent>
+            </MudTooltip>
             @if (Participant.State == AttendanceState.Roster)
             {
                 <MudTooltip Text="@KindDescription">
@@ -36,34 +55,26 @@
                 </MudTooltip>
             }
         </div>
-        @* Each fact sits in its own tinted pill, which separates them without dividers and lets them wrap as whole units on a narrow card. *@
+        @* Each fact wraps as a whole unit on a narrow card; the icons say which fact is which, and the tooltips spell it out. *@
         <MudText Typo="Typo.caption" Class="mud-text-secondary standfast-card-facts">
-            <MudTooltip>
-                <TooltipContent>
-                    @if (!string.IsNullOrWhiteSpace(Participant.Title))
-                    {
-                        <div>@PersonLabels.Title: @Participant.Title</div>
-                    }
-                    <div>@PersonLabels.Email: @Participant.Email</div>
-                </TooltipContent>
-                <ChildContent>
-                    <span class="standfast-card-fact">@StatusCaption</span>
-                </ChildContent>
-            </MudTooltip>
+            @if (StatusCaption is { } status)
+            {
+                <span class="standfast-card-fact">@status</span>
+            }
             @if (OffsetFromShown is { } offset)
             {
                 @* The tooltip shows the person's time now, so it reads the clock each time it opens rather than when the card last rendered. *@
                 <MudTooltip VisibleChanged="OnOffsetTooltipVisibleChanged">
                     <TooltipContent>@OffsetTooltip(offset)</TooltipContent>
                     <ChildContent>
-                        <span class="standfast-card-fact">@offset.ToOffsetLabel()</span>
+                        <span class="standfast-card-fact"><MudIcon Icon="@OffsetIcon" Class="standfast-card-fact-icon" />@offset.ToOffsetLabel()</span>
                     </ChildContent>
                 </MudTooltip>
             }
             @if (TenureAtMeeting is { } tenure)
             {
                 <MudTooltip Text="@($"{PersonLabels.StartDate}: {Participant.StartDate!.Value.ToString(UiFormats.LongDate)}")">
-                    <span class="standfast-card-fact">@tenure.ToTenureLabel()</span>
+                    <span class="standfast-card-fact"><MudIcon Icon="@TenureIcon" Class="standfast-card-fact-icon" />@tenure.ToTenureLabel()</span>
                 </MudTooltip>
             }
         </MudText>
@@ -80,7 +91,7 @@
     <div class="d-flex align-center" @onclick:stopPropagation="true">
         @* Colour marks who already has an update recorded, in every column; the card's outline is what marks the one currently open. *@
         <MudTooltip Text="@UpdateActionDescription">
-            <MudIconButton Icon="@Icons.Material.Filled.EditNote"
+            <MudIconButton Icon="@StandFastTheme.UpdateIcon"
                            Size="Size.Small"
                            Color="@(Participant.HasUpdate ? Color.Tertiary : Color.Default)"
                            OnClick="OnSelectAsync"
@@ -161,19 +172,18 @@
 
     private string UpdateActionDescription => Participant.HasUpdate ? "Open recorded update" : "Open update";
 
-    private string PriorTurnLabel => PriorTurn?.ToString() ?? UiFormats.NoPriorTurnSymbol;
+    private const string OffsetIcon = Icons.Material.Outlined.Schedule;
 
-    private string PriorTurnDescription => PriorTurn is { } turn
-        ? $"Went {turn.ToOrdinal()} at the previous standup"
-        : "Did not present at the previous standup";
+    private const string TenureIcon = Icons.Material.Outlined.WorkHistory;
 
-    private string StatusCaption => Participant.State switch
+    /// <summary>What the card's column does not already say. A roster card with nothing recorded has none, since sitting on the roster already means not yet present.</summary>
+    private string? StatusCaption => Participant.State switch
     {
         AttendanceState.Presented => $"Presented {Participant.PresentedUtc.ToLocalDisplay(TimeZone, UiFormats.DateAndTimeWithSeconds)}",
         AttendanceState.Available => $"Available since {Participant.MarkedAvailableUtc.ToLocalDisplay(TimeZone)}",
         AttendanceState.Leader => $"Leader since {Participant.MarkedAvailableUtc.ToLocalDisplay(TimeZone)}",
         AttendanceState.Guest => $"Guest since {Participant.MarkedAvailableUtc.ToLocalDisplay(TimeZone)}",
-        _ => Participant.UpdateSavedUtc is null ? "Not yet marked present" : $"Update saved {Participant.UpdateSavedUtc.ToLocalDisplay(TimeZone)}",
+        _ => Participant.UpdateSavedUtc is null ? null : $"Update saved {Participant.UpdateSavedUtc.ToLocalDisplay(TimeZone)}",
     };
 
     /// <summary>When the offset tooltip last opened, so it shows the participant's time as of then.</summary>

@@ -23,9 +23,6 @@ public static class UiFormats
     /// <summary>Used where the exact moment matters, such as the presented time that orders the Presented column.</summary>
     public const string DateAndTimeWithSeconds = "d MMM yyyy HH:mm:ss";
 
-    /// <summary>Shown in place of a turn number for someone who was not at the previous standup, so they sort last in the reader's head.</summary>
-    public const string NoPriorTurnSymbol = PresentationOrder.NoTurnSymbol;
-
     /// <summary>A short span as minutes and seconds, for turn lengths, which run from seconds to a few minutes.</summary>
     public const string MinutesAndSeconds = @"m\:ss";
 

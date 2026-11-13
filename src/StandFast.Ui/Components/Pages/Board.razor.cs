@@ -139,10 +139,8 @@ public partial class Board
     /// <summary>True once somebody has given their update on this date. Locking closes a standup that ran, so a date with no turn on it has nothing to close.</summary>
     private bool HasPresented => board?.Participants.Any(participant => participant.State == AttendanceState.Presented) == true;
 
-    private string LockedCaption => $"Locked {board?.LockedUtc.ToLocalDisplay(DisplayTimeZone)}. Unlock to record anything further on this date.";
-
     private string LockActionDescription => IsLocked
-        ? LockedCaption
+        ? $"Locked {board?.LockedUtc.ToLocalDisplay(DisplayTimeZone)}. Unlock to record anything further on this date."
         : HasPresented ? "Lock this date so nothing recorded on it can be changed by accident." : "Nobody has presented on this date yet, so there is nothing to lock.";
 
     private string UpdateHintText => IsLocked ? "Tap the notes icon beside a name to read their update." : "Tap the notes icon beside a name to record their update.";
