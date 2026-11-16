@@ -71,11 +71,11 @@ public sealed class StandupService(IStandupRepository standups, IPersonRepositor
         Task<IReadOnlyList<StandupMember>>[] memberTasks = [.. RosterRoleExtensions.InDisplayOrder.Select(role => standups.GetAllMembersAsync(role, cancellationToken))];
         await Task.WhenAll([standupTask, .. memberTasks]);
 
-        Dictionary<Guid, string> namesById = standupTask.Result.ToDictionary(standup => standup.Id, standup => standup.Name);
+        Dictionary<Guid, StandupRefDto> refsById = standupTask.Result.ToDictionary(standup => standup.Id, standup => new StandupRefDto(standup.Id, standup.Name));
 
         return new StandupNamesByPersonDto(RosterRoleExtensions.InDisplayOrder
             .Select((role, index) => (Role: role, Memberships: memberTasks[index].Result))
-            .ToDictionary(item => item.Role, item => NamesByPerson(item.Memberships, namesById)));
+            .ToDictionary(item => item.Role, item => StandupsByPerson(item.Memberships, refsById)));
     }
 
     public async Task AddMemberAsync(Guid standupId, Guid personId, RosterRole role, CancellationToken cancellationToken = default)
@@ -110,14 +110,14 @@ public sealed class StandupService(IStandupRepository standups, IPersonRepositor
         await standups.UpsertMemberAsync(member, cancellationToken);
     }
 
-    /// <summary>Standup names per person for one role's memberships. A membership whose standup has gone is dropped, which is what an interrupted delete leaves behind.</summary>
-    private static IReadOnlyDictionary<Guid, IReadOnlyList<string>> NamesByPerson(IReadOnlyList<StandupMember> memberships, IReadOnlyDictionary<Guid, string> namesById) =>
+    /// <summary>Standups per person for one role's memberships. A membership whose standup has gone is dropped, which is what an interrupted delete leaves behind.</summary>
+    private static IReadOnlyDictionary<Guid, IReadOnlyList<StandupRefDto>> StandupsByPerson(IReadOnlyList<StandupMember> memberships, IReadOnlyDictionary<Guid, StandupRefDto> refsById) =>
         memberships
-            .Where(member => member.IsActive && namesById.ContainsKey(member.StandupId))
+            .Where(member => member.IsActive && refsById.ContainsKey(member.StandupId))
             .GroupBy(member => member.PersonId)
             .ToDictionary(
                 group => group.Key,
-                group => (IReadOnlyList<string>)[.. group.Select(member => namesById[member.StandupId]).OrderBy(name => name, StringComparer.OrdinalIgnoreCase)]);
+                group => (IReadOnlyList<StandupRefDto>)[.. group.Select(member => refsById[member.StandupId]).OrderBy(standup => standup.Name, StringComparer.OrdinalIgnoreCase)]);
 
     private static string MemberTargetId(Guid standupId, Guid personId, RosterRole role) => $"{standupId}/{personId}/{role}";
 }
