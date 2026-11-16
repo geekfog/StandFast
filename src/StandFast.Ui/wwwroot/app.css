@@ -49,14 +49,28 @@
     margin-block: var(--standfast-page-gutter);
 }
 
+/* Bounds for a dock resized with the splitter, on :root because the splitter's script sets the dock height there and it is resolved against them. */
+:root {
+    --standfast-update-dock-resized-min-height: 10rem;
+    --standfast-board-body-min-height: 10rem;
+}
+
+/* The divider between the board's columns and its update dock, dragged to resize the dock. It only shows where the board fills the window. */
+.standfast-board-splitter {
+    display: none;
+}
+
 /*
  * From the md breakpoint up, the board fills the window below the app bar: the header and the update dock keep their size, and the columns between them scroll independently.
- * The dock's minimum height outranks its maximum share of the board, which CSS gives min-height over max-height.
+ * The dock's minimum height outranks its maximum share of the board, which CSS gives min-height over max-height. Once resized with the splitter, the dock
+ * holds that share of the board instead, kept between its resized minimum and the height that leaves the columns their minimum.
  */
 @media (min-width: 960px) {
     .standfast-board {
         --standfast-update-dock-min-height: 20rem;
         --standfast-update-dock-max-height: 50%;
+        --standfast-update-dock-resized-height: clamp(var(--standfast-update-dock-resized-min-height), var(--standfast-update-dock-height),
+            calc(100% - var(--standfast-board-body-min-height)));
         display: flex;
         flex-direction: column;
         height: calc(100dvh - var(--mud-appbar-height) - 2 * var(--standfast-page-gutter));
@@ -95,19 +109,78 @@
         flex-direction: column;
         max-height: var(--standfast-update-dock-max-height);
         min-height: var(--standfast-update-dock-min-height);
+        overflow: hidden;
+    }
+
+    /* The splitter takes the gutter's place above the dock, its grip centered in it. */
+    .standfast-board-splitter {
+        align-items: center;
+        cursor: row-resize;
+        display: flex;
+        flex: none;
+        height: var(--standfast-page-gutter);
+        justify-content: center;
+        touch-action: none;
+    }
+
+    .standfast-board-splitter::before {
+        background-color: var(--mud-palette-lines-default);
+        border-radius: 2px;
+        content: "";
+        height: 4px;
+        transition: background-color 120ms ease-in-out, width 120ms ease-in-out;
+        width: 3rem;
+    }
+
+    .standfast-board-splitter:hover::before,
+    .standfast-board-splitter:focus-visible::before,
+    .standfast-board-splitter-dragging::before {
+        background-color: var(--mud-palette-primary);
+        width: 6rem;
+    }
+
+    .standfast-board-splitter:focus-visible {
+        outline: none;
+    }
+
+    .standfast-board-splitter + .standfast-board-footer {
+        margin-top: 0;
+    }
+
+    .standfast-update-dock-resized .standfast-update-dock {
+        height: var(--standfast-update-dock-resized-height);
+        max-height: none;
+        min-height: 0;
+    }
+
+    /* The panel's header and saved line keep their size and the editors share the rest of the dock, each scrolling its own text, so the name and Save stay in view. */
+    .standfast-update-dock > .standfast-update-panel {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        min-height: 0;
+    }
+
+    .standfast-update-panel > :not(.mud-grid) {
+        flex: none;
+    }
+
+    .standfast-update-panel > .mud-grid {
+        flex: 1 1 0;
+        min-height: 0;
+    }
+
+    .standfast-update-panel .standfast-markdown-column {
+        max-height: 100%;
+    }
+
+    .standfast-update-panel .standfast-markdown-column > .standfast-markdown-editor {
+        min-height: 0;
+    }
+
+    .standfast-update-panel .standfast-markdown-column > .standfast-markdown-editor > .standfast-markdown-body {
+        min-height: 0;
         overflow-y: auto;
-    }
-
-    .standfast-update-dock > .mud-paper {
-        flex: 1 0 auto;
-    }
-
-    /* Keeps the person's name and the Save button in view while a long update scrolls inside the dock. */
-    .standfast-update-panel-header {
-        background-color: var(--mud-palette-surface);
-        position: sticky;
-        top: 0;
-        z-index: 1;
     }
 }
 
@@ -380,9 +453,11 @@
     min-height: 2.5rem;
 }
 
+/* Keeps its full height when a short update panel squeezes the editor, so only the text below it shrinks and scrolls. */
 .standfast-markdown-toolbar {
     background-color: var(--mud-palette-background-gray);
     border-bottom: 1px solid var(--mud-palette-lines-default);
+    flex: none;
     flex-wrap: wrap;
     height: auto;
     min-height: 0;
@@ -482,7 +557,7 @@
     flex-direction: column;
 }
 
-/* A text box fills its column down to the bottom border, and grows with its text so the row is as tall as the longest box, never scrolling inside it. */
+/* A text box fills its column down to the bottom border and grows with its text, so the box around it scrolls rather than the text box itself. */
 .standfast-markdown-column .standfast-markdown-body .mud-input-control,
 .standfast-markdown-column .standfast-markdown-body .mud-input-control-input-container,
 .standfast-markdown-column .standfast-markdown-body .mud-input {

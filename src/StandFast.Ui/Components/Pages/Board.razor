@@ -175,6 +175,9 @@
 
         @if (SelectedParticipant is { } participant)
         {
+            @* Dragged, or moved with the arrow keys, to share the board's height between the columns and the update; double-click restores the default. *@
+            <div class="standfast-board-splitter" role="separator" aria-orientation="horizontal" tabindex="0" title="@UpdateDockSplitterDescription"
+                 aria-label="@UpdateDockSplitterDescription"></div>
             @* The date comes from the loaded board rather than the URL, so while a new date loads the panel keeps the date its participant belongs to. *@
             <div class="standfast-board-footer standfast-update-dock">
                 <ParticipantUpdatePanel @ref="updatePanel"
