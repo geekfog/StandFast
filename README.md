@@ -327,6 +327,8 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 
 ### v01.07.00 — 2026-11-12
 
+- Added a divider between the board's columns and the update panel on a wide window that can be dragged, or moved with the up and down arrow keys, to give the columns or the update panel more of the height. The size is remembered in your browser, and double-clicking the divider restores the default.
+- Kept the update panel's name, buttons, and saved time in place on a wide window, with the Current, Blockers, and Parking lot boxes filling the rest of the panel as it is resized and each scrolling its own text. Each box's toolbar keeps its full height however short the panel gets.
 - Added a Standup filter to the People screen, listing the active standups, that shows only the people on that standup's Presenter, Leader, or Guest Roster. The Role filters then match the roles people hold on that standup.
 - Showed the notes icon from the board's cards beside the hint at the bottom of the board that tells you to tap it.
 - Shaded each board section's header in that section's color, such as green for Presented, light in light mode and dark in dark mode, with its icon, title, and count in a stronger shade of the same color.

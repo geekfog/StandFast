@@ -143,6 +143,8 @@ public partial class Board
         ? $"Locked {board?.LockedUtc.ToLocalDisplay(DisplayTimeZone)}. Unlock to record anything further on this date."
         : HasPresented ? "Lock this date so nothing recorded on it can be changed by accident." : "Nobody has presented on this date yet, so there is nothing to lock.";
 
+    private const string UpdateDockSplitterDescription = "Drag to resize the update panel. Double-click to restore its size.";
+
     private string UpdateHintText => IsLocked ? "Tap the notes icon beside a name to read their update." : "Tap the notes icon beside a name to record their update.";
 
     protected override async Task OnInitializedAsync()
