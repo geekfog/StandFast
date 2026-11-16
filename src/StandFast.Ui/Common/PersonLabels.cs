@@ -14,5 +14,8 @@ public static class PersonLabels
     /// <summary>Heading of the People screen's filter by roster: each roster role, or none of them.</summary>
     public const string RoleFilter = "Role";
 
+    /// <summary>Label of the People screen's filter to one active standup's rosters.</summary>
+    public const string StandupFilter = "Standup";
+
     public static string Status(bool isActive) => isActive ? "Active" : "Inactive";
 }

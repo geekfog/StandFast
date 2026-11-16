@@ -8,16 +8,25 @@
 
 <div class="d-flex align-center mb-4">
     <h1 class="mud-typography mud-typography-h5 flex-grow-1">People</h1>
-    @* No chip selected lists everyone; each selected chip adds the people it matches. *@
-    <MudPaper Outlined="true" Class="d-flex align-center pl-3 pr-1 mr-4" role="group" aria-label="@PersonLabels.RoleFilter">
-        <MudText Typo="Typo.body2" Class="mud-text-secondary mr-2">@PersonLabels.RoleFilter</MudText>
+    @* A standup narrows the list to its rosters, and the roles then mean roles on it. No chip selected lists everyone in that scope; each selected chip adds the people it matches. *@
+    @* Wrapped, because MudSelect's own wrapper grows to fill the row and would push the dropdown away from the Role filter. *@
+    <div class="standfast-people-filter standfast-people-standup-filter mr-4">
+        <MudSelect T="Guid?" @bind-Value="selectedStandupId" ToStringFunc="StandupName" Label="@PersonLabels.StandupFilter" Clearable="true" Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined">
+            @foreach (StandupDto standup in standups)
+            {
+                <MudSelectItem T="Guid?" Value="@standup.Id">@standup.Name</MudSelectItem>
+            }
+        </MudSelect>
+    </div>
+    @* An outlined field rather than a paper, so the Role label sits in the border band exactly as the Standup dropdown's does. *@
+    <MudField Label="@PersonLabels.RoleFilter" Variant="Variant.Outlined" Margin="Margin.Dense" Class="standfast-people-filter standfast-people-role-filter mr-4" role="group" aria-label="@PersonLabels.RoleFilter">
         <MudChipSet T="RosterFilter" @bind-SelectedValues="selectedFilters" SelectionMode="SelectionMode.MultiSelection" CheckMark="true" Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small">
             @foreach (RosterFilter filter in RosterFilters)
             {
                 <MudChip T="RosterFilter" Value="@filter" Text="@filter.Label" />
             }
         </MudChipSet>
-    </MudPaper>
+    </MudField>
     <MudSwitch @bind-Value="showInactive" Color="Color.Primary" Label="Show inactive" Class="mr-4" />
     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd" OnClick="@(() => EditAsync(null))">Add person</MudButton>
 </div>
@@ -66,9 +75,9 @@
         @foreach (RosterRole role in RosterRoleExtensions.InDisplayOrder)
         {
             <MudTd DataLabel="@RosterLabels.Plural(role)">
-                @foreach (string standupName in standupNames.For(role, context.Id))
+                @foreach (StandupRefDto standup in standupNames.For(role, context.Id))
                 {
-                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Class="ma-1">@standupName</MudChip>
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Class="ma-1">@standup.Name</MudChip>
                 }
                 @if (standupNames.For(role, context.Id).Count == 0)
                 {
@@ -93,6 +102,8 @@
 @code {
     private IReadOnlyList<PersonDto> people = [];
     private StandupNamesByPersonDto standupNames = StandupNamesByPersonDto.Empty;
+    private IReadOnlyList<StandupDto> standups = [];
+    private Guid? selectedStandupId;
     private bool isLoading = true;
     private bool showInactive;
 
@@ -105,9 +116,16 @@
         new RosterFilter("Neither", roles => roles.Count == 0),
     ];
 
-    /// <summary>Active people, or only inactive ones while Show inactive is on, narrowed to those matching any selected roster filter.</summary>
-    private IEnumerable<PersonDto> ShownPeople => people.Where(person => person.IsActive != showInactive
-        && (selectedFilters.Count == 0 || selectedFilters.Any(filter => filter.Matches(standupNames.RolesFor(person.Id)))));
+    /// <summary>
+    /// Active people, or only inactive ones while Show inactive is on, narrowed to anyone on a roster of the selected standup, then to those matching
+    /// any selected roster filter by their roles on that standup, or on any standup when none is selected.
+    /// </summary>
+    private IEnumerable<PersonDto> ShownPeople => people.Where(person => person.IsActive != showInactive && MatchesFilters(standupNames.RolesFor(person.Id, selectedStandupId)));
+
+    private string StandupName(Guid? id) => standups.FirstOrDefault(standup => standup.Id == id)?.Name ?? string.Empty;
+
+    private bool MatchesFilters(IReadOnlyList<RosterRole> roles) =>
+        (selectedStandupId is null || roles.Count > 0) && (selectedFilters.Count == 0 || selectedFilters.Any(filter => filter.Matches(roles)));
 
     private sealed record RosterFilter(string Label, Func<IReadOnlyList<RosterRole>, bool> Matches);
 
@@ -119,10 +137,12 @@
 
         Task<IReadOnlyList<PersonDto>> peopleTask = PersonService.GetAllAsync();
         Task<StandupNamesByPersonDto> assignmentsTask = StandupService.GetStandupNamesByPersonAsync();
-        await Task.WhenAll(peopleTask, assignmentsTask);
+        Task<IReadOnlyList<StandupDto>> standupsTask = StandupService.GetSelectableAsync();
+        await Task.WhenAll(peopleTask, assignmentsTask, standupsTask);
 
         people = peopleTask.Result;
         standupNames = assignmentsTask.Result;
+        standups = standupsTask.Result;
         isLoading = false;
     }
 

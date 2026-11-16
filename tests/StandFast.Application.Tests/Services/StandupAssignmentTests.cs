@@ -28,7 +28,7 @@ public sealed class StandupAssignmentTests
 
         StandupNamesByPersonDto assignments = await service.GetStandupNamesByPersonAsync();
 
-        Assert.Equal(["Aardvark web", "Platform daily"], assignments.For(RosterRole.Presenter, personId));
+        Assert.Equal([new StandupRefDto(web.Id, "Aardvark web"), new StandupRefDto(platform.Id, "Platform daily")], assignments.For(RosterRole.Presenter, personId));
     }
 
     [Fact]
@@ -45,9 +45,9 @@ public sealed class StandupAssignmentTests
 
         StandupNamesByPersonDto assignments = await service.GetStandupNamesByPersonAsync();
 
-        Assert.Equal(["Platform daily"], assignments.For(RosterRole.Presenter, personId));
-        Assert.Equal(["Aardvark web"], assignments.For(RosterRole.Leader, personId));
-        Assert.Equal(["Mobile sync"], assignments.For(RosterRole.Guest, personId));
+        Assert.Equal([platform.Id], assignments.For(RosterRole.Presenter, personId).Select(standup => standup.Id));
+        Assert.Equal([web.Id], assignments.For(RosterRole.Leader, personId).Select(standup => standup.Id));
+        Assert.Equal([mobile.Id], assignments.For(RosterRole.Guest, personId).Select(standup => standup.Id));
     }
 
     [Fact]
