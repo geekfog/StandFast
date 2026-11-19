@@ -1,0 +1,173 @@
+@inject ITaskService TaskService
+@inject ITaskStateService TaskStateService
+@inject IPersonService PersonService
+@inject IDialogService DialogService
+@using StandFast.Application.Mapping
+@using StandFast.Application.Validation
+
+@* Shaped like a markdown editor, with the same toolbar and scrolling body, so it lines up with the update boxes beside it. *@
+<MudPaper Outlined="true" Class="standfast-markdown-editor standfast-task-list">
+    <MudToolBar Dense="true" Gutters="false" Class="px-2 standfast-markdown-toolbar">
+        <MudText Typo="Typo.subtitle2" Class="mr-2">@Label</MudText>
+        <MudSpacer />
+        <MudTooltip Text="@ShowDoneDescription">
+            <MudToggleIconButton Toggled="showDone" ToggledChanged="@(toggled => showDone = toggled)" Icon="@TaskLabels.ShowDoneIcon" ToggledIcon="@TaskLabels.HideDoneIcon"
+                                 ToggledColor="Color.Primary" Size="Size.Small" ToggledSize="Size.Small" aria-label="@ShowDoneDescription" />
+        </MudTooltip>
+        <MudTooltip Text="Add tasks">
+            <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Disabled="@(!CanAdd)" OnClick="@(() => EditAsync(null))" aria-label="Add tasks" />
+        </MudTooltip>
+        @if (ExpandedChanged.HasDelegate)
+        {
+            <MudTooltip Text="@ExpandTooltip">
+                <MudIconButton Icon="@(Expanded ? Icons.Material.Filled.Close : Icons.Material.Filled.OpenInFull)" Size="Size.Small" OnClick="@(() => ExpandedChanged.InvokeAsync(!Expanded))" aria-label="@ExpandTooltip" />
+            </MudTooltip>
+        }
+    </MudToolBar>
+
+    <div class="standfast-markdown-body">
+        @if (isLoading)
+        {
+            <MudProgressLinear Indeterminate="true" />
+        }
+        else if (list is null)
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary pa-3">@ValidationMessages.TaskOwnerNotFound</MudText>
+        }
+        else if (states.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary pa-3">
+                No task states are defined yet. Add them under <MudLink Href="@UiRoutes.Organization">@CalendarLabels.Organization</MudLink>, on the @TaskLabels.TaskStates tab.
+            </MudText>
+        }
+        else
+        {
+            <MudSimpleTable Dense="true" Hover="true" Elevation="0" Class="standfast-task-table">
+                <thead>
+                    <tr>
+                        <th>@TaskLabels.State</th>
+                        @if (Detailed)
+                        {
+                            <th>@TaskLabels.Grouping</th>
+                        }
+                        <th class="standfast-task-priority">@TaskLabels.Priority</th>
+                        <th>@TaskLabels.Title</th>
+                        <th>@TaskLabels.DateColumn(showDone)</th>
+                        @if (Detailed)
+                        {
+                            <th>@TaskLabels.RequestedBy</th>
+                            <th>@TaskLabels.Created</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (WorkTaskDto task in ShownTasks)
+                    {
+                        <tr @key="task.Id">
+                            <td>
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@TaskLabels.GroupColor(task.StateGroup)" Class="ma-0">@(task.StateTitle ?? UiFormats.UnavailableSymbol)</MudChip>
+                            </td>
+                            @if (Detailed)
+                            {
+                                <td>@(task.StateGroup is { } group ? TaskLabels.GroupName(group) : UiFormats.UnavailableSymbol)</td>
+                            }
+                            <td class="standfast-task-priority">@task.Priority</td>
+                            <td>
+                                <MudLink Typo="Typo.body2" OnClick="@(() => EditAsync(task))" title="@task.Title">@(Detailed ? task.Title : TaskLabels.ShortTitle(task.Title))</MudLink>
+                            </td>
+                            <td class="text-nowrap">@DateText(task)</td>
+                            @if (Detailed)
+                            {
+                                <td>@RequesterName(task)</td>
+                                <td class="text-nowrap">@LocalDate(task.CreatedUtc)</td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+            @if (!ShownTasks.Any())
+            {
+                <MudText Typo="Typo.body2" Class="mud-text-secondary pa-3">@EmptyText</MudText>
+            }
+        }
+    </div>
+</MudPaper>
+
+@code {
+    private const string Label = TaskLabels.Tasks;
+
+    private TaskListDto? list;
+    private IReadOnlyList<TaskStateDto> states = [];
+    private IReadOnlyList<PersonDto> people = [];
+    private bool isLoading = true;
+    private bool showDone;
+
+    /// <summary>The signed-in user's settings, loaded once by the layout, whose address picks which list is shown.</summary>
+    [CascadingParameter]
+    private UserPreferencesDto Preferences { get; set; } = UserPreferencesDto.Default;
+
+    /// <summary>Adds the grouping, requester, and created date, and shows titles in full, for the Tasks page; the board's panel leaves them out to stay narrow.</summary>
+    [Parameter]
+    public bool Detailed { get; set; }
+
+    /// <summary>The time zone a task's created date and a done task's last update are dated in.</summary>
+    [Parameter]
+    public TimeZoneInfo TimeZone { get; set; } = TimeZoneInfo.Local;
+
+    [Parameter]
+    public bool Expanded { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> ExpandedChanged { get; set; }
+
+    /// <summary>Open tasks, or only done ones while the toggle is on, each in the order the list arrives in.</summary>
+    private IEnumerable<WorkTaskDto> ShownTasks => list?.Tasks.Where(task => task.IsDone == showDone) ?? [];
+
+    private bool CanAdd => list is not null && states.Count > 0;
+
+    private string ShowDoneDescription => showDone ? "Show open tasks" : "Show done tasks";
+
+    private string ExpandTooltip => Expanded ? "Close the expanded view" : "Expand";
+
+    private string EmptyText => showDone ? "No done tasks." : list?.Tasks.Count > 0 ? "Every task is done. Show done tasks to list them." : "No tasks yet.";
+
+    protected override Task OnInitializedAsync() => ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        isLoading = true;
+        (list, states, people) = (await TaskService.GetForOwnerAsync(Preferences.Email), await TaskStateService.GetAllAsync(), await PersonService.GetAllAsync());
+        isLoading = false;
+    }
+
+    /// <summary>A done task shows the date it was last updated, which is when it was done; an open one its due date.</summary>
+    private string DateText(WorkTaskDto task) => task.IsDone ? LocalDate(task.LastUpdatedUtc) : task.DueDate?.ToString(UiFormats.ShortDate) ?? string.Empty;
+
+    private string LocalDate(DateTimeOffset moment) => ((DateTimeOffset?)moment).ToLocalDisplay(TimeZone, UiFormats.ShortDate);
+
+    private string RequesterName(WorkTaskDto task) => people.FirstOrDefault(person => person.Id == task.RequestedByPersonId)?.DisplayName ?? TaskLabels.RequesterRemoved;
+
+    /// <summary>A new task starts in the first state listed and is requested by the signed-in user, who can pick someone else.</summary>
+    private async Task EditAsync(WorkTaskDto? task)
+    {
+        if (list is null)
+        {
+            return;
+        }
+
+        WorkTaskEditDto edit = task?.ToEditDto() ?? new WorkTaskEditDto { StateId = states.FirstOrDefault()?.Id, RequestedByPersonId = list.OwnerPersonId };
+        DialogParameters<TaskDialog> parameters = new()
+        {
+            { dialog => dialog.Item, edit },
+            { dialog => dialog.OwnerEmail, Preferences.Email },
+            { dialog => dialog.States, states },
+            { dialog => dialog.People, people },
+        };
+
+        IDialogReference reference = await DialogService.ShowAsync<TaskDialog>(null, parameters);
+        if (!(await reference.Result)!.Canceled)
+        {
+            await ReloadAsync();
+        }
+    }
+}

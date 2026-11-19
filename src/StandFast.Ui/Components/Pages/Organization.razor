@@ -1,6 +1,9 @@
 @page "/organization"
 @attribute [Authorize]
 @inject IHolidayService HolidayService
+@inject ITaskStateService TaskStateService
+@inject IOrganizationSettingsService OrganizationSettingsService
+@inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @using StandFast.Application.Mapping
 @using StandFast.Domain.Abstractions
@@ -38,10 +41,41 @@
             <NoRecordsContent>@(holidays.Count == 0 ? "No holidays recorded yet." : "No holidays from today on. Turn on Show past to list earlier ones.")</NoRecordsContent>
         </MudTable>
     </MudTabPanel>
+    <MudTabPanel Text="@TaskLabels.TaskStates" Icon="@TaskLabels.TaskStatesIcon">
+        <div class="d-flex align-center mb-4">
+            <MudText Typo="Typo.body2" Class="mud-text-secondary flex-grow-1">States a task can be in, each filed under a grouping. Tasks in a Done state are done, and task lists show them only when switched to done tasks.</MudText>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => EditStateAsync(null))">Add task state</MudButton>
+        </div>
+
+        <MudTable Items="taskStates" Hover="true" Dense="true" Loading="isLoading" Elevation="0">
+            <HeaderContent>
+                <MudTh>@TaskLabels.State</MudTh>
+                <MudTh>@TaskLabels.Grouping</MudTh>
+                <MudTh Style="width: 7rem;"></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="@TaskLabels.State">@context.Title</MudTd>
+                <MudTd DataLabel="@TaskLabels.Grouping">
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@TaskLabels.GroupColor(context.Group)" Class="ma-0">@TaskLabels.GroupName(context.Group)</MudChip>
+                </MudTd>
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => EditStateAsync(context))" aria-label="@($"Edit {context.Title}")" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteStateAsync(context))" aria-label="@($"Delete {context.Title}")" />
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent>No task states defined yet. Tasks need at least one before any can be added.</NoRecordsContent>
+        </MudTable>
+    </MudTabPanel>
+    <MudTabPanel Text="@CalendarLabels.Settings" Icon="@CalendarLabels.SettingsIcon">
+        <MudCheckBox T="bool" Value="@settings.SelfFirstOnBoard" ValueChanged="SetSelfFirstOnBoardAsync" Disabled="isLoading" Color="Color.Primary" Label="@CalendarLabels.SelfFirstOnBoard" />
+        <MudText Typo="Typo.body2" Class="mud-text-secondary ml-11">@CalendarLabels.SelfFirstOnBoardDescription</MudText>
+    </MudTabPanel>
 </MudTabs>
 
 @code {
     private IReadOnlyList<HolidayDto> holidays = [];
+    private IReadOnlyList<TaskStateDto> taskStates = [];
+    private OrganizationSettingsDto settings = OrganizationSettingsDto.Default;
     private bool isLoading = true;
     private bool showPast;
     private DateOnly today;
@@ -57,7 +91,7 @@
     private async Task ReloadAsync()
     {
         isLoading = true;
-        holidays = await HolidayService.GetAllAsync();
+        (holidays, taskStates, settings) = (await HolidayService.GetAllAsync(), await TaskStateService.GetAllAsync(), await OrganizationSettingsService.GetAsync());
         isLoading = false;
     }
 
@@ -79,6 +113,44 @@
         {
             await HolidayService.DeleteAsync(holiday.Id);
             await ReloadAsync();
+        }
+    }
+
+    private async Task SetSelfFirstOnBoardAsync(bool selfFirstOnBoard)
+    {
+        await OrganizationSettingsService.SetSelfFirstOnBoardAsync(selfFirstOnBoard);
+        settings = settings with { SelfFirstOnBoard = selfFirstOnBoard };
+        Snackbar.Add("Setting saved.", Severity.Success);
+    }
+
+    private async Task EditStateAsync(TaskStateDto? state)
+    {
+        DialogParameters<TaskStateDialog> parameters = new() { { dialog => dialog.State, state?.ToEditDto() ?? new TaskStateEditDto() } };
+        IDialogReference reference = await DialogService.ShowAsync<TaskStateDialog>(null, parameters);
+
+        if (!(await reference.Result)!.Canceled)
+        {
+            await ReloadAsync();
+        }
+    }
+
+    /// <summary>A state some task is in is refused by the service, which says so here rather than in a dialog.</summary>
+    private async Task DeleteStateAsync(TaskStateDto state)
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync("Remove task state", $"Remove the {state.Title} task state?", yesText: "Remove", cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        try
+        {
+            await TaskStateService.DeleteAsync(state.Id);
+            await ReloadAsync();
+        }
+        catch (FluentValidation.ValidationException exception)
+        {
+            Snackbar.Add(exception.Describe(), Severity.Warning);
         }
     }
 }

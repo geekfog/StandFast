@@ -1,0 +1,151 @@
+@inject ITaskService TaskService
+@inject IDialogService DialogService
+@inject FluentValidation.IValidator<WorkTaskEditDto> Validator
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(IsAdding ? "Add tasks" : "Edit task")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="form" Model="Item" Validation="@FluentValidationAdapter.ForField(Validator)">
+            @if (IsAdding)
+            {
+                @* Each line becomes a task of its own with the settings below, so several can be added at once. The length limit is per line, so it is checked on save. *@
+                <MudTextField @bind-Value="Item.Title" For="@(() => Item.Title)" Label="@TaskLabels.Titles" HelperText="@TaskLabels.TitlesHint" Lines="@TitleLines" Sizing="InputSizing.Auto"
+                              MaxLines="@TitleMaxLines" Variant="Variant.Outlined" Class="mb-3" AutoFocus="true" />
+            }
+            else
+            {
+                <MudTextField @bind-Value="Item.Title" For="@(() => Item.Title)" Label="@TaskLabels.Title" MaxLength="DomainLimits.TaskTitleMaxLength" Variant="Variant.Outlined" Class="mb-3" AutoFocus="true" />
+            }
+            <MudGrid Spacing="3" Class="mb-3">
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="Guid?" @bind-Value="Item.StateId" For="@(() => Item.StateId)" Label="@TaskLabels.State" ToStringFunc="StateTitle" Variant="Variant.Outlined">
+                        @foreach (TaskStateDto state in States)
+                        {
+                            <MudSelectItem T="Guid?" Value="@state.Id">
+                                <div class="d-flex align-center gap-2">
+                                    <span class="flex-grow-1">@state.Title</span>
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary">@TaskLabels.GroupName(state.Group)</MudText>
+                                </div>
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudNumericField T="int?" @bind-Value="Item.Priority" For="@(() => Item.Priority)" Label="@TaskLabels.Priority" HelperText="@TaskLabels.PriorityHint"
+                                     Min="DomainLimits.TaskPriorityHighest" Max="DomainLimits.TaskPriorityLowest" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="Guid?" @bind-Value="Item.RequestedByPersonId" For="@(() => Item.RequestedByPersonId)" Label="@TaskLabels.RequestedBy" ToStringFunc="PersonName" Variant="Variant.Outlined">
+                        @foreach (PersonDto person in RequesterCandidates)
+                        {
+                            <MudSelectItem T="Guid?" Value="@person.Id">@person.DisplayName</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudDatePicker @bind-Date="DueDate" Label="@TaskLabels.Due" DateFormat="@UiFormats.ShortDate" Clearable="true" Variant="Variant.Outlined" />
+                </MudItem>
+            </MudGrid>
+            @if (saveError is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">@saveError</MudAlert>
+            }
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        @if (Item.Id is { } id)
+        {
+            <MudButton Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete" Disabled="isSaving" OnClick="@(() => DeleteAsync(id))" Class="mr-auto">Delete</MudButton>
+        }
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="isSaving" OnClick="SaveAsync">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private const int TitleLines = 3;
+    private const int TitleMaxLines = 12;
+
+    private MudForm form = default!;
+    private bool isSaving;
+
+    /// <summary>Set when saving was refused for a reason only the service can check, such as the state or requester having been removed meanwhile.</summary>
+    private string? saveError;
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter]
+    [EditorRequired]
+    public WorkTaskEditDto Item { get; set; } = default!;
+
+    /// <summary>The signed-in user's address, which decides whose list the task is saved to.</summary>
+    [Parameter]
+    [EditorRequired]
+    public string? OwnerEmail { get; set; }
+
+    [Parameter]
+    [EditorRequired]
+    public IReadOnlyList<TaskStateDto> States { get; set; } = [];
+
+    [Parameter]
+    [EditorRequired]
+    public IReadOnlyList<PersonDto> People { get; set; } = [];
+
+    /// <summary>Active people, plus the current requester should they have since been made inactive, so an edit does not silently drop them.</summary>
+    private IEnumerable<PersonDto> RequesterCandidates => People.Where(person => person.IsActive || person.Id == Item.RequestedByPersonId);
+
+    private bool IsAdding => Item.Id is null;
+
+    private DateTime? DueDate
+    {
+        get => Item.DueDate.ToPickerDate();
+        set => Item.DueDate = value.FromPickerDate();
+    }
+
+    private string StateTitle(Guid? stateId) => States.FirstOrDefault(state => state.Id == stateId)?.Title ?? string.Empty;
+
+    private string PersonName(Guid? personId) => People.FirstOrDefault(person => person.Id == personId)?.DisplayName ?? string.Empty;
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task SaveAsync()
+    {
+        await form.ValidateAsync();
+        if (!form.IsValid)
+        {
+            return;
+        }
+
+        isSaving = true;
+        saveError = null;
+
+        try
+        {
+            await TaskService.SaveAsync(OwnerEmail, Item);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (FluentValidation.ValidationException exception)
+        {
+            saveError = exception.Describe();
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task DeleteAsync(Guid id)
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync("Delete task", $"Delete {Item.Title}? A task that is finished can be kept by moving it to a Done state instead.", yesText: "Delete", cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        await TaskService.DeleteAsync(OwnerEmail, id);
+        Dialog.Close(DialogResult.Ok(true));
+    }
+}

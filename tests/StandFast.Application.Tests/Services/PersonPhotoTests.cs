@@ -14,7 +14,7 @@ public sealed class PersonPhotoTests
     private readonly InMemoryPersonRepository people = new();
     private readonly PersonService service;
 
-    public PersonPhotoTests() => service = new PersonService(people, new FixedClock(Now), new PersonEditDtoValidator(), new RecordingAuditLog());
+    public PersonPhotoTests() => service = new PersonService(people, new InMemoryTaskRepository(), new FixedClock(Now), new PersonEditDtoValidator(), new RecordingAuditLog());
 
     [Fact]
     public async Task SavingWithAPhoto_StoresItAndStampsTheSaveTime()

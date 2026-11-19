@@ -9,7 +9,7 @@ using StandFast.Domain.Entities;
 
 namespace StandFast.Application.Services;
 
-public sealed class PersonService(IPersonRepository people, IClock clock, IValidator<PersonEditDto> validator, IAuditLog audit) : IPersonService
+public sealed class PersonService(IPersonRepository people, ITaskRepository tasks, IClock clock, IValidator<PersonEditDto> validator, IAuditLog audit) : IPersonService
 {
     private const string AuditTargetType = nameof(Person);
 
@@ -83,6 +83,12 @@ public sealed class PersonService(IPersonRepository people, IClock clock, IValid
             report.ModifiedUtc = clock.UtcNow;
             await people.UpsertAsync(report, cancellationToken);
             audit.Record(AuditEvents.PersonUpdated, AuditTargetType, report.Id.ToString(), $"{report.DisplayName} <{report.Email}>");
+        }
+
+        // Their own task list goes with them. Tasks they requested of others stay on those lists, with no requester until one is picked.
+        foreach (WorkTask task in await tasks.GetForOwnerAsync(id, cancellationToken))
+        {
+            await tasks.DeleteAsync(id, task.Id, cancellationToken);
         }
 
         await people.DeleteAsync(id, cancellationToken);

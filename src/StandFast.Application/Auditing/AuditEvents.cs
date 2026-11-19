@@ -28,6 +28,13 @@ public static class AuditEvents
     public const string DayOffCreated = "DayOff.Created";
     public const string DayOffUpdated = "DayOff.Updated";
     public const string DayOffDeleted = "DayOff.Deleted";
+    public const string TaskStateCreated = "TaskState.Created";
+    public const string TaskStateUpdated = "TaskState.Updated";
+    public const string TaskStateDeleted = "TaskState.Deleted";
+    public const string TaskCreated = "Task.Created";
+    public const string TaskUpdated = "Task.Updated";
+    public const string TaskDeleted = "Task.Deleted";
+    public const string OrganizationSettingsChanged = "Organization.SettingsChanged";
     public const string BackupCreated = "Backup.Created";
     public const string BackupRestored = "Backup.Restored";
 }

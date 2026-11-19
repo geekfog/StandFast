@@ -32,6 +32,50 @@ public sealed class TableEntityMappingsTests
     }
 
     [Fact]
+    public void OrganizationSettings_RoundTrip_AndARowSavedBeforeASettingExistedReadsItsDefault()
+    {
+        Assert.True(new OrganizationSettings { SelfFirstOnBoard = true }.ToTableEntity().ToDomain().SelfFirstOnBoard);
+        Assert.Equal(OrganizationSettings.DefaultSelfFirstOnBoard, new OrganizationSettingsTableEntity().ToDomain().SelfFirstOnBoard);
+    }
+
+    [Fact]
+    public void TaskState_RoundTripsItsGroup()
+    {
+        TaskState state = new() { Title = "Blocked", Group = TaskStateGroup.Stopped };
+
+        TaskState restored = state.ToTableEntity().ToDomain();
+
+        Assert.Equal(state.Id, restored.Id);
+        Assert.Equal("Blocked", restored.Title);
+        Assert.Equal(TaskStateGroup.Stopped, restored.Group);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void WorkTask_RoundTripsItsOwnerAndOptionalDueDate(bool hasDueDate)
+    {
+        WorkTask task = new()
+        {
+            OwnerPersonId = Guid.CreateVersion7(),
+            Title = "Draft the runbook",
+            StateId = Guid.CreateVersion7(),
+            Priority = 7,
+            DueDate = hasDueDate ? new DateOnly(2026, 12, 4) : null,
+            RequestedByPersonId = Guid.CreateVersion7(),
+        };
+
+        WorkTask restored = task.ToTableEntity().ToDomain();
+
+        Assert.Equal(task.Id, restored.Id);
+        Assert.Equal(task.OwnerPersonId, restored.OwnerPersonId);
+        Assert.Equal(task.StateId, restored.StateId);
+        Assert.Equal(task.Priority, restored.Priority);
+        Assert.Equal(task.DueDate, restored.DueDate);
+        Assert.Equal(task.RequestedByPersonId, restored.RequestedByPersonId);
+    }
+
+    [Fact]
     public void Person_RoundTripsIdentityAndContactDetails()
     {
         Person person = new() { FirstName = "Ada", LastName = "Lovelace", Email = "ada.lovelace@example.com" };

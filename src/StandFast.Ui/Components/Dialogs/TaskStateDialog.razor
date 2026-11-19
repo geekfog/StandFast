@@ -1,0 +1,66 @@
+@inject ITaskStateService TaskStateService
+@inject FluentValidation.IValidator<TaskStateEditDto> Validator
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(State.Id is null ? "Add task state" : "Edit task state")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="form" Model="State" Validation="@FluentValidationAdapter.ForField(Validator)">
+            <MudTextField @bind-Value="State.Title" For="@(() => State.Title)" Label="@TaskLabels.Title" MaxLength="DomainLimits.TaskStateTitleMaxLength" Variant="Variant.Outlined" Class="mb-3"
+                          Error="@(saveError is not null)" ErrorText="@saveError" OnKeyDown="@(() => saveError = null)" />
+            <MudSelect T="TaskStateGroup" @bind-Value="State.Group" Label="@TaskLabels.Grouping" ToStringFunc="TaskLabels.GroupName" Variant="Variant.Outlined">
+                @foreach (TaskStateGroup group in TaskStateGroupExtensions.InDisplayOrder)
+                {
+                    <MudSelectItem T="TaskStateGroup" Value="@group">@TaskLabels.GroupName(group)</MudSelectItem>
+                }
+            </MudSelect>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="isSaving" OnClick="SaveAsync">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private MudForm form = default!;
+    private bool isSaving;
+
+    /// <summary>Set when saving refused the title because another state already has it, which can only be found against what is stored.</summary>
+    private string? saveError;
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter]
+    [EditorRequired]
+    public TaskStateEditDto State { get; set; } = default!;
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task SaveAsync()
+    {
+        await form.ValidateAsync();
+        if (!form.IsValid)
+        {
+            return;
+        }
+
+        isSaving = true;
+
+        try
+        {
+            await TaskStateService.SaveAsync(State);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (FluentValidation.ValidationException exception)
+        {
+            saveError = exception.Describe();
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

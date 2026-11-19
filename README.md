@@ -45,6 +45,9 @@ StandFast does not host the call and does not connect to any meeting or chat ser
 | Sprint | A named stretch of dates a standup's team works to, such as "Sprint 29". Each standup has its own sprints, and they never overlap. |
 | Holiday | A date the whole organization has off, as a full day or a half day. |
 | Days off | A span of whole days one person is away, with an optional note. |
+| Task | An item on one person's own list, with a title, a state, a priority from 1 (most urgent) to 100, an optional due date, and who in People requested it. |
+| Task state | A name the organization gives to where a task stands, such as New or Blocked, each filed under one state grouping. |
+| State grouping | One of five fixed stages a task state belongs to: Review, Ready, In-Flight, Stopped, and Done. A task in a Done state is done. |
 | Working day | A Monday to Friday date, counted as a full day, less a holiday on it: none left for a full-day holiday, half for a half-day one. |
 | Identity provider | The external sign-in service StandFast trusts to say who a user is, using the [OpenID Connect](https://openid.net/developers/how-connect-works/) standard. |
 
@@ -53,7 +56,7 @@ StandFast does not host the call and does not connect to any meeting or chat ser
 ```mermaid
 flowchart TB
     People["<b>People</b><br/>Add everyone who attends, with the email they sign in with, and their days off"]
-    Organization["<b>Organization</b><br/>Record holidays"]
+    Organization["<b>Organization</b><br/>Record holidays and task states, and choose settings"]
     Standup["<b>Standups</b><br/>Create a standup: days, start time, time zone"]
     Presenters["<b>Presenter Roster</b><br/>Who gives an update"]
     Leaders["<b>Leader Roster</b><br/>Who may run the meeting"]
@@ -77,7 +80,7 @@ flowchart TB
     Board --> Run --> Lock --> Reports
 ```
 
-People, holidays, standups, rosters, and sprints are set up ahead of time and changed as the team and calendar change. Board through Lock repeats at every meeting.
+People, holidays, task states, standups, rosters, and sprints are set up ahead of time and changed as the team and calendar change. Board through Lock repeats at every meeting.
 
 ## Capabilities
 
@@ -89,10 +92,11 @@ People, holidays, standups, rosters, and sprints are set up ahead of time and ch
 | Leader | Records who ran the standup on each date. | Only people attending that date, here or presented, can be picked. The pick is limited to the Leader Roster unless the group icon beside the Leader dropdown is turned on for that date, which opens it to every presenter, leader, and guest attending. Turning it back off clears a leader from outside the Leader Roster. |
 | Context at a glance | Each card shows the person's photo, an icon after their name on the roster marking them as a presenter, leader, or guest in the color of the section a tap places them in, their time zone offset, and their time with the organization, with times of day and offsets in your browser's time zone (the standup's when your browser's is not available), named after the date by its short name such as CST or CDT, or by its id when it has none, with its source on hover, with location, their current local time, start date, title or role, and email address on hover. | Shown only for details recorded in People. |
 | Updates | Each person's update, blockers, and parking lot are captured with formatting, and last time's entry can be copied in with one click. | Leaders and guests get one notes box unless the standup lets them present. |
+| Tasks | Opening your own update on the board, the card marked with a star, shows your task list to the right of the parking lot, with each task's state, priority, title cut to its first 20 characters with the rest on hover, and due date, most urgent first and then latest due date first. Several tasks can be added at once, one title per line, each with the same state, priority, due date, and requester. A new task is requested by you unless another person is picked. The list shows open tasks; the show done button switches it to only done tasks, most recently updated first, with the date column retitled Done and dating each by its last update. The Tasks menu item opens the same list on its own page with every column: state, state grouping, priority, full title, due or done date, who requested it, and when it was created. | Only you see your own list, found by matching your sign-in email address to People, and the Tasks menu item shows only when there is a match. A task state must be defined under Organization before a task can be added. Tasks stay editable on a locked date, since they belong to no date. On the board, who requested a task is set and shown in its edit dialog. Removing a person removes their own list; tasks they requested of others stay, and need a new requester picked the next time they are saved. |
 | History | Any past date opens exactly as recorded, and a locked date cannot be changed by accident. | A locked date must be unlocked to change it. |
 | Reports | A chart of each person's turn over time, a table of the days a standup ran, how many presented, and how long it took, a table of how often each person presented and how long their turns ran, an org chart of everyone under their supervisor, and a table of how many days it has been since each presenter last presented at each standup. | A standup's reports cover a period running back from today, a year at most. The org chart covers all of People and shows an inactive person only when someone active reports up through them. Days Since Last Presented covers every active standup and its whole history, listing only active people on a presenter roster. |
 | People directory | One list of everyone, with photo, title or role, supervisor, organization, department, location, time zone, start date, notes, and days off. It lists active people, or only inactive people while Show inactive is on, and shows the standups each person presents at, leads, and is a guest at. It can be narrowed to one active standup's presenters, leaders, and guests, and to presenters, leaders, guests, people on no roster, or any combination of those, which then mean roles on the selected standup. | A supervisor is optional, and a save is refused when following supervisors upward would loop back. Removing a person leaves their direct reports with no supervisor and removes their days off. |
-| Organization | Holidays the whole organization takes, each a full or half day, on one Holidays tab. | One holiday per date. |
+| Organization | Holidays the whole organization takes, each a full or half day, on a Holidays tab, and the task states every task list picks from, each with its state grouping, on a Task states tab. A Settings tab can list the starred person, each user's own card, first in every board section. | One holiday per date. Task state titles must be unique, and a state cannot be removed while any task is in it. Listing the starred person first is off by default, which keeps their card in its sorted place; the setting applies to everyone. |
 | Backup and restore | The whole data set downloads as one file and can be restored into any StandFast environment. | Restoring replaces all data. The audit log and each user's own settings are not included. |
 | Appearance | Light or dark mode follows each user to any browser. | |
 | Browser-installed app | StandFast can be installed from the browser to open in its own window with its own icon. | Offered by Edge and Chrome. |
@@ -324,6 +328,15 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 # <a id="change-summary">🚧</a> Change Summary
 
 *Each entry is a specific version (release/\* branch), in descending order (newest version up top), with a plain bullet list summarizing each change without technical jargon.*
+
+### v01.08.00 — 2026-11-19
+
+- Added a task list beside your own update on the board, to the right of the parking lot, listing each task's state, priority from 1 to 100, title, and optional due date. Each task also records who requested it, defaulting to you, set in its edit dialog. Titles longer than 20 characters are cut short in the list, with the full title on hover. Open tasks are sorted by priority and then by latest due date. A button switches the list to only done tasks, most recently updated first, each dated by its last update under a Done column.
+- Let several tasks be added at once by typing one title per line when adding, each taking the same state, priority, due date, and requester.
+- Added a Tasks menu item, shown to anyone whose sign-in address is in People, opening their task list on its own page with the state grouping, full title, requester, and created date added. Tasks stay editable beside your update on a locked date.
+- Added a Settings tab to the Organization screen with an option, off by default, to list each user's own starred card first in every board section.
+- Let every screen use the full width of a wide window instead of stopping short with empty margins on each side.
+- Added a Task states tab to the Organization screen for adding, renaming, and removing the states tasks can be in, each filed under Review, Ready, In-Flight, Stopped, or Done. A state cannot be removed while a task is in it.
 
 ### v01.07.00 — 2026-11-12
 

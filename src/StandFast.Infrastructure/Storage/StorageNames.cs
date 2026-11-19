@@ -16,6 +16,9 @@ public static class StorageNames
     public const string Sprints = "Sprints";
     public const string PersonDaysOff = "PersonDaysOff";
     public const string Holidays = "Holidays";
+    public const string TaskStates = "TaskStates";
+    public const string Tasks = "Tasks";
+    public const string OrganizationSettings = "OrganizationSettings";
     public const string UserPreferences = "UserPreferences";
     public const string AuditLog = "AuditLog";
 
@@ -25,7 +28,7 @@ public static class StorageNames
     /// explains the restore itself. <see cref="UserPreferences"/> is absent for a related reason: it belongs to the people using the app rather
     /// than to the board data, so restoring last month's copy of the board leaves everyone's own settings alone.
     /// </summary>
-    public static readonly IReadOnlyList<string> DataTables = [People, PersonPhotos, PersonDaysOff, Standups, StandupMembers, StandupLeaders, StandupGuests, StandupMeetings, StandupEntries, Sprints, Holidays];
+    public static readonly IReadOnlyList<string> DataTables = [People, PersonPhotos, PersonDaysOff, Standups, StandupMembers, StandupLeaders, StandupGuests, StandupMeetings, StandupEntries, Sprints, Holidays, TaskStates, Tasks, OrganizationSettings];
 
     /// <summary>Every table the app creates. Tests clean up from this list, so a table added above is never left behind.</summary>
     public static readonly IReadOnlyList<string> AllTables = [.. DataTables, UserPreferences, AuditLog];
