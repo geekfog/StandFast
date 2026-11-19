@@ -18,6 +18,12 @@ public static class DomainLimits
     public const int SprintNameMaxLength = 100;
     public const int SprintNoteMaxLength = 200;
     public const int DayOffNoteMaxLength = 200;
+    public const int TaskStateTitleMaxLength = 50;
+    public const int TaskTitleMaxLength = 200;
+
+    /// <summary>Task priorities run from 1, the most urgent, to 100.</summary>
+    public const int TaskPriorityHighest = 1;
+    public const int TaskPriorityLowest = 100;
 
     /// <summary>Largest stored profile photo. Azure Table Storage caps a single binary property at 64 KiB.</summary>
     public const int PhotoMaxBytes = 64 * 1024;

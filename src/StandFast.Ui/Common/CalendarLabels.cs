@@ -4,19 +4,26 @@ using StandFast.Domain.Enums;
 
 namespace StandFast.Ui.Common;
 
-/// <summary>Wording and icons for holidays, sprints, and days off, so the screens that manage them and the board that shows them agree.</summary>
+/// <summary>Wording and icons for the Organization screen, holidays, sprints, and days off, so the screens that manage them and the board that shows them agree.</summary>
 public static class CalendarLabels
 {
     public const string Organization = "Organization";
     public const string Holidays = "Holidays";
     public const string Sprints = "Sprints";
     public const string DaysOff = "Days off";
+    public const string Settings = "Settings";
+
+    /// <summary>The organization setting that lists the reader's own card, the one with the star, first in each board section.</summary>
+    public const string SelfFirstOnBoard = "List the starred person first in each board section";
+
+    public const string SelfFirstOnBoardDescription = "When on, each signed-in user's own card, the one marked with a star, is listed first in every board section. When off, it keeps its sorted place.";
 
     public const string OrganizationIcon = Icons.Material.Filled.CorporateFare;
     public const string HolidayIcon = Icons.Material.Filled.Celebration;
     public const string SprintIcon = Icons.Material.Filled.DirectionsRun;
     public const string DaysOffIcon = Icons.Material.Filled.EventBusy;
     public const string SprintNoteIcon = Icons.Material.Filled.StickyNote2;
+    public const string SettingsIcon = Icons.Material.Filled.Settings;
 
     public static string Duration(HolidayDuration duration) => duration == HolidayDuration.HalfDay ? "Half day" : "Full day";
 

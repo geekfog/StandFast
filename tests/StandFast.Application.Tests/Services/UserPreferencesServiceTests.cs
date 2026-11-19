@@ -12,9 +12,10 @@ public sealed class UserPreferencesServiceTests
     private const string Email = "ada.lovelace@example.com";
 
     private readonly InMemoryUserPreferencesRepository repository = new();
+    private readonly InMemoryPersonRepository people = new();
     private readonly UserPreferencesService service;
 
-    public UserPreferencesServiceTests() => service = new UserPreferencesService(repository, new FixedClock(new DateTimeOffset(2026, 9, 21, 8, 0, 0, TimeSpan.Zero)));
+    public UserPreferencesServiceTests() => service = new UserPreferencesService(repository, people, new FixedClock(new DateTimeOffset(2026, 9, 21, 8, 0, 0, TimeSpan.Zero)));
 
     [Fact]
     public void DefaultIsLightModeWithExpandedNavigationAndMatchesNobody()
@@ -22,6 +23,20 @@ public sealed class UserPreferencesServiceTests
         Assert.False(UserPreferencesDto.Default.IsDarkMode);
         Assert.True(UserPreferencesDto.Default.IsNavigationExpanded);
         Assert.False(UserPreferencesDto.Default.IsSelf(Email));
+    }
+
+    [Fact]
+    public async Task TheUserIsMatchedToTheirPersonInPeople_ByAddress_WhateverItsCase()
+    {
+        StandFast.Domain.Entities.Person ada = new() { FirstName = "Ada", LastName = "Lovelace", Email = Email };
+        await people.UpsertAsync(ada);
+
+        UserPreferencesDto matched = await service.LoadAsync(UserId, Email.ToUpperInvariant());
+        UserPreferencesDto unmatched = await service.LoadAsync(OtherUserId, "someone.else@example.com");
+
+        Assert.Equal(ada.Id, matched.PersonId);
+        Assert.True(matched.IsInPeople);
+        Assert.False(unmatched.IsInPeople);
     }
 
     [Fact]

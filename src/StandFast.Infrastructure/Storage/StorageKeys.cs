@@ -42,7 +42,19 @@ public static class StorageKeys
 
     public static string HolidayRowKey(Guid holidayId) => holidayId.ToString("D");
 
-    /// <summary>Days off hang off a person, so one person's are a single partition.</summary>
+    /// <summary>The organization's settings are a single row under fixed keys.</summary>
+    public const string OrganizationSettingsPartition = "Organization";
+
+    public const string OrganizationSettingsRowKey = "Settings";
+
+    /// <summary>Task states are few and read all at once, so they share one partition like holidays.</summary>
+    public const string TaskStatePartition = "TaskState";
+
+    public static string TaskStateRowKey(Guid stateId) => stateId.ToString("D");
+
+    public static string TaskRowKey(Guid taskId) => taskId.ToString("D");
+
+    /// <summary>Days off and tasks hang off a person, so one person's are a single partition.</summary>
     public static string PersonChildPartitionKey(Guid personId) => personId.ToString("D");
 
     public static string DayOffRowKey(Guid dayOffId) => dayOffId.ToString("D");

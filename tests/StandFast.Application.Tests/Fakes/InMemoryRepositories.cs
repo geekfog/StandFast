@@ -227,6 +227,49 @@ public sealed class InMemoryHolidayRepository : IHolidayRepository
     }
 }
 
+public sealed class InMemoryTaskRepository : ITaskRepository
+{
+    private readonly Dictionary<Guid, TaskState> states = [];
+    private readonly List<WorkTask> tasks = [];
+
+    public Task<IReadOnlyList<TaskState>> GetStatesAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<TaskState>>([.. states.Values]);
+
+    public Task<TaskState?> GetStateAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(states.GetValueOrDefault(id));
+
+    public Task UpsertStateAsync(TaskState state, CancellationToken cancellationToken = default)
+    {
+        states[state.Id] = state;
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteStateAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        states.Remove(id);
+        return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlyList<WorkTask>> GetForOwnerAsync(Guid ownerPersonId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<WorkTask>>([.. tasks.Where(task => task.OwnerPersonId == ownerPersonId)]);
+
+    public Task<WorkTask?> GetAsync(Guid ownerPersonId, Guid taskId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(tasks.FirstOrDefault(task => task.OwnerPersonId == ownerPersonId && task.Id == taskId));
+
+    public Task<bool> IsStateInUseAsync(Guid stateId, CancellationToken cancellationToken = default) => Task.FromResult(tasks.Any(task => task.StateId == stateId));
+
+    public Task UpsertAsync(WorkTask task, CancellationToken cancellationToken = default)
+    {
+        tasks.RemoveAll(other => other.OwnerPersonId == task.OwnerPersonId && other.Id == task.Id);
+        tasks.Add(task);
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteAsync(Guid ownerPersonId, Guid taskId, CancellationToken cancellationToken = default)
+    {
+        tasks.RemoveAll(task => task.OwnerPersonId == ownerPersonId && task.Id == taskId);
+        return Task.CompletedTask;
+    }
+}
+
 public sealed class InMemoryUserPreferencesRepository : IUserPreferencesRepository
 {
     private readonly Dictionary<string, UserPreferences> preferences = [];

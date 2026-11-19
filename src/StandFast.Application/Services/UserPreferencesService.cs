@@ -6,7 +6,7 @@ using StandFast.Domain.Entities;
 
 namespace StandFast.Application.Services;
 
-public sealed class UserPreferencesService(IUserPreferencesRepository preferences, IClock clock) : IUserPreferencesService
+public sealed class UserPreferencesService(IUserPreferencesRepository preferences, IPersonRepository people, IClock clock) : IUserPreferencesService
 {
     public async Task<UserPreferencesDto> LoadAsync(string? userId, string? email, CancellationToken cancellationToken = default)
     {
@@ -25,7 +25,8 @@ public sealed class UserPreferencesService(IUserPreferencesRepository preference
             await preferences.UpsertAsync(stored, cancellationToken);
         }
 
-        return stored.ToDto();
+        Guid? personId = stored?.Email is { } address ? PersonMatch.ByEmail(await people.GetAllAsync(cancellationToken), address)?.Id : null;
+        return stored.ToDto(personId);
     }
 
     public Task SetDarkModeAsync(string? userId, bool isDarkMode, CancellationToken cancellationToken = default) =>

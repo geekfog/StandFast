@@ -29,6 +29,9 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IHolidayService, HolidayService>();
         services.AddScoped<ISprintService, SprintService>();
         services.AddScoped<IDayOffService, DayOffService>();
+        services.AddScoped<ITaskStateService, TaskStateService>();
+        services.AddScoped<ITaskService, TaskService>();
+        services.AddScoped<IOrganizationSettingsService, OrganizationSettingsService>();
 
         return services;
     }

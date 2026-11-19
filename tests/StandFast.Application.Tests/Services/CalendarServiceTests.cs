@@ -66,7 +66,7 @@ public sealed class CalendarServiceTests
 
         Assert.Null((await service.GetForPersonAsync(ada.Id)).Single().Note);
 
-        await new PersonService(people, clock, new PersonEditDtoValidator(), new RecordingAuditLog()).DeleteAsync(ada.Id);
+        await new PersonService(people, new InMemoryTaskRepository(), clock, new PersonEditDtoValidator(), new RecordingAuditLog()).DeleteAsync(ada.Id);
 
         Assert.Empty(await service.GetForPersonAsync(ada.Id));
     }

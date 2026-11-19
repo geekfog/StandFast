@@ -24,6 +24,7 @@ public partial class Board
         [[AttendanceState.Roster], [AttendanceState.Available, AttendanceState.Leader, AttendanceState.Guest], [AttendanceState.Presented]];
 
     private IReadOnlyList<StandupDto> standups = [];
+    private OrganizationSettingsDto organizationSettings = OrganizationSettingsDto.Default;
     private StandupBoardDto? board;
     private IReadOnlyCollection<DateOnly> presentedDates = [];
     private IReadOnlyCollection<DateOnly> lockedDates = [];
@@ -65,6 +66,9 @@ public partial class Board
 
     [Inject]
     private IBoardService BoardService { get; set; } = default!;
+
+    [Inject]
+    private IOrganizationSettingsService OrganizationSettingsService { get; set; } = default!;
 
     [Inject]
     private IClock Clock { get; set; } = default!;
@@ -151,7 +155,7 @@ public partial class Board
     {
         standupTimeZone = UiOptions.Value.ResolveTimeZone();
         today = Clock.Today(standupTimeZone);
-        standups = await StandupService.GetSelectableAsync();
+        (standups, organizationSettings) = (await StandupService.GetSelectableAsync(), await OrganizationSettingsService.GetAsync());
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -206,10 +210,20 @@ public partial class Board
             await BoardService.GetLockedDatesAsync(SelectedStandupId, week[0], week[^1]));
     }
 
-    /// <summary>Everyone in one state, in that column's order. The roster lists only the kind of attendee the filter is set to.</summary>
-    private IReadOnlyList<BoardParticipantDto> ParticipantsIn(AttendanceState state) => board is null
-        ? []
-        : board.Participants.Where(participant => participant.State == state && (state != AttendanceState.Roster || InRosterView(participant))).InColumnOrder(state);
+    /// <summary>
+    /// Everyone in one state, in that column's order. The reader's own card comes first instead when the organization has turned that on. The roster lists
+    /// only the kind of attendee the filter is set to.
+    /// </summary>
+    private IReadOnlyList<BoardParticipantDto> ParticipantsIn(AttendanceState state)
+    {
+        if (board is null)
+        {
+            return [];
+        }
+
+        IReadOnlyList<BoardParticipantDto> ordered = board.Participants.Where(participant => participant.State == state && (state != AttendanceState.Roster || InRosterView(participant))).InColumnOrder(state);
+        return organizationSettings.SelfFirstOnBoard ? [.. ordered.OrderByDescending(participant => Preferences.IsSelf(participant.Email))] : ordered;
+    }
 
     private bool InRosterView(BoardParticipantDto participant) => rosterView is null || participant.Kind == rosterView;
 

@@ -13,7 +13,7 @@ public sealed class SupervisorTests
     private readonly InMemoryPersonRepository people = new();
     private readonly PersonService service;
 
-    public SupervisorTests() => service = new PersonService(people, new FixedClock(Now), new PersonEditDtoValidator(), new RecordingAuditLog());
+    public SupervisorTests() => service = new PersonService(people, new InMemoryTaskRepository(), new FixedClock(Now), new PersonEditDtoValidator(), new RecordingAuditLog());
 
     [Fact]
     public async Task SavingAChain_StoresEachSupervisor()

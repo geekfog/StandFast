@@ -12,6 +12,10 @@
 
 <MudNavMenu>
     <MudNavLink Href="@UiRoutes.Board" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.ViewKanban">Board</MudNavLink>
+    @if (Preferences.IsInPeople)
+    {
+        <MudNavLink Href="@UiRoutes.Tasks" Match="NavLinkMatch.Prefix" Icon="@TaskLabels.TasksIcon">@TaskLabels.Tasks</MudNavLink>
+    }
     <MudNavLink Href="@UiRoutes.Standups" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Event">Standups</MudNavLink>
     <MudNavLink Href="@UiRoutes.People" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.People">People</MudNavLink>
     <MudNavLink Href="@UiRoutes.Organization" Match="NavLinkMatch.Prefix" Icon="@CalendarLabels.OrganizationIcon">@CalendarLabels.Organization</MudNavLink>
@@ -25,6 +29,10 @@
     private const int ShortLabelLength = 3;
 
     private string? environmentLabel;
+
+    /// <summary>The signed-in user's settings, which say whether they are in People and so have a task list to link to.</summary>
+    [CascadingParameter]
+    private UserPreferencesDto Preferences { get; set; } = UserPreferencesDto.Default;
 
     private string? ShortLabel => environmentLabel is { Length: > ShortLabelLength } label ? label[..ShortLabelLength].ToUpperInvariant() : environmentLabel;
 

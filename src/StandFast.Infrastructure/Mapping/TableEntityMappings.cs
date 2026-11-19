@@ -283,5 +283,72 @@ public static class TableEntityMappings
         ETag = ToETag(dayOff.ETag),
     };
 
+    public static TaskState ToDomain(this TaskStateTableEntity entity) => new()
+    {
+        Id = Guid.Parse(entity.RowKey),
+        Title = entity.Title,
+        Group = (TaskStateGroup)entity.Group,
+        CreatedUtc = entity.CreatedUtc,
+        ModifiedUtc = entity.ModifiedUtc,
+        ETag = entity.ETag.ToString(),
+    };
+
+    public static TaskStateTableEntity ToTableEntity(this TaskState state) => new()
+    {
+        PartitionKey = StorageKeys.TaskStatePartition,
+        RowKey = StorageKeys.TaskStateRowKey(state.Id),
+        Title = state.Title,
+        Group = (int)state.Group,
+        CreatedUtc = state.CreatedUtc,
+        ModifiedUtc = state.ModifiedUtc,
+        ETag = ToETag(state.ETag),
+    };
+
+    public static WorkTask ToDomain(this WorkTaskTableEntity entity) => new()
+    {
+        Id = Guid.Parse(entity.RowKey),
+        OwnerPersonId = Guid.Parse(entity.PartitionKey),
+        Title = entity.Title,
+        StateId = entity.StateId,
+        Priority = entity.Priority,
+        DueDate = entity.DueDate is null ? null : MeetingCalendar.FromDateKey(entity.DueDate),
+        RequestedByPersonId = entity.RequestedByPersonId,
+        CreatedUtc = entity.CreatedUtc,
+        ModifiedUtc = entity.ModifiedUtc,
+        ETag = entity.ETag.ToString(),
+    };
+
+    public static WorkTaskTableEntity ToTableEntity(this WorkTask task) => new()
+    {
+        PartitionKey = StorageKeys.PersonChildPartitionKey(task.OwnerPersonId),
+        RowKey = StorageKeys.TaskRowKey(task.Id),
+        Title = task.Title,
+        StateId = task.StateId,
+        Priority = task.Priority,
+        DueDate = task.DueDate is { } dueDate ? MeetingCalendar.ToDateKey(dueDate) : null,
+        RequestedByPersonId = task.RequestedByPersonId,
+        CreatedUtc = task.CreatedUtc,
+        ModifiedUtc = task.ModifiedUtc,
+        ETag = ToETag(task.ETag),
+    };
+
+    public static OrganizationSettings ToDomain(this OrganizationSettingsTableEntity entity) => new()
+    {
+        SelfFirstOnBoard = entity.SelfFirstOnBoard ?? OrganizationSettings.DefaultSelfFirstOnBoard,
+        CreatedUtc = entity.CreatedUtc,
+        ModifiedUtc = entity.ModifiedUtc,
+        ETag = entity.ETag.ToString(),
+    };
+
+    public static OrganizationSettingsTableEntity ToTableEntity(this OrganizationSettings settings) => new()
+    {
+        PartitionKey = StorageKeys.OrganizationSettingsPartition,
+        RowKey = StorageKeys.OrganizationSettingsRowKey,
+        SelfFirstOnBoard = settings.SelfFirstOnBoard,
+        CreatedUtc = settings.CreatedUtc,
+        ModifiedUtc = settings.ModifiedUtc,
+        ETag = ToETag(settings.ETag),
+    };
+
     private static ETag ToETag(string? value) => string.IsNullOrWhiteSpace(value) ? ETag.All : new ETag(value);
 }

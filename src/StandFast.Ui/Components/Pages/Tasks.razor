@@ -1,0 +1,10 @@
+@page "/tasks"
+@attribute [Authorize]
+@inject Microsoft.Extensions.Options.IOptions<StandFastUiOptions> UiOptions
+
+<PageTitle>@AppInfo.PageTitle(TaskLabels.Tasks)</PageTitle>
+
+<h1 class="mud-typography mud-typography-h5 mb-4">@TaskLabels.Tasks</h1>
+
+@* The same list as beside the reader's own update on the board, with every column. *@
+<TaskList Detailed="true" TimeZone="@UiOptions.Value.ResolveTimeZone()" />
