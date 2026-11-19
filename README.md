@@ -329,7 +329,7 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 
 *Each entry is a specific version (release/\* branch), in descending order (newest version up top), with a plain bullet list summarizing each change without technical jargon.*
 
-### v01.07.00 — 2026-11-12
+### v01.08.00 — 2026-11-19
 
 - Added a task list beside your own update on the board, to the right of the parking lot, listing each task's state, priority from 1 to 100, title, and optional due date. Each task also records who requested it, defaulting to you, set in its edit dialog. Titles longer than 20 characters are cut short in the list, with the full title on hover. Open tasks are sorted by priority and then by latest due date. A button switches the list to only done tasks, most recently updated first, each dated by its last update under a Done column.
 - Let several tasks be added at once by typing one title per line when adding, each taking the same state, priority, due date, and requester.
@@ -337,6 +337,9 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 - Added a Settings tab to the Organization screen with an option, off by default, to list each user's own starred card first in every board section.
 - Let every screen use the full width of a wide window instead of stopping short with empty margins on each side.
 - Added a Task states tab to the Organization screen for adding, renaming, and removing the states tasks can be in, each filed under Review, Ready, In-Flight, Stopped, or Done. A state cannot be removed while a task is in it.
+
+### v01.07.00 — 2026-11-12
+
 - Added a divider between the board's columns and the update panel on a wide window that can be dragged, or moved with the up and down arrow keys, to give the columns or the update panel more of the height. The size is remembered in your browser, and double-clicking the divider restores the default.
 - Kept the update panel's name, buttons, and saved time in place on a wide window, with the Current, Blockers, and Parking lot boxes filling the rest of the panel as it is resized and each scrolling its own text. Each box's toolbar keeps its full height however short the panel gets.
 - Added a Standup filter to the People screen, listing the active standups, that shows only the people on that standup's Presenter, Leader, or Guest Roster. The Role filters then match the roles people hold on that standup.
