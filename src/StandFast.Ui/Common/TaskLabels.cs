@@ -29,14 +29,10 @@ public static class TaskLabels
     public const string ShowDoneIcon = Icons.Material.Outlined.Visibility;
     public const string HideDoneIcon = Icons.Material.Filled.Visibility;
 
-    /// <summary>Characters of a task's title the board's compact task list shows, so the row stays one line; the full title shows on hover and in the edit dialog.</summary>
-    public const int ShownTitleLength = 20;
-
-    private const string Ellipsis = "…";
-
-    public static string ShortTitle(string title) => title.Length <= ShownTitleLength ? title : string.Concat(title.AsSpan(0, ShownTitleLength).TrimEnd(), Ellipsis);
-
     public static string DateColumn(bool showDone) => showDone ? Done : Due;
+
+    /// <summary>Hover text on a highlighted due date: the task is due before more urgent tasks that working by priority would reach first.</summary>
+    public static string DueAheadOfMoreUrgent(int count) => $"Due before {count} more urgent {(count == 1 ? "task" : "tasks")}, which priority order puts first.";
 
     public static string PriorityHint => $"{Domain.Common.DomainLimits.TaskPriorityHighest} is the most urgent, {Domain.Common.DomainLimits.TaskPriorityLowest} the least.";
 

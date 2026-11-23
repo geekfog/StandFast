@@ -52,13 +52,13 @@ public static class StandFastTheme
         Color color => $"var(--mud-palette-{color.ToString().ToLowerInvariant()})",
     };
 
-    /// <summary>Column heading shown above each board list.</summary>
-    public static string ColumnTitle(Domain.Enums.AttendanceState state) => state switch
+    /// <summary>Column heading shown above each board list. The leader and guest sections say whether the standup lets <paramref name="presents"/> their kind present.</summary>
+    public static string ColumnTitle(Domain.Enums.AttendanceState state, bool presents) => state switch
     {
         Domain.Enums.AttendanceState.Available => "Present, can be called on",
         Domain.Enums.AttendanceState.Presented => "Presented",
-        Domain.Enums.AttendanceState.Leader => "Leaders, not presenting",
-        Domain.Enums.AttendanceState.Guest => "Guests, not presenting",
+        Domain.Enums.AttendanceState.Leader => presents ? "Leaders, can present" : "Leaders, not presenting",
+        Domain.Enums.AttendanceState.Guest => presents ? "Guests, can present" : "Guests, not presenting",
         _ => "Roster",
     };
 

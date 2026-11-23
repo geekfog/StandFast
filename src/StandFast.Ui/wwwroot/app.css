@@ -539,6 +539,39 @@
     white-space: nowrap;
 }
 
+/* The task grid lays out from its header widths, each wide enough for its title with the sort and filter icons, so a resized column keeps its width and the title takes what is left. Cells stay on one line, cut off with an
+   ellipsis at the column's edge, with half MudBlazor's side padding so the grid fits the board's narrow task panel. */
+.standfast-task-grid .mud-table-root {
+    table-layout: fixed;
+}
+
+.standfast-task-grid.mud-table-dense .mud-table-row .mud-table-cell {
+    padding-inline: 8px;
+    white-space: nowrap;
+}
+
+.standfast-task-grid td.mud-table-cell {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.standfast-task-grid .standfast-task-col-chip {
+    width: 6.5rem;
+}
+
+.standfast-task-grid .standfast-task-col-grouping {
+    width: 10rem;
+}
+
+.standfast-task-grid .standfast-task-col-number,
+.standfast-task-grid .standfast-task-col-date {
+    width: 7.5rem;
+}
+
+.standfast-task-grid .standfast-task-col-person {
+    width: 12rem;
+}
+
 /* Editors side by side in a grid row stretch to the tallest column, so their bottom borders line up whatever their toolbars wrap to. */
 .standfast-markdown-column {
     display: flex;
@@ -645,8 +678,10 @@
     padding: 0.75rem;
 }
 
-/* A wash of the theme's warning color under text that keeps its own color, so a highlight reads in both light and dark mode. */
-.standfast-markdown mark {
+/* A wash of the theme's warning color under text that keeps its own color, so a highlight reads in both light and dark mode. A task's due date takes it when
+   the task is due before more urgent ones. */
+.standfast-markdown mark,
+.standfast-task-date-conflict {
     background-color: color-mix(in srgb, var(--mud-palette-warning) 35%, transparent);
     border-radius: 3px;
     color: inherit;

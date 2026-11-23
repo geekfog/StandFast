@@ -69,6 +69,20 @@ public sealed class GuestAttendanceTests
     }
 
     [Fact]
+    public async Task GetBoardAsync_ReportsWhichKindsPresent_FromTheStandupsSettings()
+    {
+        BoardTestContext context = new();
+        context.Standup.GuestsCanPresent = true;
+        await context.Standups.UpsertAsync(context.Standup);
+
+        StandupBoardDto board = await context.Service.GetBoardAsync(context.Standup.Id, BoardTestContext.Today);
+
+        Assert.True(board.Presents(AttendeeKind.Presenter));
+        Assert.False(board.Presents(AttendeeKind.Leader));
+        Assert.True(board.Presents(AttendeeKind.Guest));
+    }
+
+    [Fact]
     public async Task AdvanceAsync_MarksALeaderAsPresented_WhenTheStandupLetsLeadersPresent()
     {
         BoardTestContext context = new();

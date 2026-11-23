@@ -35,7 +35,8 @@
                     <MudText Typo="Typo.body1">@Participant.DisplayName</MudText>
                 </ChildContent>
             </MudTooltip>
-            @if (Participant.State == AttendanceState.Roster)
+            @* Presented mixes presenters with leaders and guests who can present, so it marks each kind as the roster does. *@
+            @if (Participant.State is AttendanceState.Roster or AttendanceState.Presented)
             {
                 <MudTooltip Text="@KindDescription">
                     <MudIcon Icon="@StandFastTheme.KindIcon(Participant.Kind)" Color="@StandFastTheme.KindColor(Participant.Kind)" Size="Size.Small" Class="ml-1" aria-label="@KindDescription" />

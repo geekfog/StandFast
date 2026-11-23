@@ -117,11 +117,12 @@
                                 <div class="@($"standfast-column-header d-flex align-center mb-2 {(state == column[0] ? string.Empty : "mt-4")}")"
                                      style="@($"--standfast-column-color: {StandFastTheme.ColumnCssColor(state)}")">
                                     <MudIcon Icon="@StandFastTheme.ColumnIcon(state)" Class="mr-2" />
-                                    <MudText Typo="Typo.subtitle1" Class="flex-grow-1">@StandFastTheme.ColumnTitle(state)</MudText>
-                                    @if (state == AttendanceState.Roster)
+                                    <MudText Typo="Typo.subtitle1" Class="flex-grow-1">@ColumnTitle(state)</MudText>
+                                    @if (kindViews.ContainsKey(state))
                                     {
-                                        @* The filter decides who the roster lists, and so whether a tap lands them in Present, Leaders, or Guests. *@
-                                        <MudToggleGroup T="AttendeeKind?" @bind-Value="rosterView" Size="Size.Small" Color="Color.Primary" Class="mr-2 standfast-roster-filter" aria-label="Show on the roster">
+                                        @* On the roster the filter decides who is listed, and so whether a tap lands them in Present, Leaders, or Guests; under Presented it narrows who is shown. *@
+                                        <MudToggleGroup T="AttendeeKind?" Value="@kindViews[state]" ValueChanged="@(kind => kindViews[state] = kind)" Size="Size.Small" Color="Color.Primary"
+                                                        Class="mr-2 standfast-roster-filter" aria-label="@($"Show in {ColumnTitle(state)}")">
                                             @foreach (AttendeeKind? kind in RosterViews)
                                             {
                                                 @* Each kind shows the icon its roster cards carry, named on hover, which keeps the filter narrow enough to share the header. *@

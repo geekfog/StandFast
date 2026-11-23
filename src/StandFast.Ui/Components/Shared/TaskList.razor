@@ -42,53 +42,50 @@
         }
         else
         {
-            <MudSimpleTable Dense="true" Hover="true" Elevation="0" Class="standfast-task-table">
-                <thead>
-                    <tr>
-                        <th>@TaskLabels.State</th>
-                        @if (Detailed)
-                        {
-                            <th>@TaskLabels.Grouping</th>
-                        }
-                        <th class="standfast-task-priority">@TaskLabels.Priority</th>
-                        <th>@TaskLabels.Title</th>
-                        <th>@TaskLabels.DateColumn(showDone)</th>
-                        @if (Detailed)
-                        {
-                            <th>@TaskLabels.RequestedBy</th>
-                            <th>@TaskLabels.Created</th>
-                        }
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (WorkTaskDto task in ShownTasks)
+            <MudDataGrid T="TaskRow" Items="@ShownRows" Dense="true" Hover="true" Elevation="0" Square="true" Class="standfast-task-grid"
+                         ColumnResizeMode="ResizeMode.Column" SortMode="SortMode.Multiple" Filterable="true" FilterMode="DataGridFilterMode.ColumnFilterMenu">
+                <Columns>
+                    <PropertyColumn Property="row => row.State" Title="@TaskLabels.State" HeaderClass="@ChipColumn">
+                        <CellTemplate>
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@TaskLabels.GroupColor(context.Item.Task.StateGroup)" Class="ma-0">@context.Item.State</MudChip>
+                        </CellTemplate>
+                    </PropertyColumn>
+                    @if (Detailed)
                     {
-                        <tr @key="task.Id">
-                            <td>
-                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@TaskLabels.GroupColor(task.StateGroup)" Class="ma-0">@(task.StateTitle ?? UiFormats.UnavailableSymbol)</MudChip>
-                            </td>
-                            @if (Detailed)
-                            {
-                                <td>@(task.StateGroup is { } group ? TaskLabels.GroupName(group) : UiFormats.UnavailableSymbol)</td>
-                            }
-                            <td class="standfast-task-priority">@task.Priority</td>
-                            <td>
-                                <MudLink Typo="Typo.body2" OnClick="@(() => EditAsync(task))" title="@task.Title">@(Detailed ? task.Title : TaskLabels.ShortTitle(task.Title))</MudLink>
-                            </td>
-                            <td class="text-nowrap">@DateText(task)</td>
-                            @if (Detailed)
-                            {
-                                <td>@RequesterName(task)</td>
-                                <td class="text-nowrap">@LocalDate(task.CreatedUtc)</td>
-                            }
-                        </tr>
+                        <PropertyColumn Property="row => row.Grouping" Title="@TaskLabels.Grouping" HeaderClass="@GroupingColumn" />
                     }
-                </tbody>
-            </MudSimpleTable>
-            @if (!ShownTasks.Any())
-            {
-                <MudText Typo="Typo.body2" Class="mud-text-secondary pa-3">@EmptyText</MudText>
-            }
+                    <PropertyColumn Property="row => row.Priority" Title="@TaskLabels.Priority" HeaderClass="@NumberColumn" />
+                    <PropertyColumn Property="row => row.Title" Title="@TaskLabels.Title">
+                        <CellTemplate>
+                            <MudLink Typo="Typo.body2" OnClick="@(() => EditAsync(context.Item.Task))" title="@context.Item.Title">@context.Item.Title</MudLink>
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <PropertyColumn Property="row => row.Date" Title="@TaskLabels.DateColumn(showDone)" HeaderClass="@DateColumn">
+                        <CellTemplate>
+                            @if (context.Item.DueAheadOfMoreUrgent > 0)
+                            {
+                                <span class="standfast-task-date-conflict" title="@TaskLabels.DueAheadOfMoreUrgent(context.Item.DueAheadOfMoreUrgent)">@DateText(context.Item.Date)</span>
+                            }
+                            else
+                            {
+                                @DateText(context.Item.Date)
+                            }
+                        </CellTemplate>
+                    </PropertyColumn>
+                    @if (Detailed)
+                    {
+                        <PropertyColumn Property="row => row.RequestedBy" Title="@TaskLabels.RequestedBy" HeaderClass="@PersonColumn">
+                            <CellTemplate>
+                                <span title="@context.Item.RequestedBy">@context.Item.RequestedBy</span>
+                            </CellTemplate>
+                        </PropertyColumn>
+                        <PropertyColumn Property="row => row.Created" Title="@TaskLabels.Created" Format="@UiFormats.ShortDate" HeaderClass="@DateColumn" />
+                    }
+                </Columns>
+                <NoRecordsContent>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">@EmptyText</MudText>
+                </NoRecordsContent>
+            </MudDataGrid>
         }
     </div>
 </MudPaper>
@@ -96,9 +93,18 @@
 @code {
     private const string Label = TaskLabels.Tasks;
 
+    /// <summary>Starting widths for every column but the title, which resizing overrides; the title takes what is left.</summary>
+    private const string ChipColumn = "standfast-task-col-chip";
+    private const string GroupingColumn = "standfast-task-col-grouping";
+    private const string NumberColumn = "standfast-task-col-number";
+    private const string DateColumn = "standfast-task-col-date";
+    private const string PersonColumn = "standfast-task-col-person";
+
     private TaskListDto? list;
     private IReadOnlyList<TaskStateDto> states = [];
     private IReadOnlyList<PersonDto> people = [];
+    private IReadOnlyList<TaskRow> openRows = [];
+    private IReadOnlyList<TaskRow> doneRows = [];
     private bool isLoading = true;
     private bool showDone;
 
@@ -106,7 +112,7 @@
     [CascadingParameter]
     private UserPreferencesDto Preferences { get; set; } = UserPreferencesDto.Default;
 
-    /// <summary>Adds the grouping, requester, and created date, and shows titles in full, for the Tasks page; the board's panel leaves them out to stay narrow.</summary>
+    /// <summary>Adds the grouping, requester, and created date for the Tasks page; the board's panel leaves them out to stay narrow.</summary>
     [Parameter]
     public bool Detailed { get; set; }
 
@@ -120,8 +126,8 @@
     [Parameter]
     public EventCallback<bool> ExpandedChanged { get; set; }
 
-    /// <summary>Open tasks, or only done ones while the toggle is on, each in the order the list arrives in.</summary>
-    private IEnumerable<WorkTaskDto> ShownTasks => list?.Tasks.Where(task => task.IsDone == showDone) ?? [];
+    /// <summary>Open tasks, or only done ones while the toggle is on, each in the order the list arrives in until a column is sorted.</summary>
+    private IReadOnlyList<TaskRow> ShownRows => showDone ? doneRows : openRows;
 
     private bool CanAdd => list is not null && states.Count > 0;
 
@@ -137,15 +143,27 @@
     {
         isLoading = true;
         (list, states, people) = (await TaskService.GetForOwnerAsync(Preferences.Email), await TaskStateService.GetAllAsync(), await PersonService.GetAllAsync());
+        IReadOnlyDictionary<Guid, int> conflicts = list?.Tasks.DueAheadOfMoreUrgent() ?? new Dictionary<Guid, int>();
+        TaskRow[] rows = [.. list?.Tasks.Select(task => ToRow(task, conflicts.GetValueOrDefault(task.Id))) ?? []];
+        (openRows, doneRows) = ([.. rows.Where(row => !row.Task.IsDone)], [.. rows.Where(row => row.Task.IsDone)]);
         isLoading = false;
     }
 
-    /// <summary>A done task shows the date it was last updated, which is when it was done; an open one its due date.</summary>
-    private string DateText(WorkTaskDto task) => task.IsDone ? LocalDate(task.LastUpdatedUtc) : task.DueDate?.ToString(UiFormats.ShortDate) ?? string.Empty;
+    /// <summary>A done task is dated by its last update, which is when it was done; an open one by its due date.</summary>
+    private TaskRow ToRow(WorkTaskDto task, int dueAheadOfMoreUrgent) => new(
+        task,
+        task.StateTitle ?? UiFormats.UnavailableSymbol,
+        task.StateGroup is { } group ? TaskLabels.GroupName(group) : UiFormats.UnavailableSymbol,
+        task.Priority,
+        task.Title,
+        task.IsDone ? LocalDate(task.LastUpdatedUtc) : task.DueDate?.ToDateTime(TimeOnly.MinValue),
+        people.FirstOrDefault(person => person.Id == task.RequestedByPersonId)?.DisplayName ?? TaskLabels.RequesterRemoved,
+        LocalDate(task.CreatedUtc),
+        dueAheadOfMoreUrgent);
 
-    private string LocalDate(DateTimeOffset moment) => ((DateTimeOffset?)moment).ToLocalDisplay(TimeZone, UiFormats.ShortDate);
+    private DateTime LocalDate(DateTimeOffset moment) => TimeZoneInfo.ConvertTime(moment, TimeZone).Date;
 
-    private string RequesterName(WorkTaskDto task) => people.FirstOrDefault(person => person.Id == task.RequestedByPersonId)?.DisplayName ?? TaskLabels.RequesterRemoved;
+    private static string DateText(DateTime? date) => date?.ToString(UiFormats.ShortDate) ?? string.Empty;
 
     /// <summary>A new task starts in the first state listed and is requested by the signed-in user, who can pick someone else.</summary>
     private async Task EditAsync(WorkTaskDto? task)
@@ -170,4 +188,9 @@
             await ReloadAsync();
         }
     }
+
+    /// <summary>One grid row: a task with each column's value worked out once, so every column sorts and filters on what it shows.</summary>
+    /// <param name="DueAheadOfMoreUrgent">How many more urgent open tasks are due after this one, which highlights its date when above zero.</param>
+    private sealed record TaskRow(WorkTaskDto Task, string State, string Grouping, int Priority, string Title, DateTime? Date, string RequestedBy, DateTime Created,
+        int DueAheadOfMoreUrgent);
 }

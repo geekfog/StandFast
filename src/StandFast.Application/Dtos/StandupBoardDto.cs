@@ -1,4 +1,5 @@
 using StandFast.Domain.Common;
+using StandFast.Domain.Enums;
 
 namespace StandFast.Application.Dtos;
 
@@ -14,6 +15,7 @@ namespace StandFast.Application.Dtos;
 /// </param>
 /// <param name="Sprint">The standup's sprint covering this date, or null when none does.</param>
 /// <param name="Availability">Days off bearing on this date or the rest of its sprint, keyed by person id. Anyone missing is available throughout.</param>
+/// <param name="PresentingKinds">The kinds of attendee who give an update at this standup: presenters always, and leaders and guests where it lets them.</param>
 public sealed record StandupBoardDto(
     Guid StandupId,
     string StandupName,
@@ -26,15 +28,19 @@ public sealed record StandupBoardDto(
     DateTimeOffset? LockedUtc,
     IReadOnlyDictionary<Guid, int> PriorPresentationOrder,
     SprintStatusDto? Sprint,
-    IReadOnlyDictionary<Guid, PersonAvailabilityDto> Availability)
+    IReadOnlyDictionary<Guid, PersonAvailabilityDto> Availability,
+    IReadOnlyList<AttendeeKind> PresentingKinds)
 {
     public static StandupBoardDto Empty(DateOnly meetingDate) =>
-        new(Guid.Empty, string.Empty, meetingDate, false, [], [], false, null, null, new Dictionary<Guid, int>(), null, new Dictionary<Guid, PersonAvailabilityDto>());
+        new(Guid.Empty, string.Empty, meetingDate, false, [], [], false, null, null, new Dictionary<Guid, int>(), null, new Dictionary<Guid, PersonAvailabilityDto>(), []);
 
     /// <summary>The participant's days off as they bear on this board, or null when they have none that do.</summary>
     public PersonAvailabilityDto? AvailabilityFor(Guid personId) => Availability.GetValueOrDefault(personId);
 
     public bool IsLocked => LockedUtc is not null;
+
+    /// <summary>True when someone of <paramref name="kind"/> gives an update at this standup.</summary>
+    public bool Presents(AttendeeKind kind) => PresentingKinds.Contains(kind);
 
     /// <summary>
     /// Who the leader picker offers: the leader roster members attending this date, then, where <see cref="AnyAttendeeCanLead"/> is on, everyone else

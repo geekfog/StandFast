@@ -54,16 +54,22 @@ public static class TaskMappings
     }
 
     /// <summary>
-    /// Tasks in list order. Open tasks come first: most urgent priority first, then latest due date first with undated tasks after dated ones. Done tasks
-    /// follow, most recently updated first. Ties go by title.
+    /// Tasks in list order. Open tasks come first, led by those <see cref="DueAheadOfMoreUrgent"/> flags, soonest due first and then most urgent. The other
+    /// open tasks follow, most urgent priority first, then latest due date first with undated tasks after dated ones. Done tasks come last, most recently
+    /// updated first. Ties go by title.
     /// </summary>
     public static IEnumerable<WorkTaskDto> InListOrder(this IEnumerable<WorkTaskDto> tasks)
     {
         List<WorkTaskDto> all = [.. tasks];
+        IReadOnlyDictionary<Guid, int> dueAheadOfMoreUrgent = all.DueAheadOfMoreUrgent();
 
         return
         [
-            .. all.Where(task => !task.IsDone)
+            .. all.Where(task => dueAheadOfMoreUrgent.ContainsKey(task.Id))
+                .OrderBy(task => task.DueDate)
+                .ThenBy(task => task.Priority)
+                .ThenBy(task => task.Title, StringComparer.CurrentCultureIgnoreCase),
+            .. all.Where(task => !task.IsDone && !dueAheadOfMoreUrgent.ContainsKey(task.Id))
                 .OrderBy(task => task.Priority)
                 .ThenBy(task => task.DueDate is null)
                 .ThenByDescending(task => task.DueDate)
@@ -72,5 +78,20 @@ public static class TaskMappings
                 .OrderByDescending(task => task.LastUpdatedUtc)
                 .ThenBy(task => task.Title, StringComparer.CurrentCultureIgnoreCase),
         ];
+    }
+
+    /// <summary>
+    /// Each open, dated task due before at least one more urgent open task, with how many, so working strictly by priority would reach it after its deadline
+    /// is already behind the others'. These are the tasks whose place differs between priority order and due-date order. Undated tasks have no deadline to
+    /// miss and are never counted on either side; equal priorities are not a conflict.
+    /// </summary>
+    public static IReadOnlyDictionary<Guid, int> DueAheadOfMoreUrgent(this IEnumerable<WorkTaskDto> tasks)
+    {
+        WorkTaskDto[] dated = [.. tasks.Where(task => !task.IsDone && task.DueDate is not null)];
+
+        return dated
+            .Select(task => (task.Id, Count: dated.Count(other => other.Priority < task.Priority && other.DueDate > task.DueDate)))
+            .Where(conflict => conflict.Count > 0)
+            .ToDictionary(conflict => conflict.Id, conflict => conflict.Count);
     }
 }
