@@ -130,6 +130,9 @@
     private string? parkingLot;
     private Guid loadedPersonId;
     private DateOnly loadedDate;
+
+    /// <summary>The participant as of the previous render, which tells an untouched panel, whose boxes still match it, from one with edits in it.</summary>
+    private BoardParticipantDto? previousParticipant;
     private bool isSaving;
 
     // One source-or-formatted state for all three boxes. An expanded box hides the panel header, so it shows its own toggle for the same state.
@@ -173,7 +176,10 @@
     private UserPreferencesDto Preferences { get; set; } = UserPreferencesDto.Default;
 
     // Compared in stored form, since saving trims the text and the reloaded participant carries what was stored.
-    private bool IsDirty => !OptionalText.Matches(currentUpdate, Participant.Update) || !OptionalText.Matches(blockers, Participant.Blockers) || !OptionalText.Matches(parkingLot, Participant.ParkingLot);
+    private bool IsDirty => DiffersFrom(Participant);
+
+    private bool DiffersFrom(BoardParticipantDto saved) =>
+        !OptionalText.Matches(currentUpdate, saved.Update) || !OptionalText.Matches(blockers, saved.Blockers) || !OptionalText.Matches(parkingLot, saved.ParkingLot);
 
     // Cancel takes the place of Close while there are edits to throw away, so the panel only closes with nothing unsaved in it.
     private bool CanCancel => !IsReadOnly && IsDirty;
@@ -208,17 +214,28 @@
 
     private void SetExpanded(EditorField field, bool expanded) => expandedField = expanded ? field : null;
 
-    // Editing state is local so typing does not round-trip to storage, and is re-seeded whenever the panel switches person or date.
+    // Editing state is local so typing does not round-trip to storage. It is re-seeded whenever the panel switches person or date, and when another viewer
+    // saves this update while nothing has been typed here; edits in progress stay, and the panel then shows them as unsaved against the newer text.
     protected override void OnParametersSet()
     {
-        if (loadedPersonId == Participant.PersonId && loadedDate == MeetingDate)
+        bool isNewSelection = loadedPersonId != Participant.PersonId || loadedDate != MeetingDate;
+        if (isNewSelection)
         {
-            return;
+            loadedPersonId = Participant.PersonId;
+            loadedDate = MeetingDate;
+            expandedField = null;
         }
 
-        loadedPersonId = Participant.PersonId;
-        loadedDate = MeetingDate;
-        expandedField = null;
+        if (isNewSelection || (previousParticipant is not null && previousParticipant != Participant && !DiffersFrom(previousParticipant)))
+        {
+            SeedFromSaved();
+        }
+
+        previousParticipant = Participant;
+    }
+
+    private void SeedFromSaved()
+    {
         currentUpdate = Participant.Update;
         blockers = Participant.Blockers;
         parkingLot = Participant.ParkingLot;
@@ -259,12 +276,7 @@
     }
 
     /// <summary>Puts the boxes back to what is saved, leaving the panel open on the same person.</summary>
-    private void CancelEdits()
-    {
-        currentUpdate = Participant.Update;
-        blockers = Participant.Blockers;
-        parkingLot = Participant.ParkingLot;
-    }
+    private void CancelEdits() => SeedFromSaved();
 
     private async Task SaveAsync()
     {

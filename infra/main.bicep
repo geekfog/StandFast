@@ -1,6 +1,7 @@
 targetScope = 'resourceGroup'
 
-// StandFast runs as a single container app: Blazor Server in Azure Container Apps, with Azure Table Storage for data and OpenID Connect for sign-in.
+// StandFast runs as a single container app: Blazor Server in Azure Container Apps, with Azure Table Storage for data, Azure SignalR Service for keeping open
+// boards in step across replicas, and OpenID Connect for sign-in.
 // Every resource is named <AppBase><Env><Region><Suffix> and carries the standard tag set.
 
 @description('Application base name, lower case. Forms the first segment of every resource name.')
@@ -59,6 +60,10 @@ param p_CustomDomainCertificateId string = ''
 @description('True issues the managed certificate named <NameBase>mc for the custom domain and binds it. Azure issues a managed certificate only for a hostname an app in the environment already carries, so the release stage sets this on the pass after the one that binds the domain.')
 param p_IssueCustomDomainCertificate bool = false
 
+@description('Azure SignalR Service SKU. Free_F1 allows 20 concurrent connections and 20,000 messages a day; the app holds one connection per replica and sends one message per board change to each.')
+@allowed([ 'Free_F1', 'Standard_S1', 'Premium_P1' ])
+param p_SignalRSku string = 'Free_F1'
+
 @description('Replica bounds. The floor stays at one so a scale to zero never drops a live standup circuit.')
 param p_MinReplicas int = 1
 param p_MaxReplicas int = 3
@@ -71,6 +76,7 @@ var v_HealthPath = '/healthz'
 var v_DataProtectionContainer = 'dataprotection'
 var v_DataProtectionBlob = 'keys.xml'
 var v_ClientSecretName = 'oidc-client-secret'
+var v_SignalRName = '${v_NameBase}sr'
 var v_ProductionEnvironment = 'PRD'
 // The app runs as Production everywhere, so every other environment names itself on the navigation menu from its code.
 var v_EnvironmentLabel = p_Environment == v_ProductionEnvironment ? '' : p_Environment
@@ -98,6 +104,7 @@ var v_Roles = {
   storageTableDataContributor: '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'
   storageBlobDataContributor: 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
   keyVaultSecretsUser: '4633458b-17de-408a-b874-0445c86b69e6'
+  signalRRestApiOwner: 'fd53cd77-2268-407a-8f46-7e7863d0f521'
   acrPull: '7f951dda-4ed3-4680-a7ca-43fe172d538d'
 }
 
@@ -190,6 +197,37 @@ resource clientSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   name: v_ClientSecretName
   properties: {
     value: p_OidcClientSecret
+  }
+}
+
+// Serverless mode: the app talks to the service only through its REST API and as an ordinary hub client, never as a hub server. Blazor's own browser
+// connections stay on the app. Keys are switched off, so access is exclusively through the managed identity.
+resource signalR 'Microsoft.SignalRService/signalR@2024-03-01' = {
+  name: v_SignalRName
+  location: p_Location
+  tags: p_Tags
+  kind: 'SignalR'
+  sku: {
+    name: p_SignalRSku
+    tier: split(p_SignalRSku, '_')[0]
+    capacity: 1
+  }
+  properties: {
+    features: [
+      { flag: 'ServiceMode', value: 'Serverless' }
+    ]
+    disableLocalAuth: true
+    publicNetworkAccess: 'Enabled'
+  }
+}
+
+resource signalRRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: signalR
+  name: guid(signalR.id, identity.id, v_Roles.signalRRestApiOwner)
+  properties: {
+    principalId: identity.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', v_Roles.signalRRestApiOwner)
   }
 }
 
@@ -318,6 +356,7 @@ resource containerApp 'Microsoft.App/containerApps@2025-07-01' = if (p_DeployApp
             { name: 'Oidc__ClientSecret', secretRef: v_ClientSecretName }
             { name: 'AzureTableStorage__ServiceUri', value: storage.properties.primaryEndpoints.table }
             { name: 'AzureTableStorage__TablePrefix', value: '${p_AppBase}${p_Environment}' }
+            { name: 'AzureSignalR__ConnectionString', value: 'Endpoint=https://${signalR.properties.hostName};AuthType=azure.msi;ClientId=${identity.properties.clientId};Version=1.0;' }
             { name: 'StandFastUi__DisplayTimeZoneId', value: p_DisplayTimeZoneId }
             { name: 'StandFastUi__DataProtectionBlobUri', value: '${storage.properties.primaryEndpoints.blob}${v_DataProtectionContainer}/${v_DataProtectionBlob}' }
             { name: 'StandFastUi__EnvironmentLabel', value: v_EnvironmentLabel }
@@ -353,6 +392,7 @@ resource containerApp 'Microsoft.App/containerApps@2025-07-01' = if (p_DeployApp
     vaultRole
     tableRole
     blobRole
+    signalRRole
     dataProtectionContainer
     certificate
   ]

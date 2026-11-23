@@ -5,6 +5,7 @@ using StandFast.Application.Abstractions;
 using StandFast.Domain.Abstractions;
 using StandFast.Infrastructure.Backup;
 using StandFast.Infrastructure.Configuration;
+using StandFast.Infrastructure.Notifications;
 using StandFast.Infrastructure.Repositories;
 using StandFast.Infrastructure.Storage;
 using StandFast.Infrastructure.Time;
@@ -37,10 +38,21 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IOrganizationSettingsRepository, OrganizationSettingsRepository>();
         services.AddScoped<IBackupStore, TableBackupStore>();
 
+        services.AddOptions<AzureSignalROptions>().Bind(configuration.GetSection(AzureSignalROptions.SectionName));
+        if (ReadSignalROptions(configuration).IsConfigured)
+        {
+            services.AddSingleton<AzureSignalRBoardChangeTransport>();
+            services.AddSingleton<IBoardChangeTransport>(provider => provider.GetRequiredService<AzureSignalRBoardChangeTransport>());
+            services.AddHostedService(provider => provider.GetRequiredService<AzureSignalRBoardChangeTransport>());
+        }
+
         return services;
     }
 
     /// <summary>Binds the storage options straight from configuration, for callers that run before the service provider exists.</summary>
     public static TableStorageOptions ReadOptions(IConfiguration configuration) =>
         configuration.GetSection(TableStorageOptions.SectionName).Get<TableStorageOptions>() ?? new TableStorageOptions();
+
+    private static AzureSignalROptions ReadSignalROptions(IConfiguration configuration) =>
+        configuration.GetSection(AzureSignalROptions.SectionName).Get<AzureSignalROptions>() ?? new AzureSignalROptions();
 }

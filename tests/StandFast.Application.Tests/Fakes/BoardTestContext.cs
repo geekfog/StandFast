@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using StandFast.Application.Abstractions;
 using StandFast.Application.Auditing;
 using StandFast.Application.Configuration;
 using StandFast.Application.Services;
@@ -18,7 +19,7 @@ public sealed class BoardTestContext
     public BoardTestContext()
     {
         Clock = new FixedClock(Now);
-        Service = new BoardService(Standups, People, Entries, Holidays, Clock, new ParticipantUpdateDtoValidator(), Options.Create(LockOptions), Audit);
+        Service = new BoardService(Standups, People, Entries, Holidays, Clock, new ParticipantUpdateDtoValidator(), Options.Create(LockOptions), Audit, Changes);
     }
 
     /// <summary>The shipped lock windows. A test that cares about the boundary sets its own values before calling the service.</summary>
@@ -35,6 +36,8 @@ public sealed class BoardTestContext
     public FixedClock Clock { get; }
 
     public IAuditLog Audit { get; } = new RecordingAuditLog();
+
+    public RecordingBoardChangeNotifier Changes { get; } = new();
 
     public BoardService Service { get; }
 
@@ -70,4 +73,14 @@ public sealed class RecordingAuditLog : IAuditLog
     public List<(string EventName, string TargetType, string TargetId, string Summary)> Records { get; } = [];
 
     public void Record(string eventName, string targetType, string targetId, string summary) => Records.Add((eventName, targetType, targetId, summary));
+}
+
+/// <summary>Captures board change notices so tests can assert which saves tell other open boards to reload.</summary>
+public sealed class RecordingBoardChangeNotifier : IBoardChangeNotifier
+{
+    public List<(Guid StandupId, DateOnly MeetingDate)> Published { get; } = [];
+
+    public void Publish(Guid standupId, DateOnly meetingDate) => Published.Add((standupId, meetingDate));
+
+    public IDisposable Subscribe(Guid standupId, DateOnly meetingDate, Func<Task> onChanged) => throw new NotSupportedException("The board service only publishes.");
 }

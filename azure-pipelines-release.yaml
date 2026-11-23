@@ -77,7 +77,7 @@ stages:
                         }
                       }
 
-                      # The board lock windows, the sign-in idle days, and the Clarity project id ship with the application, so an environment overrides them only
+                      # The board lock windows, the sign-in idle days, the Clarity project id, and the SignalR SKU have shipped defaults, so an environment overrides them only
                       # if it wants to. A variable its group does not define arrives as its own unexpanded macro, which is what tells a genuine override from an absent one.
                       function Add-Optional([string] $p_Name, [string] $p_Value, [type] $p_Type = [string])
                       {
@@ -91,6 +91,7 @@ stages:
                       Add-Optional 'p_BoardLockMinutesAfterLastTurn' '$(a_BoardLockMinutesAfterLastTurn)' ([int])
                       Add-Optional 'p_SignInIdleDays' '$(a_SignInIdleDays)' ([int])
                       Add-Optional 'p_ClarityProjectId' '$(a_ClarityProjectId)'
+                      Add-Optional 'p_SignalRSku' '$(a_SignalRSku)'
 
                       $deploymentParameters.Add('$schema', 'https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#')
                       $deploymentParameters | ConvertTo-Json -Depth 6 | Set-Content '$(Pipeline.Workspace)/parameters.json'
