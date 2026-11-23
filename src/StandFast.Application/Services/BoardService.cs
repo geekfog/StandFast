@@ -107,7 +107,8 @@ public sealed class BoardService(
             meetingTask.Result?.LockedUtc,
             priorTurns,
             sprint,
-            BoardAvailability.ForPeople(daysOff, meetingDate, sprint, holidayDurations));
+            BoardAvailability.ForPeople(daysOff, meetingDate, sprint, holidayDurations),
+            [.. AttendeeKindExtensions.InDisplayOrder.Where(standup.Presents)]);
     }
 
     public async Task<DateTimeOffset?> LockAsync(Guid standupId, DateOnly meetingDate, CancellationToken cancellationToken = default)

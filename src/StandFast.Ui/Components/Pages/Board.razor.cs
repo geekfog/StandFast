@@ -45,10 +45,12 @@ public partial class Board : IDisposable
     private ParticipantUpdatePanel? updatePanel;
 
     /// <summary>
-    /// Who the roster column lists, where null lists everyone. Presenters tapped from it become present, leaders land in Leaders, and guests in Guests;
-    /// someone on several rosters is listed once, under the first of presenter, leader, then guest.
+    /// The kind of attendee each filtered column lists, where null lists everyone. Presenters tapped from the roster become present, leaders land in
+    /// Leaders, and guests in Guests; someone on several rosters is listed once, under the first of presenter, leader, then guest.
     /// </summary>
-    private AttendeeKind? rosterView;
+    private readonly Dictionary<AttendanceState, AttendeeKind?> kindViews = new() { [AttendanceState.Roster] = null, [AttendanceState.Presented] = null };
+
+    private AttendeeKind? RosterView => kindViews[AttendanceState.Roster];
 
     /// <summary>The roster filter's options: everyone, then each kind of attendee.</summary>
     private static readonly IReadOnlyList<AttendeeKind?> RosterViews = [null, .. AttendeeKindExtensions.InDisplayOrder.Cast<AttendeeKind?>()];
@@ -263,8 +265,8 @@ public partial class Board : IDisposable
     public void Dispose() => boardChangeSubscription?.Dispose();
 
     /// <summary>
-    /// Everyone in one state, in that column's order. The reader's own card comes first instead when the organization has turned that on. The roster lists
-    /// only the kind of attendee the filter is set to.
+    /// Everyone in one state, in that column's order. The reader's own card comes first instead when the organization has turned that on. The roster and
+    /// Presented list only the kind of attendee their filter is set to.
     /// </summary>
     private IReadOnlyList<BoardParticipantDto> ParticipantsIn(AttendanceState state)
     {
@@ -273,21 +275,26 @@ public partial class Board : IDisposable
             return [];
         }
 
-        IReadOnlyList<BoardParticipantDto> ordered = board.Participants.Where(participant => participant.State == state && (state != AttendanceState.Roster || InRosterView(participant))).InColumnOrder(state);
+        IReadOnlyList<BoardParticipantDto> ordered = board.Participants.Where(participant => participant.State == state && InKindView(state, participant)).InColumnOrder(state);
         return organizationSettings.SelfFirstOnBoard ? [.. ordered.OrderByDescending(participant => Preferences.IsSelf(participant.Email))] : ordered;
     }
 
-    private bool InRosterView(BoardParticipantDto participant) => rosterView is null || participant.Kind == rosterView;
+    /// <summary>A section's heading, telling whether the kind of attendee it holds can present at the selected standup.</summary>
+    private string ColumnTitle(AttendanceState state) =>
+        StandFastTheme.ColumnTitle(state, AttendeeKindExtensions.InDisplayOrder.Any(kind => AttendanceTransitions.Attending(kind) == state && board?.Presents(kind) == true));
 
-    private string RosterViewName => rosterView is { } kind ? $"the {RosterLabels.RosterTitle(kind.Roster()).ToLowerInvariant()}" : "any roster";
+    private bool InKindView(AttendanceState state, BoardParticipantDto participant) => kindViews.GetValueOrDefault(state) is not { } kind || participant.Kind == kind;
+
+    private string RosterViewName => RosterView is { } kind ? $"the {RosterLabels.RosterTitle(kind.Roster()).ToLowerInvariant()}" : "any roster";
 
     private string EmptyColumnText(AttendanceState state) => state switch
     {
         AttendanceState.Available => "Tap a name on the roster as you spot them in the meeting.",
+        AttendanceState.Presented when kindViews[state] is { } kind => $"No {RosterLabels.Plural(kind).ToLowerInvariant()} have presented.",
         AttendanceState.Presented => "Tap a name again once they have given their update.",
         AttendanceState.Leader => EmptyNonPresenterText(AttendeeKind.Leader),
         AttendanceState.Guest => EmptyNonPresenterText(AttendeeKind.Guest),
-        _ when board?.Participants.Any(InRosterView) != true => $"Nobody is on {RosterViewName} for this standup.",
+        _ when board?.Participants.Any(participant => InKindView(AttendanceState.Roster, participant)) != true => $"Nobody is on {RosterViewName} for this standup.",
         _ => "Everyone has been marked here.",
     };
 
