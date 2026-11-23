@@ -6,6 +6,12 @@ StandFast does not host the call and does not connect to any meeting or chat ser
 
 <img src=".readme/screen-001.png" alt="StandFast board" align="left" />
 
+## Action Items
+
+*These are future identified items to be addressed. This includes items to allow flexibility to best match specific instances based on user or business needs.*
+
+- [ ] Make the number of Azure SignalR Service units configurable through a pipeline variable, alongside the tier that `a_SignalRSku` already sets.
+
 # <a id="table-of-contents">📖</a> Table of Contents
 
 - [ℹ️ About StandFast](#about)
@@ -126,17 +132,13 @@ People, holidays, task states, standups, rosters, and sprints are set up ahead o
 flowchart LR
     User["Browser or<br/>browser-installed app"]
     IdP["Identity provider"]
-    subgraph DevOps["Azure DevOps"]
-        Groups["Variable groups<br/>settings and secrets"]
-        Pipeline["Pipeline"]
-    end
-    subgraph Azure["Azure resource group"]
-        App["Container app<br/>StandFast"]
-        Storage["Storage account<br/>data and audit log"]
-        Vault["Key Vault<br/>secrets"]
-        Logs["Log Analytics<br/>logs"]
-        SignalR["SignalR Service<br/>board changes"]
-    end
+    Groups["Azure DevOps<br/>variable groups"]
+    Pipeline["Azure DevOps<br/>pipeline"]
+    App["Container app<br/>StandFast"]
+    Storage["Storage account<br/>data and audit log"]
+    Vault["Key Vault<br/>secrets"]
+    Logs["Log Analytics<br/>logs"]
+    SignalR["SignalR Service<br/>board changes"]
 
     User -- HTTPS --> App
     User -- signs in --> IdP
@@ -146,7 +148,7 @@ flowchart LR
     App --> Logs
     App -- board changes --> SignalR
     Groups --> Pipeline
-    Pipeline -- creates and deploys --> Azure
+    Pipeline -- creates and deploys --> App
 ```
 
 | Part | Role | Locally |
