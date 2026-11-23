@@ -227,7 +227,7 @@
 
 /*
  * The board header's four areas. Stacked on a narrow window; from the md breakpoint up, a first column as wide as the board's first column below (which MudGrid
- * spacing 3 makes a third of the width less its 24px gutters), holding the Lock button and sprint over the pickers, beside the date over the week strip.
+ * spacing 3 makes a third of the width less its 24px gutters), holding the sprint and the right-aligned Lock button over the pickers, beside the date over the week strip.
  * The pickers are centered on the week strip, so the two read as one row.
  */
 .standfast-board-header-grid {

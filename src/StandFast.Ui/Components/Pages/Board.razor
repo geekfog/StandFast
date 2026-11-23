@@ -7,25 +7,11 @@
 <div class="standfast-board">
     <div class="standfast-board-header">
         @*
-            Two rows that line up across both columns: the Lock button and sprint beside the date, then the standup and leader pickers beside the week strip,
+            Two rows that line up across both columns: the sprint at the left and the Lock button at the right, beside the date, then the standup and leader pickers beside the week strip,
             centered on it. Below the md breakpoint each area stacks, the pickers under the Lock button and the date over the week strip.
         *@
         <div class="standfast-board-header-grid">
             <div class="standfast-board-header-tools d-flex align-center flex-wrap gap-3">
-                @if (board is not null)
-                {
-                    <MudTooltip Text="@LockActionDescription">
-                        <MudButton Variant="Variant.Outlined"
-                                   Size="Size.Small"
-                                   Color="@StandFastTheme.LockColor(IsLocked)"
-                                   StartIcon="@StandFastTheme.LockIcon(IsLocked)"
-                                   Disabled="@(!IsLocked && !HasPresented)"
-                                   OnClick="ToggleLockAsync"
-                                   aria-label="@LockActionDescription">
-                            @(IsLocked ? "Unlock" : "Lock")
-                        </MudButton>
-                    </MudTooltip>
-                }
                 @if (board?.Sprint is { } sprint)
                 {
                     <div class="d-flex align-center gap-1">
@@ -39,6 +25,20 @@
                             </MudTooltip>
                         }
                     </div>
+                }
+                @if (board is not null)
+                {
+                    <MudTooltip Text="@LockActionDescription" RootClass="ms-auto">
+                        <MudButton Variant="Variant.Outlined"
+                                   Size="Size.Small"
+                                   Color="@StandFastTheme.LockColor(IsLocked)"
+                                   StartIcon="@StandFastTheme.LockIcon(IsLocked)"
+                                   Disabled="@(!IsLocked && !HasPresented)"
+                                   OnClick="ToggleLockAsync"
+                                   aria-label="@LockActionDescription">
+                            @(IsLocked ? "Unlock" : "Lock")
+                        </MudButton>
+                    </MudTooltip>
                 }
             </div>
             <div class="standfast-board-header-date">

@@ -6,6 +6,12 @@ StandFast does not host the call and does not connect to any meeting or chat ser
 
 <img src=".readme/screen-001.png" alt="StandFast board" align="left" />
 
+## Action Items
+
+*These are future identified items to be addressed. This includes items to allow flexibility to best match specific instances based on user or business needs.*
+
+- [ ] Make the number of Azure SignalR Service units configurable through a pipeline variable, alongside the tier that `a_SignalRSku` already sets.
+
 # <a id="table-of-contents">📖</a> Table of Contents
 
 - [ℹ️ About StandFast](#about)
@@ -87,6 +93,7 @@ People, holidays, task states, standups, rosters, and sprints are set up ahead o
 | Capability | Outcome | Limitations |
 | ---------- | ------- | ----------- |
 | Multiple standups | Each standup keeps its own schedule, time zone, rosters, and history. | |
+| Shared live board | Everyone viewing the same standup and date sees each other's taps, updates, leader picks, and locks within moments, without refreshing. Text being typed in an open update is kept; the panel then shows it as unsaved against the newer saved text. | Changes to rosters, people, sprints, and days off show on an open board only after it is reopened or moved to another date. |
 | Attendance and speaking order | One tap marks someone as joined and a second as having presented, so the board shows who is still waiting. Each card shows the turn the person took last time, so the order can be varied. Marking the first person on a date also marks you, when your own card is still on the roster and you are not off that date. | The roster shows All of the standup's rosters together by default, or Presenters, Leaders, or Guests at a time, each from that standup's own roster, and someone on more than one is listed under the first of those. Leaders who are not presenters and guests are marked as here in their own sections below Present. A second tap marks them as presented only when the standup's Leaders can present or Guests can present setting is on; both are off for a new standup. A presenter with days off covering the date cannot be marked present; tapping them shows a warning instead. |
 | Sprints and time off | The board shows the sprint covering its date, in green beside the date, with the working days left in it counting that date. A sprint with a note shows an orange note icon beside it, with the note on hover. A card is marked when the person is off that date or has days off in the rest of the sprint; hovering shows their days off and the working days they have left to contribute. | Working days are Monday to Friday, whatever days the standup runs. Holidays apply to everyone. Days off are whole days. |
 | Leader | Records who ran the standup on each date. | Only people attending that date, here or presented, can be picked. The pick is limited to the Leader Roster unless the group icon beside the Leader dropdown is turned on for that date, which opens it to every presenter, leader, and guest attending. Turning it back off clears a leader from outside the Leader Roster. |
@@ -111,8 +118,9 @@ People, holidays, task states, standups, rosters, and sprints are set up ahead o
 | [Milkdown](https://milkdown.dev) | The formatted text editor in the update, blockers, parking lot, and notes boxes. It is committed already built, under `src/StandFast.Ui/wwwroot/lib`; see Browser libraries under [Development and Support](#development-and-support). | Included |
 | [Node.js](https://nodejs.org) | Rebuilds the browser libraries after their versions change. | Optional |
 | [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite) | Stands in for Azure Table Storage. | Local |
+| [Azure SignalR emulator](https://learn.microsoft.com/azure/azure-signalr/signalr-howto-emulator) | Stands in for Azure SignalR Service, which keeps open boards in step across server copies. Without it the app still runs and boards stay in step on the one local server. | Local, optional |
 | OpenID Connect identity provider | Sign-in. Any provider that publishes a discovery document and supports the authorization code flow with a client secret, such as [Kinde](https://kinde.com). | Local and hosted |
-| [Azure subscription](https://azure.microsoft.com/free/) | Hosts the app on Azure Container Apps with Azure Table Storage, all defined in [infra/main.bicep](infra/main.bicep). **Owner** or **User Access Administrator** is needed once, to grant the pipeline its role. Using a custom domain assumes familiarity with Azure Container Apps custom domains and DNS. | Hosted |
+| [Azure subscription](https://azure.microsoft.com/free/) | Hosts the app on Azure Container Apps with Azure Table Storage and Azure SignalR Service, all defined in [infra/main.bicep](infra/main.bicep). **Owner** or **User Access Administrator** is needed once, to grant the pipeline its role. Using a custom domain assumes familiarity with Azure Container Apps custom domains and DNS. | Hosted |
 | [Azure DevOps](https://learn.microsoft.com/azure/devops/pipelines/get-started/what-is-azure-pipelines) project | Pipelines build, test, and deploy; variable groups hold the deployment settings and secrets. | Hosted |
 | [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) | Grants the pipeline its role from the command line. [Azure Cloud Shell](https://learn.microsoft.com/azure/cloud-shell/overview) includes it. | Hosted, optional |
 | GitHub repository admin rights | Applies branch policy; see [Development and Support](#development-and-support). | Optional |
@@ -124,16 +132,13 @@ People, holidays, task states, standups, rosters, and sprints are set up ahead o
 flowchart LR
     User["Browser or<br/>browser-installed app"]
     IdP["Identity provider"]
-    subgraph DevOps["Azure DevOps"]
-        Groups["Variable groups<br/>settings and secrets"]
-        Pipeline["Pipeline"]
-    end
-    subgraph Azure["Azure resource group"]
-        App["Container app<br/>StandFast"]
-        Storage["Storage account<br/>data and audit log"]
-        Vault["Key Vault<br/>secrets"]
-        Logs["Log Analytics<br/>logs"]
-    end
+    Groups["Azure DevOps<br/>variable groups"]
+    Pipeline["Azure DevOps<br/>pipeline"]
+    App["Container app<br/>StandFast"]
+    Storage["Storage account<br/>data and audit log"]
+    Vault["Key Vault<br/>secrets"]
+    Logs["Log Analytics<br/>logs"]
+    SignalR["SignalR Service<br/>board changes"]
 
     User -- HTTPS --> App
     User -- signs in --> IdP
@@ -141,8 +146,9 @@ flowchart LR
     App --> Storage
     App --> Vault
     App --> Logs
+    App -- board changes --> SignalR
     Groups --> Pipeline
-    Pipeline -- creates and deploys --> Azure
+    Pipeline -- creates and deploys --> App
 ```
 
 | Part | Role | Locally |
@@ -150,24 +156,25 @@ flowchart LR
 | Container app | Runs StandFast, a Blazor Server app: pages are rendered on the server and kept live in the browser over a persistent connection. | `dotnet run` or the editor. |
 | Storage account | Tables hold every record and the audit log. A blob container holds the Data Protection key ring that every replica shares. | Azurite. |
 | Variable groups | Hold every deployment setting and secret, which the pipeline passes to the deployment. A group can instead be [linked to an existing Key Vault](https://learn.microsoft.com/azure/devops/pipelines/library/link-variable-groups-to-key-vaults). | `appsettings.json` and user secrets. |
+| SignalR Service | Free tier by default. Each replica connects to it once, broadcasts every board change it saves, and hears the changes the other replicas save, so viewers attached to different replicas see each other's changes. Browsers keep their own connection to the container app and never reach the service. | The Azure SignalR emulator. |
 | Key Vault | Created by the deployment. Secrets passed in by the pipeline reach the app from here, not as plain environment variables. | User secrets. |
 | Log Analytics | Collects the app's console logs, including a line for every page view; see [See who uses it](#see-who-uses-it). | The console. |
 | Identity provider | Signs users in; StandFast never sees a password. | The same provider, with the local address registered. |
 | Pipeline | Builds and tests every change to a release branch, then creates or updates every Azure resource and deploys the app. | Not used. |
 
-The code is four projects, and each arrow is a project reference. Only Infrastructure knows about Azure Table Storage.
+The code is four projects, and each arrow is a project reference. Only Infrastructure knows about Azure Table Storage and Azure SignalR Service.
 
 ```mermaid
 flowchart TB
     Ui["<b>StandFast.Ui</b><br/>Blazor Server, MudBlazor, OpenID Connect sign-in, Serilog"]
     Application["<b>StandFast.Application</b><br/>Services, DTOs, validators, mapping, audit records, backup and current-user interfaces"]
     Domain["<b>StandFast.Domain</b><br/>Entities, enums, calendar rules, repository interfaces"]
-    Infrastructure["<b>StandFast.Infrastructure</b><br/>Azure Table Storage clients, table entities, key design"]
+    Infrastructure["<b>StandFast.Infrastructure</b><br/>Azure Table Storage clients, table entities, key design, Azure SignalR board change transport"]
 
     Ui -- calls services --> Application
     Ui -- registers services, audit log table --> Infrastructure
     Application --> Domain
-    Infrastructure -- implements backup store --> Application
+    Infrastructure -- implements backup store, board change transport --> Application
     Infrastructure -- implements repositories --> Domain
 ```
 
@@ -175,7 +182,7 @@ flowchart TB
 
 Run every command from the repository root unless a step says otherwise.
 
-1. Install the .NET SDK and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite), and optionally an editor, from the [Technical Overview](#technical-overview).
+1. Install the .NET SDK and [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite), and optionally an editor and the Azure SignalR emulator (`dotnet tool install -g Microsoft.Azure.SignalR.Emulator`), from the [Technical Overview](#technical-overview).
 2. Get the source: `git clone https://github.com/geekfog/StandFast.git`, then `cd StandFast`.
 3. Trust the HTTPS development certificate with `dotnet dev-certs https --trust`. This works on Windows and macOS; on Linux, follow [Microsoft's instructions](https://learn.microsoft.com/aspnet/core/security/enforcing-ssl#trust-the-aspnet-core-https-development-certificate) for your distribution.
 4. <a id="register-identity-provider"></a>Register an application with your identity provider as a server-side web app that uses the authorization code flow with a client secret:
@@ -186,7 +193,7 @@ Run every command from the repository root unless a step says otherwise.
    | Allowed logout redirect URL | `https://localhost:7111/signout-callback-oidc` |
 
    Copy the provider's issuer URL, the client id, and the client secret.
-5. Start Azurite as its documentation describes and leave it running. The `.azurite` folder in the repository root is ignored by Git, so it can hold Azurite's data.
+5. Start Azurite as its documentation describes and leave it running. The `.azurite` folder in the repository root is ignored by Git, so it can hold Azurite's data. Optionally start the SignalR emulator with `asrs-emulator start`, which listens on port 8888, the address `appsettings.Development.json` already points to.
 6. Store the connection and sign-in settings as [user secrets](https://learn.microsoft.com/aspnet/core/security/app-secrets), which stay outside the repository:
 
    ```powershell
@@ -201,7 +208,7 @@ Run every command from the repository root unless a step says otherwise.
 8. Open `https://localhost:7111` and sign in through your identity provider.
 9. The data starts empty. Set it up as in [Using StandFast](#using-standfast), or restore a backup file on the Backup screen.
 10. Check `https://localhost:7111/healthz`, which returns `Healthy` without signing in.
-11. To stop, press Ctrl+C in the app's terminal, then stop Azurite.
+11. To stop, press Ctrl+C in the app's terminal, then stop Azurite and the SignalR emulator.
 
 # <a id="run-hosted">☁️</a> Run in Hosted Environment (Azure)
 
@@ -239,6 +246,8 @@ Each is a variable in the environment's variable group and takes effect on the n
 
 **`a_CustomDomain`** serves the app on your own domain, such as `standup.example.com`, instead of the generated Container Apps address. The release binds the domain and issues a free managed certificate for it, once the domain's DNS records exist; the release log prints the domain verification id they need. Afterwards, register the callback URLs on the new domain with the identity provider.
 
+**`a_SignalRSku`** sets the Azure SignalR Service tier: `Free_F1` (the default), `Standard_S1`, or `Premium_P1`. Free allows 20 concurrent connections and 20,000 messages a day. StandFast uses one connection per replica and one message per replica for each board change, so Free covers it unless a day's board changes run into the thousands. Left unset or empty, Free is used.
+
 **`a_ClarityProjectId`** turns on [Microsoft Clarity](https://clarity.microsoft.com/) session recordings and heatmaps for the environment. Create a project in Clarity for the environment's address and copy its project id from the project's settings. Left unset or empty, no Clarity tag loads.
 
 ## Access an existing deployment
@@ -262,7 +271,7 @@ ContainerAppConsoleLogs_CL
 | Topic | Detail |
 | ----- | ------ |
 | Build | `dotnet build StandFast.slnx` |
-| Test | `dotnet test StandFast.slnx`. The Azurite integration tests skip themselves when Azurite is not running. The pipeline runs the same build and tests on every pull request. |
+| Test | `dotnet test StandFast.slnx`. The Azurite and SignalR emulator integration tests skip themselves when their emulator is not running. The pipeline runs the same build and tests on every pull request. |
 | Contributing | Branch `feature/*` from the release branch you are targeting and open a pull request into it. Every merge into a release branch deploys. Add a line for the change under that version in the Change Summary below. |
 | Browser libraries | [src/StandFast.Ui.ClientLibs](src/StandFast.Ui.ClientLibs) pins the browser libraries in its `package.json` and bundles them into `src/StandFast.Ui/wwwroot/lib`, which is committed, so building and deploying need no Node.js. After changing a version, run `npm install` and then `npm run build` in that folder, and commit the rebuilt files. |
 | Versions and branches | `VersionPrefix` in [Directory.Build.props](Directory.Build.props) is the only version. Each `release/MM.mm` branch is cut from the previous one, and the newest is the default branch. |
@@ -282,6 +291,8 @@ Locally a setting is a key in a settings file or user secrets. In Azure it is a 
 | `Oidc:ClientId` | The confidential client id from the identity provider. | User secrets | `standfast-<env>-vars`: `a_OidcClientId` | Required |
 | `Oidc:ClientSecret` | The client secret from the identity provider. In Azure, mark the variable secret; the Bicep stores it in Key Vault as `oidc-client-secret` and the container app reads it through a Key Vault reference. | User secrets | `standfast-<env>-vars`: `a_OidcClientSecret` | Required |
 | `AzureTableStorage:ConnectionString` | Table Storage for all data. Startup fails unless this or `ServiceUri` is set. | User secrets: `UseDevelopmentStorage=true` for Azurite | Not used; see `ServiceUri` under [Values set for you](#values-set-for-you) | Required locally |
+| `AzureSignalR:ConnectionString` | The Azure SignalR Service that keeps open boards in step across server copies. Empty keeps each change on the server copy that saved it. When set but unreachable, the app logs one warning, keeps retrying every 30 seconds, and boards on the same server copy still stay in step. | `appsettings.Development.json`: the emulator on port 8888 | Set by the Bicep; see [Values set for you](#values-set-for-you) | Committed |
+| (none) | The Azure SignalR Service tier; see [Optional settings](#optional-settings). | (none) | `standfast-<env>-vars`: `a_SignalRSku` | Optional; an undefined variable keeps `Free_F1` |
 | `StandFastUi:DisplayTimeZoneId` | The [time zone](#time-zones) for times that belong to no standup, such as on the Backup screen, and for a standup whose own time zone the server cannot resolve. The board shows times of day in the viewer's browser time zone, falling back to the standup's own when the browser's is not available, and dates the meeting in the standup's time zone. Reports use the standup's own time zone. Empty falls back to the server's zone: your machine's locally, UTC in the container. | User secrets, optional | `standfast-<env>-vars`: `a_DisplayTimeZoneId` | Variable required, value may be empty |
 | (none) | The custom domain the app answers on; see [Optional settings](#optional-settings). Empty leaves only the generated Container Apps address. | (none) | `standfast-<env>-vars`: `a_CustomDomain` | Variable required, value may be empty |
 | `StandFastUi:ClarityProjectId` | The [Microsoft Clarity](https://clarity.microsoft.com/) project that every page reports to; see [Optional settings](#optional-settings). Empty loads no Clarity tag. | User secrets, optional | `standfast-<env>-vars`: `a_ClarityProjectId` | Optional |
@@ -307,6 +318,7 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 | ----- | ------ |
 | `AzureTableStorage:ServiceUri` | The Bicep, from the storage account it creates. The app authenticates with `DefaultAzureCredential`, so no key is involved. Empty locally, which makes the connection string apply. |
 | `AzureTableStorage:TablePrefix` | The Bicep, as `a_AppBase` plus the environment code, such as `<appbase>PRD`. |
+| `AzureSignalR:ConnectionString` | The Bicep, from the SignalR Service it creates, naming the app's managed identity, so no key is involved. |
 | `StandFastUi:DataProtectionBlobUri` | The Bicep, from the same storage account. Holds the Data Protection key ring that every replica shares. |
 | `StandFastUi:EnvironmentLabel` | The Bicep, as the environment code everywhere except PRD, where it is empty. Drives the navigation menu's environment tag. Unset locally, where the tag shows the `ASPNETCORE_ENVIRONMENT` name. |
 
@@ -337,6 +349,8 @@ Listed so a value found in a deployed app can be traced to what produced it. Non
 - Added a Settings tab to the Organization screen with an option, off by default, to list each user's own starred card first in every board section.
 - Let every screen use the full width of a wide window instead of stopping short with empty margins on each side.
 - Added a Task states tab to the Organization screen for adding, renaming, and removing the states tasks can be in, each filed under Review, Ready, In-Flight, Stopped, or Done. A state cannot be removed while a task is in it.
+- Moved the board's Lock button to the right edge of the area above the standup and leader pickers, with the sprint kept at the left.
+- Kept every open board for the same standup and date in step, so taps, updates, leader picks, and locks made by one viewer appear for the others within moments, on any server. Text being typed in an open update is kept when someone else saves it.
 
 ### v01.07.00 — 2026-11-12
 

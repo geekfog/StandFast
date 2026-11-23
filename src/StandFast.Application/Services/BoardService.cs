@@ -1,5 +1,6 @@
 using FluentValidation;
 using Microsoft.Extensions.Options;
+using StandFast.Application.Abstractions;
 using StandFast.Application.Auditing;
 using StandFast.Application.Configuration;
 using StandFast.Application.Dtos;
@@ -20,7 +21,8 @@ public sealed class BoardService(
     IClock clock,
     IValidator<ParticipantUpdateDto> validator,
     IOptions<BoardLockOptions> lockOptions,
-    IAuditLog audit) : IBoardService
+    IAuditLog audit,
+    IBoardChangeNotifier changes) : IBoardService
 {
     private const string AuditTargetType = nameof(StandupEntry);
     private const string MeetingAuditTargetType = nameof(StandupMeeting);
@@ -123,6 +125,7 @@ public sealed class BoardService(
 
         await SaveMeetingAsync(standupId, meetingDate, existing, meeting => meeting.LockedUtc = lockedUtc, cancellationToken);
         audit.Record(AuditEvents.BoardLocked, MeetingAuditTargetType, MeetingTargetId(standupId, meetingDate), $"Board locked as of {lockedUtc:u}.");
+        changes.Publish(standupId, meetingDate);
 
         return lockedUtc;
     }
@@ -137,6 +140,7 @@ public sealed class BoardService(
 
         await SaveMeetingAsync(standupId, meetingDate, existing, meeting => meeting.LockedUtc = null, cancellationToken);
         audit.Record(AuditEvents.BoardUnlocked, MeetingAuditTargetType, MeetingTargetId(standupId, meetingDate), "Board unlocked.");
+        changes.Publish(standupId, meetingDate);
     }
 
     public Task<BoardParticipantDto?> AdvanceAsync(Guid standupId, DateOnly meetingDate, Guid personId, CancellationToken cancellationToken = default) =>
@@ -184,6 +188,7 @@ public sealed class BoardService(
             AuditTargetType,
             EntryTargetId(update.StandupId, update.PersonId, update.MeetingDate),
             $"Update {(isDeleted ? "deleted" : "saved")} for {attendee.Person.DisplayName}.");
+        changes.Publish(update.StandupId, update.MeetingDate);
 
         return attendee.ToParticipantDto(new StandupEntryPair(entry, pair.Prior));
     }
@@ -201,6 +206,7 @@ public sealed class BoardService(
 
         await SaveMeetingAsync(standupId, meetingDate, existing, meeting => meeting.LeaderPersonId = personId, cancellationToken);
         audit.Record(AuditEvents.LeaderChanged, MeetingAuditTargetType, MeetingTargetId(standupId, meetingDate), leader is null ? "Leader cleared." : $"{leader.DisplayName} is leading.");
+        changes.Publish(standupId, meetingDate);
 
         return true;
     }
@@ -229,6 +235,7 @@ public sealed class BoardService(
             MeetingAuditTargetType,
             MeetingTargetId(standupId, meetingDate),
             $"{(anyAttendeeCanLead ? "Anyone attending" : "Only the leader roster")} can lead.{(clearsLeader ? " Leader cleared." : string.Empty)}");
+        changes.Publish(standupId, meetingDate);
 
         return clearsLeader ? null : leaderId;
     }
@@ -285,6 +292,8 @@ public sealed class BoardService(
             await SaveMeetingAsync(standupId, meetingDate, meeting, changed => changed.LeaderPersonId = null, cancellationToken);
             audit.Record(AuditEvents.LeaderChanged, MeetingAuditTargetType, MeetingTargetId(standupId, meetingDate), $"Leader cleared: {attendee.Person.DisplayName} is no longer attending.");
         }
+
+        changes.Publish(standupId, meetingDate);
 
         return attendee.ToParticipantDto(new StandupEntryPair(entry, pair.Prior));
     }

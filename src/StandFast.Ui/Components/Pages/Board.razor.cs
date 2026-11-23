@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Options;
 using MudBlazor;
+using StandFast.Application.Abstractions;
 using StandFast.Application.Dtos;
 using StandFast.Application.Mapping;
 using StandFast.Application.Services;
@@ -14,7 +15,7 @@ using StandFast.Ui.Services;
 
 namespace StandFast.Ui.Components.Pages;
 
-public partial class Board
+public partial class Board : IDisposable
 {
     /// <summary>
     /// Columns across the board, left to right, each listing the states it holds from the top. Leaders and guests sit under the people present, since
@@ -57,6 +58,13 @@ public partial class Board
     private Guid loadedStandupId;
     private DateOnly loadedDate;
 
+    /// <summary>Reloads the board when another viewer saves a change to the loaded standup and date. Replaced whenever either changes.</summary>
+    private IDisposable? boardChangeSubscription;
+
+    /// <summary>Set while a reload for another viewer's change runs, so changes arriving meanwhile fold into one more reload rather than one each.</summary>
+    private bool isReloadingForChange;
+    private bool isChangeReloadQueued;
+
     /// <summary>The signed-in user's settings, loaded once by the layout. The board uses them to mark whichever card is the reader's own.</summary>
     [CascadingParameter]
     private UserPreferencesDto Preferences { get; set; } = UserPreferencesDto.Default;
@@ -66,6 +74,9 @@ public partial class Board
 
     [Inject]
     private IBoardService BoardService { get; set; } = default!;
+
+    [Inject]
+    private IBoardChangeNotifier BoardChanges { get; set; } = default!;
 
     [Inject]
     private IOrganizationSettingsService OrganizationSettingsService { get; set; } = default!;
@@ -192,6 +203,9 @@ public partial class Board
         loadedStandupId = SelectedStandupId;
         loadedDate = SelectedDate;
 
+        boardChangeSubscription?.Dispose();
+        boardChangeSubscription = BoardChanges.Subscribe(loadedStandupId, loadedDate, () => InvokeAsync(ReloadForChangeAsync));
+
         await LoadBoardAsync();
 
         // An update left open across a date change stays open only while that person is on the new date's board.
@@ -209,6 +223,44 @@ public partial class Board
             await BoardService.GetPresentedDatesAsync(SelectedStandupId, week[0], week[^1]),
             await BoardService.GetLockedDatesAsync(SelectedStandupId, week[0], week[^1]));
     }
+
+    /// <summary>
+    /// Brings the board in step with a change another viewer saved. Anything typed in the open update stays, since the panel keeps its own edits; the panel
+    /// closes only when its person has left the board.
+    /// </summary>
+    private async Task ReloadForChangeAsync()
+    {
+        if (isReloadingForChange)
+        {
+            isChangeReloadQueued = true;
+            return;
+        }
+
+        isReloadingForChange = true;
+
+        try
+        {
+            do
+            {
+                isChangeReloadQueued = false;
+                await LoadBoardAsync();
+            }
+            while (isChangeReloadQueued);
+
+            if (SelectedParticipant is null)
+            {
+                selectedPersonId = null;
+            }
+
+            StateHasChanged();
+        }
+        finally
+        {
+            isReloadingForChange = false;
+        }
+    }
+
+    public void Dispose() => boardChangeSubscription?.Dispose();
 
     /// <summary>
     /// Everyone in one state, in that column's order. The reader's own card comes first instead when the organization has turned that on. The roster lists
